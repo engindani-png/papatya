@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌼 Seviyor mu? Sevmiyor mu?</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Quicksand:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #e0f7fa 0%, #fff9c4 50%, #f8bbd0 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Quicksand', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .sky {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;
+  }
+
+  .cloud {
+    position: absolute; background: white; border-radius: 50%; opacity: 0.6;
+    animation: float-cloud linear infinite;
+  }
+
+  @keyframes float-cloud {
+    from { transform: translateX(-200px); }
+    to { transform: translateX(calc(100vw + 200px)); }
+  }
+
+  .title {
+    font-family: 'Caveat', cursive; font-size: clamp(28px, 6vw, 52px);
+    color: #e91e63; text-align: center; z-index: 2;
+    margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .status {
+    font-family: 'Caveat', cursive; font-size: clamp(24px, 5vw, 42px);
+    min-height: 50px; z-index: 2; text-align: center;
+    transition: all 0.3s; margin-bottom: 10px;
+  }
+
+  .status.seviyor { color: #e91e63; }
+  .status.sevmiyor { color: #7b1fa2; }
+
+  .petal-count {
+    font-size: 16px; color: #888; z-index: 2; margin-bottom: 16px;
+    font-weight: 600;
+  }
+
+  .daisy-container {
+    position: relative; width: clamp(280px, 70vw, 420px); height: clamp(280px, 70vw, 420px);
+    z-index: 2;
+  }
+
+  .center-circle {
+    position: absolute; width: 80px; height: 80px;
+    background: radial-gradient(circle at 35% 35%, #ffee58, #f9a825, #e65100);
+    border-radius: 50%; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10; box-shadow: 0 0 20px rgba(255,193,7,0.4);
+    cursor: default;
+  }
+
+  .center-circle::after {
+    content: ''; position: absolute; width: 100%; height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 60% 60%, transparent 40%, rgba(0,0,0,0.08) 100%);
+  }
+
+  /* Seed dots on center */
+  .seed-dots {
+    position: absolute; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+  }
+
+  .seed-dot {
+    position: absolute; width: 4px; height: 4px;
+    background: rgba(120, 80, 0, 0.35); border-radius: 50%;
+  }
+
+  .petal {
+    position: absolute; width: 38px; height: 100px;
+    top: 50%; left: 50%;
+    transform-origin: 50% 100%;
+    cursor: pointer; transition: filter 0.2s;
+    z-index: 5;
+  }
+
+  .petal:hover { filter: brightness(1.15) drop-shadow(0 0 8px rgba(255,255,255,0.8)); }
+
+  .petal-shape {
+    width: 100%; height: 100%;
+    background: linear-gradient(180deg, #ffffff 0%, #fff8e1 60%, #ffe082 100%);
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative; overflow: hidden;
+  }
+
+  .petal-shape::after {
+    content: ''; position: absolute;
+    width: 2px; height: 70%; top: 10%; left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(to bottom, transparent, rgba(255,183,77,0.3), transparent);
+    border-radius: 2px;
+  }
+
+  .petal.falling {
+    animation: petal-fall 1.5s ease-in forwards;
+    pointer-events: none; z-index: 20;
+  }
+
+  @keyframes petal-fall {
+    0% { opacity: 1; }
+    20% { opacity: 1; }
+    100% {
+      opacity: 0;
+      transform: var(--fall-transform);
+    }
+  }
+
+  /* Final result overlay */
+  .result-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.3); z-index: 100;
+    flex-direction: column; align-items: center; justify-content: center;
+    animation: fade-in 0.5s ease;
+  }
+
+  .result-overlay.show { display: flex; }
+
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  .result-card {
+    background: white; border-radius: 24px; padding: 40px 50px;
+    text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    max-width: 90vw;
+  }
+
+  @keyframes pop-in {
+    0% { transform: scale(0.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .result-emoji { font-size: 72px; margin-bottom: 16px; }
+  .result-text {
+    font-family: 'Caveat', cursive; font-size: clamp(32px, 8vw, 56px);
+    color: #e91e63; margin-bottom: 12px;
+  }
+  .result-sub {
+    font-size: clamp(14px, 3vw, 18px); color: #888; margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .btn-again {
+    background: linear-gradient(135deg, #e91e63, #f06292);
+    color: white; border: none; padding: 14px 36px;
+    border-radius: 50px; font-size: 18px; font-family: 'Quicksand', sans-serif;
+    font-weight: 700; cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(233,30,99,0.3);
+  }
+
+  .btn-again:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(233,30,99,0.4);
+  }
+
+  /* Floating hearts */
+  .heart {
+    position: fixed; font-size: 24px; z-index: 50;
+    animation: float-heart 3s ease-in forwards;
+    pointer-events: none;
+  }
+
+  @keyframes float-heart {
+    0% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translateY(-300px) scale(1.5) rotate(20deg); }
+  }
+
+  /* Fallen petals on ground */
+  .ground-petal {
+    position: fixed; bottom: -10px; width: 25px; height: 60px; z-index: 1;
+    opacity: 0.5; pointer-events: none;
+  }
+
+  .ground-petal .petal-shape {
+    width: 100%; height: 100%;
+  }
+
+  .instruction {
+    font-size: clamp(13px, 2.5vw, 16px); color: #999; z-index: 2;
+    margin-top: 16px; animation: pulse-text 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-text {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .date-info {
+    position: fixed; bottom: 16px; right: 20px;
+    font-size: 13px; color: rgba(0,0,0,0.25); z-index: 2;
+  }
+
+  .love-meter {
+    position: fixed; top: 16px; right: 20px; z-index: 2;
+    font-family: 'Caveat', cursive; font-size: 18px; color: #e91e63;
+  }
+</style>
+</head>
+<body>
+
+<div class="sky" id="sky"></div>
+
+<div class="love-meter" id="loveMeter"></div>
+
+<h1 class="title" id="title">Seviyor mu? Sevmiyor mu?</h1>
+<div class="status" id="status"></div>
+<div class="petal-count" id="petalCount"></div>
+
+<div class="daisy-container" id="daisy">
+  <div class="center-circle">
+    <div class="seed-dots" id="seedDots"></div>
+  </div>
+</div>
+
+<div class="instruction" id="instruction">Yapraklara tiklayarak kopar 🌸</div>
+
+<div class="date-info" id="dateInfo"></div>
+
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-card">
+    <div class="result-emoji" id="resultEmoji">💖</div>
+    <div class="result-text" id="resultText">SEVİYOR!</div>
+    <div class="result-sub" id="resultSub"></div>
+    <button class="btn-again" onclick="resetGame()">Bir Daha Dene 🌼</button>
+  </div>
+</div>
+
+<script>
+const funnyMessages = [
+  "Bunu bilmek icin papatyaya mi sordun? 😄",
+  "Papatya bile biliyor, sen hala suphe ediyorsun! 💕",
+  "Seni sevmeyen var mi ki zaten? 🥰",
+  "Tabii ki seviyor! Baska sonuc mu bekliyordun? 😏",
+  "Evren seni seviyor, papatya sadece onayliyor 🌌",
+  "Bu sonucu degistirmek icin 1000 papatya lazim 😜",
+  "Papatya: 'Beni yoluyorsun ama haklisin' dedi 🌼",
+  "Matematik bile diyor ki: SEVIYOR! 📐💗",
+  "Plot twist yok, seni seviyor! 🎬",
+  "Spoiler: Her zaman seviyor 🤫",
+  "Yapraklari sayma, kalpleri say! 💝",
+  "Papatya yoruldu ama sonuc degismedi 😅",
+  "Bu papatya asla yalan soylemez! 🤥❌",
+  "Seni sevmeyen papatya daha icat edilmedi 🔬",
+  "Evrendeki tum papatyalar hemfikir: SEVIYOR! 🌍"
+]
+
+const loveQuotes = [
+  "Sevgi saymakla bitmez... ama biz yine de saydik 💕",
+  "Her yaprak bir 'seni seviyorum' demek 🌸",
+  "Papatyalar yalan soylemez! 🌼",
+]
+
+let petals = []
+let petalCount = 0
+let pickedCount = 0
+let currentText = ''
+let gameActive = false
+
+function getDailyPetalCount() {
+  const today = new Date()
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate()
+  // Simple hash
+  let hash = seed
+  hash = ((hash >> 16) ^ hash) * 0x45d9f3b
+  hash = ((hash >> 16) ^ hash) * 0x45d9f3b
+  hash = (hash >> 16) ^ hash
+  // Range: 11-25, always ODD so it ends on "seviyor"
+  let count = 11 + (Math.abs(hash) % 8) * 2 // 11,13,15,17,19,21,23,25
+  return count
+}
+
+function createClouds() {
+  const sky = document.getElementById('sky')
+  for (let i = 0; i < 5; i++) {
+    const cloud = document.createElement('div')
+    cloud.className = 'cloud'
+    const size = 60 + Math.random() * 100
+    cloud.style.width = size + 'px'
+    cloud.style.height = (size * 0.5) + 'px'
+    cloud.style.top = (Math.random() * 40) + '%'
+    cloud.style.animationDuration = (20 + Math.random() * 30) + 's'
+    cloud.style.animationDelay = (-Math.random() * 30) + 's'
+    sky.appendChild(cloud)
+  }
+}
+
+function createSeedDots() {
+  const container = document.getElementById('seedDots')
+  container.innerHTML = ''
+  for (let i = 0; i < 30; i++) {
+    const dot = document.createElement('div')
+    dot.className = 'seed-dot'
+    const angle = Math.random() * Math.PI * 2
+    const r = 8 + Math.random() * 24
+    dot.style.left = (50 + Math.cos(angle) * r) + '%'
+    dot.style.top = (50 + Math.sin(angle) * r) + '%'
+    container.appendChild(dot)
+  }
+}
+
+function createDaisy() {
+  const container = document.getElementById('daisy')
+  // Remove old petals
+  container.querySelectorAll('.petal').forEach(p => p.remove())
+
+  petalCount = getDailyPetalCount()
+  pickedCount = 0
+  petals = []
+  gameActive = true
+
+  const angleStep = 360 / petalCount
+  const radius = 95 // distance from center
+
+  for (let i = 0; i < petalCount; i++) {
+    const angle = angleStep * i - 90
+    const rad = (angle * Math.PI) / 180
+
+    const petal = document.createElement('div')
+    petal.className = 'petal'
+    petal.innerHTML = '<div class="petal-shape"></div>'
+
+    // Position: translate outward then rotate
+    const tx = Math.cos(rad) * radius
+    const ty = Math.sin(rad) * radius
+    petal.style.transform = `translate(calc(-50% + ${tx}px), calc(-100% + ${ty}px)) rotate(${angle + 90}deg)`
+    petal.dataset.index = i
+    petal.dataset.angle = angle
+
+    // Slight color variation
+    const hue = 45 + Math.sin(i * 0.7) * 10
+    const light = 93 + Math.sin(i * 1.3) * 4
+    petal.querySelector('.petal-shape').style.background =
+      `linear-gradient(180deg, hsl(0,0%,100%) 0%, hsl(${hue},80%,${light}%) 60%, hsl(${hue},90%,78%) 100%)`
+
+    petal.addEventListener('click', () => pickPetal(petal, i))
+    container.appendChild(petal)
+    petals.push(petal)
+  }
+
+  updateUI()
+}
+
+function pickPetal(petal, index) {
+  if (!gameActive || petal.classList.contains('falling')) return
+
+  pickedCount++
+  const isSeviyor = pickedCount % 2 === 1
+
+  // Animate falling
+  const angle = parseFloat(petal.dataset.angle)
+  const fallX = (Math.random() - 0.5) * 300
+  const fallY = 400 + Math.random() * 200
+  const rotation = angle + 90 + (Math.random() - 0.5) * 360
+
+  petal.style.setProperty('--fall-transform',
+    `translate(calc(-50% + ${fallX}px), ${fallY}px) rotate(${rotation}deg) scale(0.5)`)
+  petal.classList.add('falling')
+
+  // Add ground petal
+  setTimeout(() => {
+    addGroundPetal(petal)
+  }, 1200)
+
+  // Update status
+  currentText = isSeviyor ? 'Seviyor 💗' : 'Sevmiyor 💔'
+  document.getElementById('status').textContent = currentText
+  document.getElementById('status').className = 'status ' + (isSeviyor ? 'seviyor' : 'sevmiyor')
+
+  updateUI()
+
+  // Check if done
+  if (pickedCount === petalCount) {
+    gameActive = false
+    setTimeout(showResult, 800)
+  }
+}
+
+function addGroundPetal(sourcePetal) {
+  const gp = document.createElement('div')
+  gp.className = 'ground-petal'
+  gp.innerHTML = '<div class="petal-shape"></div>'
+  gp.style.left = (10 + Math.random() * 80) + '%'
+  gp.style.transform = `rotate(${Math.random() * 360}deg)`
+  gp.style.opacity = 0.3 + Math.random() * 0.2
+  document.body.appendChild(gp)
+}
+
+function updateUI() {
+  const remaining = petalCount - pickedCount
+  document.getElementById('petalCount').textContent =
+    remaining > 0 ? `Kalan yaprak: ${remaining} / ${petalCount}` : ''
+
+  // Love meter
+  const meter = document.getElementById('loveMeter')
+  if (pickedCount > 0 && pickedCount < petalCount) {
+    const hearts = '💗'.repeat(Math.min(pickedCount, 10))
+    meter.textContent = hearts
+  }
+
+  // Hide instruction after first pick
+  if (pickedCount > 0) {
+    document.getElementById('instruction').style.display = 'none'
+  }
+}
+
+function showResult() {
+  // Spawn hearts
+  for (let i = 0; i < 15; i++) {
+    setTimeout(() => spawnHeart(), i * 150)
+  }
+
+  const msgIndex = Math.floor(Math.random() * funnyMessages.length)
+  document.getElementById('resultSub').textContent = funnyMessages[msgIndex]
+
+  const overlay = document.getElementById('resultOverlay')
+  overlay.classList.add('show')
+}
+
+function spawnHeart() {
+  const heart = document.createElement('div')
+  heart.className = 'heart'
+  heart.textContent = ['💖','💗','💕','💝','❤️','🌸','🌺','✨'][Math.floor(Math.random() * 8)]
+  heart.style.left = (10 + Math.random() * 80) + '%'
+  heart.style.bottom = '10%'
+  heart.style.fontSize = (20 + Math.random() * 20) + 'px'
+  document.body.appendChild(heart)
+  setTimeout(() => heart.remove(), 3000)
+}
+
+function resetGame() {
+  document.getElementById('resultOverlay').classList.remove('show')
+  document.getElementById('status').textContent = ''
+  document.getElementById('loveMeter').textContent = ''
+  document.getElementById('instruction').style.display = ''
+  document.querySelectorAll('.ground-petal').forEach(p => p.remove())
+  createDaisy()
+}
+
+function init() {
+  createClouds()
+  createSeedDots()
+  createDaisy()
+
+  // Date info
+  const today = new Date()
+  const days = ['Pazar','Pazartesi','Sali','Carsamba','Persembe','Cuma','Cumartesi']
+  const months = ['Ocak','Subat','Mart','Nisan','Mayis','Haziran','Temmuz','Agustos','Eylul','Ekim','Kasim','Aralik']
+  document.getElementById('dateInfo').textContent =
+    `${days[today.getDay()]}, ${today.getDate()} ${months[today.getMonth()]} ${today.getFullYear()}`
+
+  // Random love quote in title area
+  const quote = loveQuotes[Math.floor(Math.random() * loveQuotes.length)]
+  document.getElementById('title').title = quote
+}
+
+init()
+</script>
+</body>
+</html>
