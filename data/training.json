@@ -1,0 +1,26 @@
+{
+  "note": "Antrenman programı elle düzenlenir. 'day' 1=Pazartesi ... 7=Pazar.",
+  "venues": [
+    {
+      "id": "salon1",
+      "name": "Evolog Spor Salonu",
+      "address": "Salon adresi (ilçe / İstanbul)",
+      "maps": "https://www.google.com/maps/search/?api=1&query=Evolog+Spor+Salonu+Istanbul"
+    },
+    {
+      "id": "salon2",
+      "name": "Okul Spor Salonu",
+      "address": "İkinci salon adresi",
+      "maps": "https://www.google.com/maps/search/?api=1&query=Istanbul+spor+salonu"
+    }
+  ],
+  "sessions": [
+    { "day": 1, "start": "18:00", "end": "20:00", "venue": "salon1", "title": "Teknik + Kondisyon", "coach": "Baş Antrenör" },
+    { "day": 3, "start": "18:00", "end": "20:00", "venue": "salon1", "title": "Taktik Çalışma", "coach": "Baş Antrenör" },
+    { "day": 5, "start": "17:30", "end": "19:30", "venue": "salon2", "title": "Şut + Oyun", "coach": "Yardımcı Antrenör" },
+    { "day": 6, "start": "10:00", "end": "12:00", "venue": "salon1", "title": "Maç Hazırlık", "coach": "Baş Antrenör" }
+  ],
+  "exceptions": [
+    { "date": "2026-01-01", "type": "iptal", "reason": "Yılbaşı tatili" }
+  ]
+}

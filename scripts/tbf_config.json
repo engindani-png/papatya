@@ -1,0 +1,71 @@
+{
+  "_readme": [
+    "TBF senkronizasyon ayarlari.",
+    "leagueId: www.tbf.org.tr/ligler/22859/... -> 22859",
+    "teamId:   www.tbf.org.tr/ligler/22859/takim-detay/269325/... -> 269325",
+    "sources[].url bos birakilirsa script candidatePaths listesini sirayla dener",
+    "ve ilk ayristirilabilen adresi kullanir; hangisinin tuttugunu league.json > source yazar.",
+    "Belirli bir adres biliniyorsa dogrudan url alanina yazin, deneme atlanir."
+  ],
+  "baseUrl": "https://www.tbf.org.tr",
+  "leagueId": "22859",
+  "teamId": "269325",
+  "season": "2025-2026",
+  "league": "TBF İstanbul U14 Kız",
+  "group": "A Grubu",
+  "teamAliases": [
+    "evolog",
+    "evolog spor kulubu",
+    "evolog spor kulübü"
+  ],
+  "sources": [
+    {
+      "kind": "standings",
+      "type": "html",
+      "url": "",
+      "enabled": true,
+      "candidatePaths": [
+        "/ligler/{leagueId}/puan-durumu",
+        "/ligler/{leagueId}",
+        "/ligler/{leagueId}/puandurumu",
+        "/ligler/{leagueId}/gruplar"
+      ]
+    },
+    {
+      "kind": "fixtures",
+      "type": "html",
+      "url": "",
+      "enabled": true,
+      "candidatePaths": [
+        "/ligler/{leagueId}/takim-detay/{teamId}/maclar",
+        "/ligler/{leagueId}/fikstur",
+        "/ligler/{leagueId}/mac-sonuclari",
+        "/ligler/{leagueId}/maclar",
+        "/ligler/{leagueId}"
+      ]
+    }
+  ],
+  "matchDetail": {
+    "enabled": true,
+    "pathTemplate": "/ligler/{leagueId}/mac-detay/{matchId}",
+    "onlyOurMatches": true,
+    "maxMatches": 30,
+    "_not": "Oynanmis maclarin detay sayfasindan ceyrek skorlari ve oyuncu istatistikleri cekilir."
+  },
+  "jsonMappingExample": {
+    "kind": "fixtures",
+    "type": "json",
+    "url": "https://ornek-api/fixture?group=1",
+    "rowsPath": "data.matches",
+    "fields": {
+      "date": "matchDate",
+      "time": "matchTime",
+      "home": "homeTeam.name",
+      "away": "awayTeam.name",
+      "homeScore": "homeTeam.score",
+      "awayScore": "awayTeam.score",
+      "venue": "hall.name",
+      "week": "week"
+    }
+  }
+}

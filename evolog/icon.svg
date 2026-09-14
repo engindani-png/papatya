@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" fill="#0f1e1c"/>
+  <circle cx="96" cy="88" r="46" fill="#f2a03d"/>
+  <g stroke="#0f1e1c" stroke-width="4" fill="none">
+    <path d="M50 88h92M96 42v92M62 54c20 18 20 50 0 68M130 54c-20 18-20 50 0 68"/>
+  </g>
+  <text x="96" y="170" font-family="Oswald, Arial Narrow, sans-serif" font-size="30"
+        font-weight="600" fill="#eff5f2" text-anchor="middle" letter-spacing="2">U14</text>
+</svg>
