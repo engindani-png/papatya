@@ -1,5 +1,5 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-u14-v8";
+var CACHE = "evolog-u14-v10";
 var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./logo.png", "./icon-192.png", "./manifest.webmanifest"];
 
 self.addEventListener("install", function (e) {
@@ -43,4 +43,30 @@ self.addEventListener("fetch", function (e) {
     }).catch(function () { return hit; });
     return hit || net;
   }));
+});
+
+/* ------------------------------------------------------------- bildirimler */
+self.addEventListener("push", function (e) {
+  var d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = {}; }
+  e.waitUntil(self.registration.showNotification(d.title || "Evolog U14 Kız Siyah", {
+    body: d.body || "",
+    tag: d.tag || "evolog",
+    renotify: true,
+    icon: "./icon-192.png",
+    badge: "./icon-192.png",
+    data: { url: d.url || "./" }
+  }));
+});
+
+self.addEventListener("notificationclick", function (e) {
+  e.notification.close();
+  var url = (e.notification.data && e.notification.data.url) || "./";
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true })
+    .then(function (list) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].url.indexOf("/evolog/") !== -1 && "focus" in list[i]) return list[i].focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    }));
 });
