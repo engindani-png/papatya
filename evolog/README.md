@@ -96,6 +96,54 @@ puan durumunda vurgular ve maçlarını işaretler.
 çalıştırabilirsiniz. Çalışan adres bulunamazsa iş akışı kaydında denenen
 tüm adresler ve nedenleri tek tek listelenir.
 
+### ÖNEMLİ: TBF bulut sunucularını engelliyor
+
+Ölçüm sonucu: `tbf.org.tr` GitHub Actions'tan gelen isteklere **anında 403
+Forbidden** dönüyor — hem düz HTTP isteğine, hem de gerçek bir Chromium
+tarayıcıyla (Türkçe dil/saat dilimi, normal tarayıcı kimliği) açıldığında.
+Yanıt 150 ms içinde geliyor, bir doğrulama sayfası ya da JS sınavı yok;
+yani engel isteğin *neye benzediğiyle* değil, **nereden geldiğiyle** ilgili:
+veri merkezi IP'leri (Azure/AWS) baştan reddediliyor. Aynı adresler sizin
+telefonunuzda ve bilgisayarınızda sorunsuz açılıyor.
+
+Bu yüzden zamanlanmış iş akışı tek başına veri çekemez. Çalışan üç yol var:
+
+**1. Kendi bilgisayarınızdan çekin (en pratik).** Depoyu bir kez indirin,
+maç sonrası tek komut:
+
+```bash
+./scripts/yerel_guncelle.sh          # Windows: scripts\yerel_guncelle.cmd
+```
+
+Veriyi sizin bağlantınızdan çeker, `data/league.json` dosyasını günceller,
+commit'leyip push'lar. Uygulama birkaç dakika içinde güncel veriyi gösterir.
+Ek kurulum gerekmez (yalnızca Python 3 ve git).
+
+**2. Kendi bilgisayarınızı runner yapın (kur-unut).** GitHub'da
+*Settings → Actions → Runners → New self-hosted runner* ile evdeki bir
+bilgisayarı ekleyip iş akışındaki `runs-on: ubuntu-latest` satırını
+`runs-on: self-hosted` yapın. Zamanlanmış çekim sizin bağlantınızdan
+çalışır, hiçbir şeye dokunmanız gerekmez.
+
+**3. Sayfayı kaydedip besleyin (internet gerekmez).** TBF sayfasını
+tarayıcıda açıp Ctrl+S ile kaydedin, sonra:
+
+```bash
+python3 scripts/tbf_sync.py --from-file puan-durumu.html --kind standings
+python3 scripts/tbf_sync.py --from-file maclar.html      --kind fixtures
+```
+
+Her komut yalnızca kendi bölümünü günceller, diğerini olduğu gibi korur.
+
+Engelin kalkıp kalkmadığını görmek için:
+
+```bash
+python3 scripts/tbf_sync.py --probe
+```
+
+Her aday adresi dener; HTTP durumunu, sayfa boyutunu, `<title>` değerini ve
+bulunan tabloların başlıklarını yazar.
+
 ### Neyi nasıl okur
 
 - **Puan durumu:** başlığında “Takım” ve “Puan/P” geçen tabloyu bulur;

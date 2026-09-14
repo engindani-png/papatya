@@ -872,10 +872,14 @@ def main():
         except Exception as exc:  # noqa: BLE001
             errors.append(f"mac detaylari cekilemedi: {exc}")
 
+    # Hicbir kaynak cekilemediyse zaman damgasini degistirme: dosya ayni kalsin,
+    # basarisiz her calisma bos bir commit uretmesin.
+    fetched_any = bool(used_sources)
     data = {
         "isPlaceholder": not (standings or fixtures),
-        "updatedAt": dt.datetime.now(TZ).isoformat(timespec="seconds"),
-        "source": used_sources or None,
+        "updatedAt": (dt.datetime.now(TZ).isoformat(timespec="seconds")
+                      if fetched_any else previous.get("updatedAt")),
+        "source": used_sources or previous.get("source"),
         "season": config.get("season"),
         "league": config.get("league"),
         "group": config.get("group"),
