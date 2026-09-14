@@ -60,6 +60,11 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .head{display:flex;align-items:center;gap:.5rem;margin-bottom:.55rem}
 .head strong{font-family:var(--display);letter-spacing:.06em;font-size:.95rem}
 .head .del{margin-left:auto}
+.swatch{width:14px;height:14px;border-radius:4px;flex:0 0 auto;
+  border:1px solid rgb(255 255 255 / .25);display:inline-block}
+.colorrow{display:flex;align-items:center;gap:.6rem}
+.colorrow span{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint)}
+.colorrow input[type=color]{width:3.4rem;height:2.1rem;padding:2px;cursor:pointer}
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--ink-2);border-top:1px solid var(--line);
   padding:.7rem var(--gutter) calc(.7rem + env(safe-area-inset-bottom,0px));z-index:10}
 .bar .in{max-width:52rem;margin:0 auto;display:flex;gap:.6rem;align-items:center}

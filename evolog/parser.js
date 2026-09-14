@@ -139,6 +139,10 @@
     return CANCEL.some(function (w) { return folded.indexOf(w) !== -1; });
   }
 
+  // Salonlar bir bakışta ayırt edilsin diye her salona sabit bir renk verilir.
+  // Koyu zeminde okunan, birbirinden net ayrılan tonlar.
+  var VENUE_COLORS = ["#f2a03d", "#4fd4c0", "#a78bfa", "#f472b6", "#4fd48a", "#60a5fa", "#fbbf24", "#fb7185"];
+
   function slug(name) {
     return fold(name).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "salon";
   }
@@ -177,7 +181,7 @@
   function parse(text, known) {
     var today = new Date();
     var knownVenues = (known || []).map(function (v) {
-      return { id: v.id, name: v.name, folded: fold(v.name) };
+      return { id: v.id, name: v.name, color: v.color, folded: fold(v.name) };
     });
     var venues = knownVenues.slice();
 
@@ -189,7 +193,10 @@
           return venues[i];
         }
       }
-      var v = { id: slug(raw), name: titleCase(raw), folded: f, isNew: true };
+      var v = {
+        id: slug(raw), name: titleCase(raw), folded: f, isNew: true,
+        color: VENUE_COLORS[venues.length % VENUE_COLORS.length]
+      };
       venues.push(v);
       return v;
     }
@@ -317,11 +324,16 @@
       matches: matches,
       exceptions: exceptions,
       unparsed: unparsed,
-      venues: venues.map(function (v) { return { id: v.id, name: v.name, isNew: !!v.isNew }; })
+      venues: venues.map(function (v, i) {
+        return {
+          id: v.id, name: v.name, isNew: !!v.isNew,
+          color: v.color || VENUE_COLORS[i % VENUE_COLORS.length]
+        };
+      })
     };
   }
 
-  var api = { parse: parse, fold: fold, DAYS: DAYS, nextDate: nextDate, isoDate: isoDate };
+  var api = { parse: parse, fold: fold, DAYS: DAYS, nextDate: nextDate, isoDate: isoDate, COLORS: VENUE_COLORS };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.EvologParse = api;
 })(typeof self !== "undefined" ? self : this);

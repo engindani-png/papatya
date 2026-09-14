@@ -82,7 +82,7 @@
     // Yeni salonları mevcut listeye ekle (aynı id varsa dokunma).
     r.venues.forEach(function (v) {
       if (!state.venues.some(function (x) { return x.id === v.id; })) {
-        state.venues.push({ id: v.id, name: v.name, address: null, maps: null });
+        state.venues.push({ id: v.id, name: v.name, address: null, maps: null, color: v.color });
       }
     });
 
@@ -245,7 +245,8 @@
       card.className = "card";
       var head = document.createElement("div");
       head.className = "head";
-      head.innerHTML = "<strong>" + esc(v.name) + "</strong>" +
+      head.innerHTML = '<span class="swatch" style="background:' + esc(v.color || "#f2a03d") + '"></span>' +
+        "<strong>" + esc(v.name) + "</strong>" +
         (used ? "" : '<span class="pill">kullanılmıyor</span>');
       var del = document.createElement("button");
       del.className = "del"; del.textContent = "✕";
@@ -266,6 +267,17 @@
       var maps = field("url", v.maps, "Google Haritalar bağlantısı (isteğe bağlı)", function (val) { v.maps = val; mark(true); });
       maps.className = "full";
       grid.appendChild(maps);
+
+      // Salon rengi: programda bir bakışta ayırt etmek için.
+      var colorWrap = document.createElement("label");
+      colorWrap.className = "full colorrow";
+      colorWrap.innerHTML = "<span>Salon rengi</span>";
+      var color = document.createElement("input");
+      color.type = "color";
+      color.value = v.color || "#f2a03d";
+      color.addEventListener("input", function () { v.color = color.value; mark(true); });
+      colorWrap.appendChild(color);
+      grid.appendChild(colorWrap);
       card.appendChild(grid);
       box.appendChild(card);
     });
@@ -327,7 +339,10 @@
     renderExceptions(); mark(true);
   });
   el("addVenueBtn").addEventListener("click", function () {
-    state.venues.push({ id: "salon-" + (state.venues.length + 1), name: "Yeni salon", address: null, maps: null });
+    state.venues.push({
+      id: "salon-" + (state.venues.length + 1), name: "Yeni salon", address: null, maps: null,
+      color: EvologParse.COLORS[state.venues.length % EvologParse.COLORS.length]
+    });
     renderVenues(); mark(true);
   });
 

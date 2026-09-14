@@ -82,9 +82,12 @@ def validate_training(payload):
         maps = clean_str(v.get("maps"), 400)
         if maps and not maps.startswith(("https://", "http://")):
             maps = None
+        color = clean_str(v.get("color"), 9)
+        if color and not re.match(r"^#[0-9a-fA-F]{6}$", color):
+            color = None
         venues.append({"id": vid, "name": name,
                        "address": clean_str(v.get("address"), 200),
-                       "maps": maps})
+                       "maps": maps, "color": color})
 
     sessions = []
     for s in (payload.get("sessions") or [])[:40]:

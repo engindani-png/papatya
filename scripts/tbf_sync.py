@@ -23,6 +23,7 @@ import argparse
 import datetime as dt
 import gzip
 import json
+import os
 import pathlib
 import re
 import sys
@@ -45,6 +46,26 @@ HEADERS = {
     "Origin": "https://www.tbf.org.tr",
     "Referer": "https://www.tbf.org.tr/",
 }
+
+# TBF'nin gorsel sunucusu (tbf.org.tr/res/...) yalnizca gercek tarayici
+# basliklariyla yanit veriyor; eksik baslikta 403 donuyor. Olculdu.
+IMAGE_HEADERS = {
+    "User-Agent": UA,
+    "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    "Accept-Language": "tr-TR,tr;q=0.9",
+    "Referer": "https://www.tbf.org.tr/",
+    "Sec-Fetch-Dest": "image",
+    "Sec-Fetch-Mode": "no-cors",
+    "Sec-Fetch-Site": "same-site",
+    "sec-ch-ua": '"Chromium";v="140", "Not=A?Brand";v="24"',
+    "sec-ch-ua-platform": '"Windows"',
+    "Connection": "keep-alive",
+}
+
+# Logolar git agacinin disinda durabilsin (VDS'te senkron "git reset --hard"
+# yapiyor); yol ortam degiskeniyle degistirilebilir.
+LOGO_DIR = pathlib.Path(os.environ.get("EVOLOG_LOGO_DIR", str(ROOT / "evolog" / "logos")))
+LOGO_URL_BASE = os.environ.get("EVOLOG_LOGO_URL", "../evolog/logos")
 
 
 # --------------------------------------------------------------------- yardim
@@ -151,7 +172,8 @@ def fetch_standings(cfg: dict) -> tuple[list, str | None, list]:
             "pointsAgainst": against,
             "diff": (scored - against) if scored is not None and against is not None else None,
             "points": num(row.get("puan")),
-            "logo": row.get("teamLogo") or None,
+            "teamId": num(row.get("takimIslemId")),
+            "logo": fetch_logo(row.get("teamLogo"), num(row.get("takimIslemId"))),
             "isOurs": num(row.get("takimIslemId")) == our_id,
         })
     out.sort(key=lambda r: (r["rank"] is None, r["rank"] or 0))
@@ -190,8 +212,10 @@ def fetch_fixtures(cfg: dict) -> tuple[list, list]:
             "venue": m.get("salon") or None,
             "city": m.get("sehir") or None,
             "week": num(week_match.group(1)) if week_match else None,
-            "homeLogo": m.get("takimALogo") or None,
-            "awayLogo": m.get("takimBLogo") or None,
+            "homeId": num(m.get("takimAId")),
+            "awayId": num(m.get("takimBId")),
+            "homeLogo": fetch_logo(m.get("takimALogo"), num(m.get("takimAId"))),
+            "awayLogo": fetch_logo(m.get("takimBLogo"), num(m.get("takimBId"))),
             "isOurs": num(m.get("takimAId")) == our_id or num(m.get("takimBId")) == our_id,
             "isHome": bool(m.get("isHome")),
             "played": played,
@@ -278,6 +302,64 @@ def fetch_roster(cfg: dict) -> list:
     out.sort(key=lambda p: (p["no"] is None, p["no"] or 0, p["name"]))
     return out
 
+
+
+# ------------------------------------------------------------------- logolar
+def fetch_logo(url: str, team_id) -> str | None:
+    """Takim logosunu yerele indirir, uygulamanin kullanacagi yolu dondurur.
+
+    TBF gorselleri disaridan baglanti verilerek kullanilamiyor (403), bu yuzden
+    bir kez indirilip uygulamayla birlikte sunulur. Zaten varsa tekrar inmez.
+    """
+    if not url or not team_id:
+        return None
+    ext = ".png"
+    low = url.lower().split("?")[0]
+    for candidate in (".png", ".jpg", ".jpeg", ".webp", ".svg"):
+        if low.endswith(candidate):
+            ext = candidate
+            break
+    name = f"{int(team_id)}{ext}"
+    target = LOGO_DIR / name
+    public = f"{LOGO_URL_BASE}/{name}"
+    if target.exists() and target.stat().st_size > 0:
+        return public
+    try:
+        req = urllib.request.Request(url, headers=IMAGE_HEADERS)
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            data = resp.read()
+        if len(data) < 200:
+            return None
+        LOGO_DIR.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(shrink(data, ext))
+        return public
+    except Exception:
+        return None
+
+
+def shrink(data: bytes, ext: str, box: int = 160) -> bytes:
+    """Logoyu telefon icin kucultur. Pillow yoksa dokunmadan birakir.
+
+    TBF logolari 250-450 KB araliginda geliyor; 12 takim icin bu birkac
+    megabayt eder ve veliler cogunlukla mobil baglantida.
+    """
+    if ext == ".svg":
+        return data
+    try:
+        import io
+        from PIL import Image
+    except Exception:
+        return data
+    try:
+        img = Image.open(io.BytesIO(data))
+        img = img.convert("RGBA")
+        img.thumbnail((box, box), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG", optimize=True)
+        small = buf.getvalue()
+        return small if 0 < len(small) < len(data) else data
+    except Exception:
+        return data
 
 # ------------------------------------------------------------------- teshis
 def probe(cfg: dict) -> int:

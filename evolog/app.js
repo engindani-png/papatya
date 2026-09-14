@@ -41,6 +41,17 @@
     return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + "</svg>";
   }
 
+  // Takım logosu: TBF dışarıya bağlantı vermiyor, bu yüzden logolar
+  // senkronizasyonda indirilip uygulamayla birlikte sunuluyor.
+  function teamLogo(src, size) {
+    if (!src) return "";
+    return '<img class="lg' + (size ? " " + size : "") + '" src="' + esc(src) +
+      '" alt="" loading="lazy" decoding="async">';
+  }
+  function teamCell(name, logo) {
+    return '<span class="tm">' + teamLogo(logo) + "<span>" + esc(name) + "</span></span>";
+  }
+
   function matchDate(f) {
     if (!f || !f.date) return null;
     var p = String(f.date).split("-").map(Number);
@@ -216,10 +227,12 @@
       '<section class="board">' +
         '<div class="label">Sıradaki maç' + (next.week ? " · " + esc(next.week) + ". hafta" : "") + "</div>" +
         '<div class="board-teams">' +
-          '<div class="side"><div class="tname">' + esc(next.home) + "</div>" +
+          '<div class="side">' + teamLogo(next.homeLogo, "big") +
+          '<div class="tname">' + esc(next.home) + "</div>" +
             '<div class="trole">Ev sahibi</div></div>' +
           '<div class="dash">—</div>' +
-          '<div class="side right"><div class="tname">' + esc(next.away) + "</div>" +
+          '<div class="side right">' + teamLogo(next.awayLogo, "big") +
+          '<div class="tname">' + esc(next.away) + "</div>" +
             '<div class="trole">Deplasman</div></div>' +
         "</div>" +
         '<div class="board-meta">' +
@@ -310,10 +323,10 @@
           (f.time ? '<span class="hh">' + esc(f.time) + "</span>" : "") + "</time>" +
         "<div>" +
           '<div class="fx-team ' + (homeWin ? "won" : awayWin ? "lost" : "") + '">' +
-            '<span class="nm">' + esc(f.home) + "</span>" +
+            '<span class="nm">' + teamCell(f.home, f.homeLogo) + "</span>" +
             '<span class="sc">' + (played ? esc(f.homeScore) : "") + "</span></div>" +
           '<div class="fx-team ' + (awayWin ? "won" : homeWin ? "lost" : "") + '">' +
-            '<span class="nm">' + esc(f.away) + "</span>" +
+            '<span class="nm">' + teamCell(f.away, f.awayLogo) + "</span>" +
             '<span class="sc">' + (played ? esc(f.awayScore) : "") + "</span></div>" +
           (sub ? '<div class="fx-sub">' + ico("pin") + "<span>" + esc(sub) + "</span></div>" : "") +
         "</div>" +
@@ -367,12 +380,13 @@
         var ours = r.isOurs != null ? r.isOurs : isOurTeam(r.team);
         return '<tr class="' + (ours ? "ours" : "") + '">' +
           "<td>" + (r.rank != null ? esc(r.rank) : i + 1) + "</td>" +
-          "<td>" + esc(r.team) + "</td>" +
+          "<td>" + teamCell(r.team, r.logo) + "</td>" +
           "<td>" + v(r.played) + "</td><td>" + v(r.won) + "</td><td>" + v(r.lost) + "</td>" +
           "<td>" + v(r.pointsFor) + "</td><td>" + v(r.pointsAgainst) + "</td>" +
           "<td>" + (r.diff == null ? "–" : (r.diff > 0 ? "+" : "") + esc(r.diff)) + "</td>" +
           "<td>" + v(r.points) + "</td></tr>";
       }).join("") + "</tbody></table></div>" +
+      '<p class="swipe-hint">← Tabloyu yana kaydırarak tüm sütunları görebilirsiniz.</p>' +
       '<p class="key">O oynanan · G galibiyet · M mağlubiyet · A atılan sayı · ' +
       "Y yenilen sayı · AV averaj · P puan</p>";
   }
@@ -448,17 +462,41 @@
         (nv ? "<span>" + ico("pin") + esc(nv.name) + "</span>" : "") + "</div></section>";
     }
 
-    slot.innerHTML = sorted.map(function (s) {
-      var v = venueOf(s.venue), jsDay = s.day % 7;
-      return '<div class="ts' + (jsDay === today ? " today" : "") + '">' +
-        '<div class="dy">' + esc(GUNLER[jsDay]) +
-        (jsDay === today ? '<span class="now">BUGÜN</span>' : "") + "</div>" +
-        '<div><div class="tt">' + esc(s.title || "Antrenman") + "</div>" +
-        '<div class="hr">' + esc(s.start) + (s.end ? " – " + esc(s.end) : "") + "</div>" +
-        '<div class="wh">' + ico("pin") + "<span>" + (v ? esc(v.name) : esc(s.venue || "–")) +
-        (s.coach ? " · " + esc(s.coach) : "") + "</span>" +
-        (v && v.maps ? '<a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Yol tarifi</a>' : "") +
-        "</div></div></div>";
+    // Aynı güne düşen antrenmanlar tek gün başlığı altında toplanır —
+    // WhatsApp mesajı da böyle geliyor, veliler de böyle okuyor.
+    var byDay = [];
+    sorted.forEach(function (s) {
+      var last = byDay[byDay.length - 1];
+      if (last && last.day === s.day) last.items.push(s);
+      else byDay.push({ day: s.day, items: [s] });
+    });
+
+    slot.innerHTML = byDay.map(function (grp) {
+      var jsDay = grp.day % 7;
+      var isToday = jsDay === today;
+      var when = nextOccurrence(grp.day, grp.items[0].start);
+      return '<section class="tday' + (isToday ? " today" : "") + '">' +
+        '<header class="tday-h">' +
+          '<span class="tday-n">' + esc(GUNLER[jsDay]) + "</span>" +
+          '<span class="tday-d">' + esc(when ? when.getDate() + " " + AYLAR[when.getMonth()] : "") + "</span>" +
+          (isToday ? '<span class="now">BUGÜN</span>' : "") +
+        "</header>" +
+        grp.items.map(function (s) {
+          var v = venueOf(s.venue);
+          var col = (v && v.color) || "#f2a03d";
+          return '<div class="tslot" style="--venue:' + esc(col) + '">' +
+            '<div class="tslot-t">' + esc(s.start) +
+              (s.end ? '<span class="tslot-e">' + esc(s.end) + "</span>" : "") + "</div>" +
+            '<div class="tslot-b">' +
+              '<div class="tslot-x">' + esc(s.title || "Antrenman") + "</div>" +
+              '<div class="tslot-v"><span class="vchip">' +
+                (v ? esc(v.name) : esc(s.venue || "Salon belirtilmemiş")) + "</span>" +
+                (v && v.maps ? '<a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Yol tarifi</a>' : "") +
+              "</div>" +
+              (s.coach ? '<div class="tslot-c">' + esc(s.coach) + "</div>" : "") +
+            "</div></div>";
+        }).join("") +
+        "</section>";
     }).join("");
 
     var exc = (tr.exceptions || []).filter(function (e) {
