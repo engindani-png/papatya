@@ -1,0 +1,33 @@
+{
+  "_readme": [
+    "TBF senkronizasyon ayarları.",
+    "sources[].url alanlarını TBF'deki İstanbul U14 Kız A Grubu sayfalarının adresleriyle doldurun.",
+    "kind: 'standings' (puan durumu), 'fixtures' (fikstür/sonuçlar), 'boxscore' (maç istatistiği).",
+    "type: 'html' (tablo ayrıştırma) veya 'json' (API yanıtı + mapping).",
+    "URL boş bırakılırsa o kaynak atlanır; mevcut veri korunur."
+  ],
+  "season": "2025-2026",
+  "league": "TBF İstanbul U14 Kız",
+  "group": "A Grubu",
+  "teamAliases": ["evolog", "evolog sk", "evolog spor kulubu", "evolog spor kulübü"],
+  "sources": [
+    { "kind": "standings", "type": "html", "url": "", "enabled": true },
+    { "kind": "fixtures",  "type": "html", "url": "", "enabled": true }
+  ],
+  "jsonMappingExample": {
+    "kind": "fixtures",
+    "type": "json",
+    "url": "https://ornek-api/fixture?group=1",
+    "rowsPath": "data.matches",
+    "fields": {
+      "date": "matchDate",
+      "time": "matchTime",
+      "home": "homeTeam.name",
+      "away": "awayTeam.name",
+      "homeScore": "homeTeam.score",
+      "awayScore": "awayTeam.score",
+      "venue": "hall.name",
+      "week": "week"
+    }
+  }
+}

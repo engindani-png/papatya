@@ -1,0 +1,27 @@
+{
+  "club": "EVOLOG",
+  "team": "U14 Kız Takımı",
+  "season": "2025-2026",
+  "league": "TBF İstanbul U14 Kız - A Grubu",
+  "colors": { "primary": "#e5195f", "secondary": "#1b2a4a" },
+  "staff": [
+    { "role": "Baş Antrenör", "name": "Antrenör adı", "phone": "" },
+    { "role": "Yardımcı Antrenör", "name": "Yardımcı antrenör adı", "phone": "" },
+    { "role": "Takım Sorumlusu", "name": "Sorumlu adı", "phone": "" }
+  ],
+  "players": [
+    { "no": 4,  "name": "Oyuncu 1",  "position": "Guard",   "birthYear": 2012, "height": null },
+    { "no": 5,  "name": "Oyuncu 2",  "position": "Guard",   "birthYear": 2012, "height": null },
+    { "no": 6,  "name": "Oyuncu 3",  "position": "Forvet",  "birthYear": 2012, "height": null },
+    { "no": 7,  "name": "Oyuncu 4",  "position": "Guard",   "birthYear": 2013, "height": null },
+    { "no": 8,  "name": "Oyuncu 5",  "position": "Forvet",  "birthYear": 2012, "height": null },
+    { "no": 9,  "name": "Oyuncu 6",  "position": "Pivot",   "birthYear": 2012, "height": null },
+    { "no": 10, "name": "Oyuncu 7",  "position": "Guard",   "birthYear": 2013, "height": null },
+    { "no": 11, "name": "Oyuncu 8",  "position": "Forvet",  "birthYear": 2012, "height": null },
+    { "no": 12, "name": "Oyuncu 9",  "position": "Pivot",   "birthYear": 2012, "height": null },
+    { "no": 13, "name": "Oyuncu 10", "position": "Guard",   "birthYear": 2013, "height": null },
+    { "no": 14, "name": "Oyuncu 11", "position": "Forvet",  "birthYear": 2013, "height": null },
+    { "no": 15, "name": "Oyuncu 12", "position": "Pivot",   "birthYear": 2012, "height": null }
+  ],
+  "_not": "Bu dosya elle düzenlenir. Oyuncu adlarını, numaralarını ve mevkilerini gerçek kadroyla değiştirin."
+}

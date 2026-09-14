@@ -1,0 +1,16 @@
+{
+  "name": "Evolog U14 Kız Basketbol",
+  "short_name": "Evolog U14",
+  "description": "Kadro, fikstür, puan durumu ve antrenman programı",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c1220",
+  "theme_color": "#0c1220",
+  "lang": "tr",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
