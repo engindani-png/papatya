@@ -1,6 +1,6 @@
 {
   "isPlaceholder": true,
-  "updatedAt": "2026-09-14T23:47:01+03:00",
+  "updatedAt": "2026-09-15T00:21:42+03:00",
   "source": null,
   "season": "2025-2026",
   "league": "TBF İstanbul U14 Kız",
@@ -9,6 +9,7 @@
   "standings": [],
   "fixtures": [],
   "errors": [
-    "scripts/tbf_config.json icinde hicbir kaynak URL'i tanimli degil."
+    "standings icin calisan adres bulunamadi: https://www.tbf.org.tr/ligler/22859/puan-durumu -> HTTP Error 403: Forbidden | https://www.tbf.org.tr/ligler/22859 -> HTTP Error 403: Forbidden | https://www.tbf.org.tr/ligler/22859/puandurumu -> HTTP Error 403: Forbidden | https://www.tbf.org.tr/ligler/22859/gruplar -> HTTP Error 403: Forbidden",
+    "fixtures icin calisan adres bulunamadi: https://www.tbf.org.tr/ligler/22859/takim-detay/269325/maclar -> HTTP Error 403: Forbidden | https://www.tbf.org.tr/ligler/22859/fikstur -> HTTP Error 403: Forbidden | https://www.tbf.org.tr/ligler/22859/mac-sonuclari -> HTTP Error 403: Forbidden | https://www.tbf.org.tr/ligler/22859/maclar -> HTTP Error 403: Forbidden | https://www.tbf.org.tr/ligler/22859 -> HTTP Error 403: Forbidden"
   ]
 }
