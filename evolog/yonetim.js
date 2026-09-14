@@ -139,6 +139,43 @@
     return s;
   }
 
+  // Saat girişi 24 saatlik. <input type="time"> cihazın diline göre AM/PM
+  // gösterebiliyor; bu yüzden maskeli metin alanı kullanılıyor.
+  function timeField(value, placeholder, onChange) {
+    var i = document.createElement("input");
+    i.type = "text";
+    i.inputMode = "numeric";
+    i.autocomplete = "off";
+    i.maxLength = 5;
+    i.pattern = "([01][0-9]|2[0-3]):[0-5][0-9]";
+    i.value = value == null ? "" : value;
+    i.placeholder = placeholder || "19:30";
+    i.addEventListener("input", function () {
+      var digits = i.value.replace(/\D/g, "").slice(0, 4);
+      var out = digits.length > 2 ? digits.slice(0, 2) + ":" + digits.slice(2) : digits;
+      if (out !== i.value) {
+        var atEnd = i.selectionStart === i.value.length;
+        i.value = out;
+        if (atEnd) i.setSelectionRange(out.length, out.length);
+      }
+      onChange(out.length === 5 ? out : (out || null));
+    });
+    i.addEventListener("blur", function () {
+      // "9" -> "09:00", "930" -> "09:30" gibi eksik girişleri tamamla.
+      var d = i.value.replace(/\D/g, "");
+      if (!d) { i.value = ""; onChange(null); i.classList.remove("bad"); return; }
+      if (d.length <= 2) d = ("0" + d).slice(-2) + "00";
+      else if (d.length === 3) d = "0" + d;
+      var hh = Math.min(23, parseInt(d.slice(0, 2), 10));
+      var mm = Math.min(59, parseInt(d.slice(2, 4), 10));
+      var out = ("0" + hh).slice(-2) + ":" + ("0" + mm).slice(-2);
+      i.value = out;
+      i.classList.remove("bad");
+      onChange(out);
+    });
+    return i;
+  }
+
   function field(type, value, placeholder, onChange) {
     var i = document.createElement("input");
     i.type = type; i.value = value == null ? "" : value;
@@ -174,8 +211,8 @@
       var grid = document.createElement("div");
       grid.className = "grid";
       grid.appendChild(daySelect(s.day, function (v) { s.day = v; s.dayGuess = false; renderSessions(); mark(true); }));
-      grid.appendChild(field("time", s.start, "Başlangıç", function (v) { s.start = v; mark(true); }));
-      grid.appendChild(field("time", s.end, "Bitiş", function (v) { s.end = v; mark(true); }));
+      grid.appendChild(timeField(s.start, "Başlangıç 19:30", function (v) { s.start = v; mark(true); }));
+      grid.appendChild(timeField(s.end, "Bitiş (isteğe bağlı)", function (v) { s.end = v; mark(true); }));
       grid.appendChild(venueSelect(s.venue, function (v) { s.venue = v; s.venueGuess = false; mark(true); }));
       var title = field("text", s.title, "İçerik (Basketbol / Kuvvet …)", function (v) { s.title = v; mark(true); });
       title.className = "full";
