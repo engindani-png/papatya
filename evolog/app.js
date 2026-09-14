@@ -52,6 +52,10 @@
     return '<span class="tm">' + teamLogo(logo) + "<span>" + esc(name) + "</span></span>";
   }
 
+  // Forma numarasına göre sıralama. 0 geçerli bir numara — "|| 99" ile
+  // numarasızlara karışmasın diye ayrıca kontrol ediliyor.
+  function jersey(no) { return no == null || no === "" ? 999 : Number(no); }
+
   function matchDate(f) {
     if (!f || !f.date) return null;
     var p = String(f.date).split("-").map(Number);
@@ -636,40 +640,56 @@
     }
     var stats = seasonStats();
     var used = {};
-    slot.innerHTML = t.players.slice()
-      .sort(function (a, b) { return (a.no || 99) - (b.no || 99); })
-      .map(function (p) {
-        var key = matchStats(stats, p.name) || norm(p.name);
-        var st = stats[key];
-        if (st) used[key] = true;
-        var meta = [p.position, p.height ? p.height + " cm" : null].filter(Boolean).join(" · ");
-        // Maç oynamışsa sezon ortalaması satırda görünür, satır profile açılır.
-        var right = st && st.games
-          ? '<div class="yr avgpts"><b>' + esc(avg(st.points, st.games)) + "</b><span>sayı ort.</span></div>"
-          : '<div class="yr">' + esc(p.birthYear || "") + "</div>";
-        return '<button class="pl' + (st && st.games ? " has" : "") + '" data-player="' + esc(key) + '">' +
-          '<div class="no">' + esc(p.no != null ? p.no : "–") + "</div>" +
-          '<div><div class="nm">' + esc(p.name) + "</div>" +
-          (meta ? '<div class="meta">' + esc(meta) + "</div>" : "") + "</div>" +
-          right + "</button>";
-      }).join("");
+
+    // Lisans listesi ile maç kadrosu tek listede birleşir ve forma numarasına
+    // göre sıralanır. Veli oyuncuyu ararken hangi TBF listesinde olduğunu
+    // bilmek zorunda değil; 0 da geçerli bir numara, en başta durur.
+    var rows = t.players.map(function (p) {
+      var key = matchStats(stats, p.name) || norm(p.name);
+      var st = stats[key];
+      if (st) used[key] = true;
+      return {
+        key: key, name: p.name, st: st,
+        // Lisans listesinde numara boş olabiliyor; maç raporundaki numarayı kullan.
+        no: p.no != null ? p.no : (st ? st.no : null),
+        meta: [p.position, p.height ? p.height + " cm" : null].filter(Boolean).join(" · "),
+        birthYear: p.birthYear
+      };
+    });
 
     // Maç kadrosunda oynayıp lisans listesinde görünmeyenler (üst yaş takviyesi
     // ya da TBF listesi henüz güncellenmemiş olabilir) kaybolmasın.
-    var extra = Object.keys(stats).filter(function (k) { return !used[k]; });
-    if (extra.length) {
-      slot.innerHTML += extra.sort(function (a, b) {
-        return (stats[a].no || 99) - (stats[b].no || 99);
-      }).map(function (k) {
-        var st = stats[k];
-        return '<button class="pl has" data-player="' + esc(k) + '">' +
-          '<div class="no">' + esc(st.no != null ? st.no : "–") + "</div>" +
-          '<div><div class="nm">' + esc(st.name) + "</div>" +
-          '<div class="meta">maç kadrosu</div></div>' +
-          '<div class="yr avgpts"><b>' + esc(avg(st.points, st.games)) +
-          "</b><span>sayı ort.</span></div></button>";
-      }).join("");
+    Object.keys(stats).forEach(function (k) {
+      if (used[k]) return;
+      rows.push({ key: k, name: stats[k].name, st: stats[k], no: stats[k].no,
+                  meta: "maç kadrosu", birthYear: null });
+    });
+
+    // Üç kademe: (1) forma numarası olanlar, küçükten büyüğe — 0 dahil.
+    // (2) numarası görünmeyen ama maçta oynamış olanlar, numaralı kadronun
+    // hemen ardında. (3) bu sezon henüz oynamamış lisanslı oyuncular.
+    function tier(r) {
+      if (r.no != null && r.no !== "") return 0;
+      return (r.st && r.st.games) ? 1 : 2;
     }
+    rows.sort(function (a, b) {
+      return (tier(a) - tier(b)) ||
+        (jersey(a.no) - jersey(b.no)) ||
+        ((b.st && b.st.points || 0) - (a.st && a.st.points || 0)) ||
+        a.name.localeCompare(b.name, "tr");
+    });
+
+    slot.innerHTML = rows.map(function (r) {
+      var oynadi = r.st && r.st.games;
+      var right = oynadi
+        ? '<div class="yr avgpts"><b>' + esc(avg(r.st.points, r.st.games)) + "</b><span>sayı ort.</span></div>"
+        : '<div class="yr">' + esc(r.birthYear || "") + "</div>";
+      return '<button class="pl' + (oynadi ? " has" : "") + '" data-player="' + esc(r.key) + '">' +
+        '<div class="no">' + esc(r.no != null ? r.no : "–") + "</div>" +
+        '<div><div class="nm">' + esc(r.name) + "</div>" +
+        (r.meta ? '<div class="meta">' + esc(r.meta) + "</div>" : "") + "</div>" +
+        right + "</button>";
+    }).join("");
 
     el("staffSlot").innerHTML = (t.staff || []).map(function (s) {
       return '<div class="ss"><div><div class="role">' + esc(s.role) + "</div>" +
