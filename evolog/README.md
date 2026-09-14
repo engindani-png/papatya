@@ -64,24 +64,37 @@ dosyasını üretir. `.github/workflows/tbf-sync.yml` bunu günde 4 kez
 (TR saatiyle ~06:00, 12:00, 18:00, 22:00) çalıştırır ve değişiklik varsa
 otomatik commit'ler.
 
-### Kurulum — tek yapmanız gereken adres girmek
+### Kurulum
 
-`scripts/tbf_config.json` dosyasındaki `sources` listesine, TBF'de İstanbul
-U14 Kız **A Grubu**'nun puan durumu ve fikstür sayfalarının adreslerini yazın:
+`scripts/tbf_config.json` içinde lig kimliği tanımlı:
 
 ```json
-"sources": [
-  { "kind": "standings", "type": "html", "url": "https://.../puan-durumu-sayfasi", "enabled": true },
-  { "kind": "fixtures",  "type": "html", "url": "https://.../fikstur-sayfasi",    "enabled": true }
-]
+"baseUrl": "https://www.tbf.org.tr",
+"leagueId": "22859",
+"teamId": "269325"
 ```
 
-Ayrıca `teamAliases` içinde takımın TBF'de yazıldığı adı bulundurun
-(örn. `"evolog spor kulübü"`); uygulama takımınızı bu adla eşleştirip
+Numaralar TBF adreslerinden gelir:
+
+- `www.tbf.org.tr/ligler/**22859**/mac-detay/346856` → lig
+- `www.tbf.org.tr/ligler/22859/takim-detay/**269325**/maclar` → takım
+
+Sezon veya lig değişirse yalnızca bu iki alanı güncelleyin. Fikstür için
+önce takımın kendi maç sayfası denenir (yalnızca Evolog'un maçları, en
+güvenilir kaynak), tutmazsa lig geneli fikstür adresleri denenir.
+
+Script, puan durumu ve fikstür için birkaç aday adresi (`candidatePaths`)
+sırayla dener ve **ilk ayrıştırabildiğini** kullanır; hangisinin tuttuğunu
+`data/league.json` içindeki `source` alanına yazar. Doğru adresi biliyorsanız
+doğrudan `sources[].url` alanına yazın, deneme atlanır.
+
+`teamAliases` içinde takımın TBF'de yazıldığı adı bulundurun
+(örn. `"evolog spor kulübü"`); uygulama takımınızı bununla eşleştirip
 puan durumunda vurgular ve maçlarını işaretler.
 
-Adresleri girdikten sonra **Actions → “TBF veri senkronizasyonu” → Run workflow**
-ile ilk çekimi elle başlatabilirsiniz.
+**Actions → “TBF veri senkronizasyonu” → Run workflow** ile elle
+çalıştırabilirsiniz. Çalışan adres bulunamazsa iş akışı kaydında denenen
+tüm adresler ve nedenleri tek tek listelenir.
 
 ### Neyi nasıl okur
 
@@ -90,11 +103,13 @@ ile ilk çekimi elle başlatabilirsiniz.
 - **Fikstür:** tarih içeren satırları maç sayar. `17.01.2026`, `2026-01-17`,
   `17/01/2026` biçimlerini; `61 - 48` skorlarını; ayrı sütundaki ya da
   tarihle aynı hücredeki saati; salon adını tanır.
-- **Maç istatistikleri:** `league.json` içindeki bir maça `quarters` ve
-  `boxscore` alanları eklendiğinde uygulama maça dokununca çeyrek skorlarını
-  ve oyuncu istatistik tablosunu (SAY/RIB/AST/TOP Ç/BLK/HATA/FAUL) gösterir.
-  TBF sayfası bu ayrıntıyı veriyorsa `boxscore` kaynağını da `sources`
-  listesine ekleyip aynı yapıya doldurabilirsiniz; alan yoksa bölüm gizlenir.
+- **Maç istatistikleri:** Fikstür tablosundaki `/mac-detay/<id>` bağlantılarından
+  maç kimlikleri toplanır; oynanmış maçlar için detay sayfası açılıp **çeyrek
+  skorları** ve **iki takımın oyuncu istatistikleri** (DK/SAY/RİB/AST/TOP Ç/BLK/
+  HATA/FAUL) okunur. "TOPLAM" satırı atlanır. Uygulamada maça dokununca açılır.
+  Bir kez çekilen detay sonraki senkronizasyonlarda korunur, aynı sayfa tekrar
+  indirilmez. `matchDetail.onlyOurMatches` ile yalnızca Evolog maçları,
+  `maxMatches` ile üst sınır ayarlanır.
 - Çekim başarısız olursa **önceki veri korunur**, uygulamanın üstünde uyarı
   görünür — ekran hiçbir zaman boşalmaz.
 

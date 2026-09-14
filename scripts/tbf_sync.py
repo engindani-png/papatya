@@ -276,12 +276,27 @@ def looks_like_team(cell: str) -> bool:
     return bool(re.search(r"[A-Za-zÇĞİÖŞÜçğıöşü]{3}", c))
 
 
+MATCH_ID_RE = re.compile(r"/mac-detay/(\d+)")
+
+
+def row_match_id(links):
+    """Satirdaki baglantilardan TBF mac kimligini cikarir."""
+    for href in links or []:
+        if not href:
+            continue
+        m = MATCH_ID_RE.search(href)
+        if m:
+            return m.group(1)
+    return None
+
+
 def parse_fixtures(tables):
     """Tarih + iki takim adi iceren satirlari mac olarak yorumlar."""
     fixtures = []
     seen = set()
     for table in tables:
         rows = table["rows"]
+        row_links = table.get("links") or []
         header_norm = [norm(c) for c in rows[0]]
         has_header = any(
             any(k in h for k in ("tarih", "saat", "ev sahibi", "misafir", "salon", "hafta"))
@@ -305,7 +320,9 @@ def parse_fixtures(tables):
                 elif "hafta" in h and "week" not in idx:
                     idx["week"] = i
 
-        for row in body:
+        offset = len(rows) - len(body)
+        for row_index, row in enumerate(body):
+            links = row_links[row_index + offset] if row_index + offset < len(row_links) else []
             cells = [c.strip() for c in row]
             joined = " | ".join(cells)
             date = None
@@ -379,6 +396,7 @@ def parse_fixtures(tables):
                 continue
             seen.add(key)
             fixtures.append({
+                "matchId": row_match_id(links),
                 "id": f"{date}-{norm(home)[:12]}-{norm(away)[:12]}".replace(" ", "_"),
                 "week": to_int(cells[idx["week"]]) if idx.get("week") is not None
                         and idx["week"] < len(cells) else None,
@@ -394,6 +412,157 @@ def parse_fixtures(tables):
     fixtures.sort(key=lambda f: (f["date"], f["time"] or "99:99"))
     return fixtures
 
+
+
+# --------------------------------------------------------------------------
+# Mac detayi: ceyrek skorlari + oyuncu istatistikleri
+# --------------------------------------------------------------------------
+BOX_COLUMNS = [
+    ("no", ["no", "#", "forma"]),
+    ("min", ["dk", "dak", "sure", "min", "dakika"]),
+    ("points", ["sayi", "say", "pts", "pt", "sy"]),
+    ("rebounds", ["rib", "ribaund", "reb", "rb", "top toplama"]),
+    ("assists", ["ast", "asist", "as"]),
+    ("steals", ["cal", "top calma", "stl", "cl"]),
+    ("blocks", ["blk", "blok", "bs"]),
+    ("turnovers", ["tk", "top kaybi", "hata", "to"]),
+    ("fouls", ["faul", "fl", "pf", "kf"]),
+]
+NAME_HEADERS = ["oyuncu", "isim", "ad soyad", "adi soyadi", "sporcu", "player"]
+
+
+def _box_column(header: str):
+    h = norm(header)
+    if not h:
+        return None
+    for key, aliases in BOX_COLUMNS:
+        if h in aliases:
+            return key
+    for key, aliases in BOX_COLUMNS:
+        if any(a in h for a in aliases if len(a) > 2):
+            return key
+    return None
+
+
+def parse_boxscore_table(table):
+    """Basliginda oyuncu adi sutunu olan bir tabloyu istatistik satirlarina cevirir."""
+    rows = table["rows"]
+    header = rows[0]
+    hnorm = [norm(c) for c in header]
+    name_idx = next(
+        (i for i, h in enumerate(hnorm) if any(n in h for n in NAME_HEADERS)), None
+    )
+    if name_idx is None:
+        return []
+
+    colmap = {}
+    for i, cell in enumerate(header):
+        if i == name_idx:
+            continue
+        key = _box_column(cell)
+        if key and key not in colmap:
+            colmap[key] = i
+    if "points" not in colmap:
+        return []
+
+    players = []
+    for row in rows[1:]:
+        if len(row) <= name_idx:
+            continue
+        name = row[name_idx].strip()
+        if not name or norm(name) in NAME_HEADERS:
+            continue
+        if norm(name).startswith(("toplam", "takim toplam", "total")):
+            continue
+        entry = {"name": name}
+        for key, idx in colmap.items():
+            if idx >= len(row):
+                continue
+            raw = row[idx].strip()
+            entry[key] = raw if key == "min" and ":" in raw else to_int(raw)
+        if any(entry.get(k) is not None for k in ("points", "rebounds", "assists")):
+            players.append(entry)
+    return players
+
+
+PERIOD_RE = re.compile(r"^\s*(\d)\s*[.\-]?\s*(periyot|ceyrek|c|p)\b", re.I)
+
+
+def parse_quarters(tables):
+    """Periyot basliklari olan tablodan ceyrek skorlarini cikarir."""
+    for table in tables:
+        rows = table["rows"]
+        hnorm = [norm(c) for c in rows[0]]
+        idxs = [i for i, h in enumerate(hnorm) if PERIOD_RE.match(h) or h in
+                ("1", "2", "3", "4") and len(hnorm) >= 5]
+        if len(idxs) < 4:
+            continue
+        numeric_rows = []
+        for row in rows[1:]:
+            vals = [to_int(row[i]) if i < len(row) else None for i in idxs]
+            if all(v is not None for v in vals):
+                numeric_rows.append(vals)
+        if len(numeric_rows) >= 2:
+            home, away = numeric_rows[0], numeric_rows[1]
+            return [{"home": h, "away": a} for h, a in zip(home, away)]
+    return []
+
+
+def fetch_match_detail(url):
+    """Tek bir mac detay sayfasindan ceyrekleri ve iki takimin box score'unu okur."""
+    tables = extract_tables(fetch(url))
+    boxes = []
+    for table in tables:
+        players = parse_boxscore_table(table)
+        if players:
+            boxes.append(players)
+    detail = {}
+    quarters = parse_quarters(tables)
+    if quarters:
+        detail["quarters"] = quarters
+    if boxes:
+        detail["boxscore"] = {
+            "home": boxes[0],
+            "away": boxes[1] if len(boxes) > 1 else [],
+        }
+    return detail
+
+
+def enrich_with_details(fixtures, config, errors):
+    """Oynanmis maclarin detay sayfalarindan istatistikleri cekip ekler."""
+    cfg = config.get("matchDetail") or {}
+    if not cfg.get("enabled"):
+        return 0
+    base = (config.get("baseUrl") or "").rstrip("/")
+    template = cfg.get("pathTemplate") or ""
+    league_id = str(config.get("leagueId") or "")
+    if not base or not template or not league_id:
+        return 0
+
+    limit = cfg.get("maxMatches", 30)
+    done = 0
+    for fix in fixtures:
+        if done >= limit:
+            break
+        if not fix.get("matchId") or fix.get("homeScore") is None:
+            continue
+        if cfg.get("onlyOurMatches") and not fix.get("isOurs"):
+            continue
+        if fix.get("boxscore") or fix.get("quarters"):
+            continue  # zaten var
+        url = base + template.replace("{leagueId}", league_id).replace(
+            "{matchId}", str(fix["matchId"])
+        )
+        try:
+            detail = fetch_match_detail(url)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"mac detayi ({url}): {exc}")
+            continue
+        if detail:
+            fix.update(detail)
+            fix["detailUrl"] = url
+            done += 1
+    return done
 
 # --------------------------------------------------------------------------
 # JSON kaynak adaptoru
@@ -439,6 +608,26 @@ def mark_ours(data, aliases):
     return data
 
 
+def candidate_urls(source, config):
+    """Kaynak icin denenecek adresleri sirayla verir."""
+    explicit = (source.get("url") or "").strip()
+    if explicit:
+        return [explicit]
+    base = (config.get("baseUrl") or "").rstrip("/")
+    league_id = str(config.get("leagueId") or "")
+    team_id = str(config.get("teamId") or "")
+    if not base or not league_id:
+        return []
+    urls = []
+    for path in source.get("candidatePaths", []):
+        if "{teamId}" in path and not team_id:
+            continue  # takim kimligi yoksa o adresi atla
+        urls.append(
+            base + path.replace("{leagueId}", league_id).replace("{teamId}", team_id)
+        )
+    return urls
+
+
 def load_json(path, default=None):
     try:
         with open(path, encoding="utf-8") as fh:
@@ -475,35 +664,49 @@ def main():
         used_sources.append(f"file:{os.path.basename(args.from_file)}")
     else:
         for source in config.get("sources", []):
-            url = (source.get("url") or "").strip()
-            if not url or source.get("enabled") is False:
+            if source.get("enabled") is False:
                 continue
             kind = source.get("kind")
-            try:
-                body = fetch(url)
-                if source.get("type") == "json":
-                    rows = parse_json_source(json.loads(body), source)
+            urls = candidate_urls(source, config)
+            if not urls:
+                errors.append(f"{kind}: denenecek adres uretilemedi (url/leagueId bos).")
+                continue
+
+            tried = []
+            # Aday adreslerde az deneme yeterli; tek/acik adreste israrli ol.
+            tries = 4 if len(urls) == 1 else 2
+            for url in urls:
+                try:
+                    body = fetch(url, retries=tries, timeout=20)
+                    if source.get("type") == "json":
+                        rows = parse_json_source(json.loads(body), source)
+                    else:
+                        tables = extract_tables(body)
+                        rows = (parse_standings(tables) if kind == "standings"
+                                else parse_fixtures(tables))
+                except Exception as exc:  # noqa: BLE001
+                    # fetch() hatasi zaten adresi iceriyor; tekrarlamayalim.
+                    reason = str(exc).split(" alinamadi: ")[-1]
+                    tried.append(f"{url} -> {reason}")
+                    continue
+
+                if rows:
                     if kind == "standings":
                         standings.extend(rows)
                     else:
                         fixtures.extend(rows)
-                else:
-                    tables = extract_tables(body)
-                    if kind == "standings":
-                        standings.extend(parse_standings(tables))
-                    elif kind == "fixtures":
-                        fixtures.extend(parse_fixtures(tables))
-                used_sources.append(url)
-            except Exception as exc:  # noqa: BLE001 - tek kaynak hatasi tumunu bozmasin
-                errors.append(f"{kind} ({url}): {exc}")
+                    used_sources.append(url)
+                    break
+                tried.append(f"{url} -> tablo bulunamadi")
+            else:
+                errors.append(f"{kind} icin calisan adres bulunamadi: " + " | ".join(tried))
 
-    if not config.get("sources") or all(
-        not (s.get("url") or "").strip() for s in config.get("sources", [])
+    if not args.from_file and not config.get("leagueId") and all(
+        not (src.get("url") or "").strip() for src in config.get("sources", [])
     ):
-        if not args.from_file:
-            errors.append(
-                "scripts/tbf_config.json icinde hicbir kaynak URL'i tanimli degil."
-            )
+        errors.append(
+            "scripts/tbf_config.json icinde ne leagueId ne de kaynak URL'i tanimli."
+        )
 
     # Yeni veri bos ise eskisini koru (yayindaki uygulama bosalmasin).
     if not standings and previous.get("standings"):
@@ -524,6 +727,29 @@ def main():
 
     for rank, row in enumerate(standings, start=1):
         row.setdefault("rank", rank)
+
+    # Onceki calismada cekilmis mac detaylarini tasi, eksikleri tamamla.
+    previous_detail = {
+        (f.get("date"), norm(f.get("home")), norm(f.get("away"))): f
+        for f in previous.get("fixtures", [])
+    }
+    for fix in fixtures:
+        old_fix = previous_detail.get(
+            (fix.get("date"), norm(fix.get("home")), norm(fix.get("away")))
+        )
+        if old_fix:
+            for key in ("quarters", "boxscore", "detailUrl"):
+                if old_fix.get(key) and not fix.get(key):
+                    fix[key] = old_fix[key]
+
+    mark_ours({"standings": standings, "fixtures": fixtures}, aliases)
+    if not args.from_file:
+        try:
+            added = enrich_with_details(fixtures, config, errors)
+            if added:
+                print(f"  {added} mac detayi cekildi", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"mac detaylari cekilemedi: {exc}")
 
     data = {
         "isPlaceholder": not (standings or fixtures),
