@@ -360,6 +360,67 @@
       : '<div class="blank">Henüz oynanmış maç yok.</div>';
   }
 
+  // ---------------------------------------------------------- lig geneli
+  // Kendi maçlarımız ayrı sekmede; burada tüm ligin haftalık programı var.
+  // Açılışta güncel hafta açık gelir, diğerleri katlanmış durur.
+  function currentWeek(list) {
+    var now = Date.now(), best = null;
+    list.forEach(function (f) {
+      var d = matchDate(f);
+      if (!d) return;
+      if (d.getTime() >= now - 6 * 36e5 && (best === null || f.week < best)) best = f.week;
+    });
+    return best || (list.length ? list[list.length - 1].week : 1);
+  }
+
+  function renderLeagueWeeks() {
+    var box = el("leagueWeeks");
+    if (!box) return;
+    var list = (state.league && state.league.leagueFixtures) || [];
+    if (!list.length) {
+      box.innerHTML = '<div class="blank">Lig fikstürü henüz çekilmedi.</div>';
+      return;
+    }
+    var weeks = [];
+    list.forEach(function (f) {
+      var w = weeks[weeks.length - 1];
+      if (w && w.week === f.week) w.items.push(f);
+      else weeks.push({ week: f.week, items: [f] });
+    });
+    var cur = currentWeek(list);
+
+    box.innerHTML = weeks.map(function (w) {
+      var open = w.week === cur;
+      var oynanan = w.items.filter(function (f) { return f.played; }).length;
+      return '<section class="wk">' +
+        '<button class="wk-h" aria-expanded="' + (open ? "true" : "false") + '">' +
+          '<span class="wk-n">' + esc(w.week) + ". hafta</span>" +
+          '<span class="wk-s">' + esc(oynanan) + "/" + esc(w.items.length) + " oynandı</span>" +
+          '<span class="caret">' + (open ? "▴" : "▾") + "</span>" +
+        "</button>" +
+        '<div class="wk-b"' + (open ? "" : " hidden") + ">" +
+          w.items.map(function (f) {
+            var ours = isOurTeam(f.home) || isOurTeam(f.away);
+            var d = matchDate(f);
+            var hw = f.played && f.homeScore > f.awayScore;
+            var aw = f.played && f.awayScore > f.homeScore;
+            return '<div class="lm' + (ours ? " ours" : "") + '">' +
+              '<div class="lm-d">' + (d ? esc(d.getDate() + " " + AYLAR[d.getMonth()]) : "–") +
+                (f.time ? '<span>' + esc(f.time) + "</span>" : "") + "</div>" +
+              "<div>" +
+                '<div class="lm-t ' + (hw ? "won" : aw ? "lost" : "") + '">' +
+                  teamCell(f.home, f.homeLogo) +
+                  '<span class="lm-s">' + (f.played ? esc(f.homeScore) : "") + "</span></div>" +
+                '<div class="lm-t ' + (aw ? "won" : hw ? "lost" : "") + '">' +
+                  teamCell(f.away, f.awayLogo) +
+                  '<span class="lm-s">' + (f.played ? esc(f.awayScore) : "") + "</span></div>" +
+                (f.venue ? '<div class="lm-v">' + ico("pin") + "<span>" + esc(f.venue) + "</span></div>" : "") +
+              "</div></div>";
+          }).join("") +
+        "</div></section>";
+    }).join("");
+  }
+
   // ------------------------------------------------------------- puan durumu
   function renderStandings() {
     el("standingsNotice").innerHTML = notice(state.league);
@@ -717,6 +778,7 @@
   function render() {
     renderSync();
     renderMatches();
+    renderLeagueWeeks();
     renderStandings();
     renderRoster();
     renderTraining();
@@ -749,6 +811,29 @@
   });
   document.addEventListener("keydown", function (ev) {
     if (ev.key === "Escape") closePlayer();
+  });
+
+  document.querySelectorAll(".seg button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var lig = btn.dataset.view === "lig";
+      el("seg-bizim").setAttribute("aria-selected", lig ? "false" : "true");
+      el("seg-lig").setAttribute("aria-selected", lig ? "true" : "false");
+      el("viewOurs").hidden = lig;
+      el("viewLeague").hidden = !lig;
+      window.scrollTo(0, 0);
+    });
+  });
+
+  document.addEventListener("click", function (ev) {
+    var head = ev.target.closest && ev.target.closest(".wk-h");
+    if (!head) return;
+    var body = head.nextElementSibling;
+    if (!body) return;
+    var open = body.hidden;
+    body.hidden = !open;
+    head.setAttribute("aria-expanded", open ? "true" : "false");
+    var caret = head.querySelector(".caret");
+    if (caret) caret.textContent = open ? "▴" : "▾";
   });
 
   window.addEventListener("hashchange", function () {

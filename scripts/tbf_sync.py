@@ -305,6 +305,55 @@ def fetch_roster(cfg: dict) -> list:
 
 
 
+
+def fetch_league_fixtures(cfg: dict, standings: list) -> tuple[list, list]:
+    """Lig genelindeki tum maclar.
+
+    TBF'nin lig geneli fikstur ucunun parametreleri istemci tarafinda
+    uretiliyor ve disaridan kestirilemedi; bunun yerine puan durumundaki her
+    takimin kendi mac listesi cekilip matchId'ye gore birlestiriliyor.
+    Her mac iki takimda da gorundugu icin sonuc tam fiksturdur.
+    """
+    base = cfg["apiBaseUrl"]
+    seen: dict[int, dict] = {}
+    warnings: list[str] = []
+    for row in standings:
+        team_id = row.get("teamId")
+        if not team_id:
+            continue
+        query = (f"?teamProcessId={team_id}"
+                 f"&leagueId={cfg['leagueId']}&seasonId={cfg['seasonId']}")
+        try:
+            data = api_get(base, "/api/Team/get-team-detail-matches-by-season-and-league" + query,
+                           tries=2) or {}
+        except Exception as exc:
+            warnings.append(f"{row.get('team')} fiksturu alinamadi: {exc}")
+            continue
+        for m in data.get("maclar") or []:
+            mid = num(m.get("matchId"))
+            if not mid or mid in seen:
+                continue
+            stamp = m.get("tarih") or ""
+            played = bool(m.get("isPlayed"))
+            week = WEEK_RE.search(m.get("formattedWeek") or "")
+            seen[mid] = {
+                "matchId": mid,
+                "date": stamp[:10] if len(stamp) >= 10 else None,
+                "time": stamp[11:16] if len(stamp) >= 16 else None,
+                "home": m.get("takimA") or "",
+                "away": m.get("takimB") or "",
+                "homeScore": num(m.get("skorA")) if played else None,
+                "awayScore": num(m.get("skorB")) if played else None,
+                "venue": m.get("salon") or None,
+                "week": num(week.group(1)) if week else None,
+                "homeLogo": fetch_logo(m.get("takimALogo"), num(m.get("takimAId"))),
+                "awayLogo": fetch_logo(m.get("takimBLogo"), num(m.get("takimBId"))),
+                "played": played,
+            }
+    out = sorted(seen.values(), key=lambda f: (f["week"] or 99, f["date"] or "9999", f["time"] or ""))
+    return out, warnings
+
+
 # ------------------------------------------------------------------- logolar
 def fetch_logo(url: str, team_id) -> str | None:
     """Takim logosunu yerele indirir, uygulamanin kullanacagi yolu dondurur.
@@ -446,6 +495,13 @@ def build(cfg: dict, want_details: bool) -> dict:
             except Exception as exc:
                 errors.append(f"Mac {f['matchId']} detayi alinamadi: {exc}")
 
+    league_fixtures = previous.get("leagueFixtures") or []
+    try:
+        league_fixtures, warn = fetch_league_fixtures(cfg, standings)
+        errors += warn
+    except Exception as exc:
+        errors.append(f"Lig fiksturu alinamadi: {exc}")
+
     played = [f for f in fixtures if f.get("played")]
     return {
         "isPlaceholder": not standings and not fixtures,
@@ -456,9 +512,11 @@ def build(cfg: dict, want_details: bool) -> dict:
         "group": group or cfg.get("group"),
         "ourTeamKey": cfg.get("ourTeamKey", "evolog"),
         "ourTeamId": num(cfg.get("teamProcessId")),
-        "counts": {"standings": len(standings), "fixtures": len(fixtures), "played": len(played)},
+        "counts": {"standings": len(standings), "fixtures": len(fixtures),
+                   "played": len(played), "leagueFixtures": len(league_fixtures)},
         "standings": standings,
         "fixtures": fixtures,
+        "leagueFixtures": league_fixtures,
         "errors": errors,
     }
 
@@ -479,7 +537,8 @@ def main() -> int:
     league = build(cfg, want_details=not args.no_details)
     counts = league["counts"]
     log(f"Puan durumu: {counts['standings']} takim · Fikstur: {counts['fixtures']} mac "
-        f"({counts['played']} oynanmis) · Grup: {league['group']}")
+        f"({counts['played']} oynanmis) · Lig geneli: {counts.get('leagueFixtures', 0)} mac "
+        f"· Grup: {league['group']}")
     for err in league["errors"]:
         log(f"  uyari: {err}")
 

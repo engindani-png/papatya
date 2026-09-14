@@ -34,11 +34,23 @@
 <main class="wrap">
   <section class="panel" id="panel-maclar" role="tabpanel" aria-labelledby="tab-maclar">
     <div id="matchNotice"></div>
-    <div id="boardSlot"></div>
-    <h2 class="eyebrow">Yaklaşan maçlar</h2>
-    <div class="sheet" id="upcomingList"></div>
-    <h2 class="eyebrow">Sonuçlar</h2>
-    <div class="sheet" id="playedList"></div>
+
+    <div class="seg" role="tablist" aria-label="Maç görünümü">
+      <button role="tab" id="seg-bizim" data-view="bizim" aria-selected="true">Takımımız</button>
+      <button role="tab" id="seg-lig" data-view="lig" aria-selected="false">Lig geneli</button>
+    </div>
+
+    <div id="viewOurs">
+      <div id="boardSlot"></div>
+      <h2 class="eyebrow">Yaklaşan maçlar</h2>
+      <div class="sheet" id="upcomingList"></div>
+      <h2 class="eyebrow">Sonuçlar</h2>
+      <div class="sheet" id="playedList"></div>
+    </div>
+
+    <div id="viewLeague" hidden>
+      <div id="leagueWeeks"></div>
+    </div>
   </section>
 
   <section class="panel" id="panel-puan" role="tabpanel" aria-labelledby="tab-puan" hidden>

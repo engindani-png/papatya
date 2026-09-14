@@ -543,3 +543,39 @@ table.mlog td.mo span { display: inline-block; width: 6px; height: 6px; border-r
   margin-right: 7px; vertical-align: middle; }
 table.mlog td.mo span.w { background: var(--win); }
 table.mlog td.mo span.l { background: var(--loss); }
+
+/* ====================================================== lig geneli ======= */
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px;
+  background: var(--ink-2); border: 1px solid var(--line-soft); border-radius: 999px;
+  margin: 4px 0 18px; }
+.seg button { background: none; border: 0; color: var(--chalk-dim); cursor: pointer;
+  font-family: var(--display); font-size: 12.5px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 9px 6px; border-radius: 999px; }
+.seg button[aria-selected="true"] { background: var(--amber); color: #14110b; font-weight: 500; }
+
+.wk { border: 1px solid var(--line-soft); border-radius: 10px; margin-bottom: 8px;
+  background: var(--ink-2); overflow: hidden; }
+.wk-h { width: 100%; display: flex; align-items: center; gap: 10px; background: none;
+  border: 0; color: inherit; cursor: pointer; padding: 12px 14px; text-align: left; }
+.wk-h:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+.wk-n { font-family: var(--display); font-size: 15px; letter-spacing: .05em;
+  text-transform: uppercase; }
+.wk-s { font-size: 11.5px; color: var(--chalk-faint); margin-left: auto; }
+.wk-h .caret { color: var(--chalk-faint); font-size: 12px; }
+
+.lm { display: grid; grid-template-columns: 4.1rem minmax(0, 1fr); gap: 12px;
+  padding: 11px 14px; border-top: 1px solid var(--line-soft); }
+.lm.ours { background: var(--amber-dim); box-shadow: inset 3px 0 0 var(--amber); }
+.lm-d { font-family: var(--display); font-size: 13.5px; color: var(--chalk-dim);
+  line-height: 1.35; }
+.lm-d span { display: block; font-size: 11.5px; color: var(--chalk-faint); }
+.lm-t { display: flex; align-items: center; gap: 8px; padding: 2px 0; min-width: 0; }
+.lm-t .tm { flex: 1 1 auto; font-size: 13.5px; }
+.lm-t.won { color: var(--chalk); font-weight: 700; }
+.lm-t.lost { color: var(--chalk-faint); }
+.lm-s { font-family: var(--display); font-size: 16px; font-variant-numeric: tabular-nums;
+  flex: 0 0 auto; min-width: 1.5rem; text-align: right; }
+.lm-v { display: flex; align-items: center; gap: 5px; font-size: 11.5px;
+  color: var(--chalk-faint); margin-top: 4px; }
+.lm-v .icon { width: 12px; height: 12px; flex: 0 0 auto; }
+.lm-v span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
