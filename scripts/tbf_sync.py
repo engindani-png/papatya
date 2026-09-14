@@ -83,6 +83,11 @@ def dig(obj, path):
 
 
 def fetch(url: str, retries: int = 4, timeout: int = 30, referer: str = None) -> str:
+    if USE_BROWSER:
+        try:
+            return render_fetch(url, timeout=max(timeout, 45))
+        except Exception as exc:  # noqa: BLE001 - duz HTTP'ye dus
+            print(f"  tarayici ile alinamadi ({url}): {exc}", file=sys.stderr)
     headers = dict(BROWSER_HEADERS)
     if referer:
         headers["Referer"] = referer
@@ -107,6 +112,64 @@ def fetch(url: str, retries: int = 4, timeout: int = 30, referer: str = None) ->
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
     raise RuntimeError(f"{url} alinamadi: {last}")
+
+
+# --------------------------------------------------------------------------
+# Basliksiz tarayici ile getirme (TBF sade HTTP isteklerine 403 donuyor)
+# --------------------------------------------------------------------------
+USE_BROWSER = os.environ.get("TBF_RENDER", "").strip() not in ("", "0", "false")
+_renderer = {"pw": None, "browser": None, "ctx": None}
+
+
+def _renderer_context():
+    """Playwright tarayicisini tembel baslatir, tum adresler icin tekrar kullanir."""
+    if _renderer["ctx"] is not None:
+        return _renderer["ctx"]
+    from playwright.sync_api import sync_playwright  # yalnizca gerektiginde
+
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(
+        args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+    )
+    ctx = browser.new_context(
+        locale="tr-TR",
+        timezone_id="Europe/Istanbul",
+        user_agent=BROWSER_HEADERS["User-Agent"],
+        viewport={"width": 1366, "height": 900},
+        extra_http_headers={"Accept-Language": BROWSER_HEADERS["Accept-Language"]},
+    )
+    _renderer.update({"pw": pw, "browser": browser, "ctx": ctx})
+    return ctx
+
+
+def close_renderer():
+    for key in ("browser", "pw"):
+        obj = _renderer.get(key)
+        if obj is None:
+            continue
+        try:
+            obj.close() if key == "browser" else obj.stop()
+        except Exception:  # noqa: BLE001
+            pass
+    _renderer.update({"pw": None, "browser": None, "ctx": None})
+
+
+def render_fetch(url: str, timeout: int = 45) -> str:
+    """Sayfayi gercek tarayicida acar, JS calistiktan sonraki HTML'i dondurur."""
+    page = _renderer_context().new_page()
+    try:
+        resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
+        status = resp.status if resp else 0
+        if status >= 400:
+            raise RuntimeError(f"HTTP {status}")
+        # Icerik JS ile geliyorsa tablolarin dolmasini bekle.
+        try:
+            page.wait_for_selector("table tr td", timeout=12000)
+        except Exception:  # noqa: BLE001
+            page.wait_for_timeout(3000)
+        return page.content()
+    finally:
+        page.close()
 
 
 def describe_page(html: str) -> str:
@@ -677,11 +740,35 @@ def main():
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--from-file", help="URL yerine yerel HTML/JSON dosyasi kullan")
     ap.add_argument("--kind", choices=["standings", "fixtures"], help="--from-file ile birlikte")
+    ap.add_argument("--probe", action="store_true",
+                    help="Aday adresleri dene ve ne geldigini yaz (dosyaya yazmaz)")
     args = ap.parse_args()
 
     config = load_json(args.config)
     previous = load_json(args.out, {})
     aliases = config.get("teamAliases", ["evolog"])
+
+    if args.probe:
+        print(f"Tarayici modu: {'acik' if USE_BROWSER else 'kapali'}")
+        for source in config.get("sources", []):
+            for url in candidate_urls(source, config):
+                print(f"\n--- {source.get('kind')}: {url}")
+                try:
+                    body = fetch(url, retries=1, timeout=45)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"    HATA: {exc}")
+                    continue
+                tables = extract_tables(body)
+                print(f"    {describe_page(body)}")
+                print(f"    ayristirilabilir tablo: {len(tables)}")
+                for i, tbl in enumerate(tables[:6]):
+                    head = " | ".join(tbl["rows"][0][:9])[:150]
+                    print(f"      tablo{i} ({len(tbl['rows'])} satir) basligi: {head}")
+                title = re.search(r"<title[^>]*>(.*?)</title>", body, re.S | re.I)
+                if title:
+                    print(f"    <title>: {title.group(1).strip()[:120]}")
+        close_renderer()
+        return 0
 
     standings, fixtures, errors, used_sources = [], [], [], []
 
@@ -813,6 +900,7 @@ def main():
     )
     for err in errors:
         print(f"  ! {err}", file=sys.stderr)
+    close_renderer()
     return 0
 
 
