@@ -27,7 +27,22 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(ROOT, "scripts", "tbf_config.json")
 OUT_PATH = os.path.join(ROOT, "data", "league.json")
 
-UA = "Mozilla/5.0 (compatible; EvologU14Bot/1.0; +https://github.com/)"
+# TBF, sade bir bot kimligine 403 donuyor; normal bir tarayici gibi istek yapiyoruz.
+BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
+              "image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Connection": "keep-alive",
+}
 TZ = dt.timezone(dt.timedelta(hours=3))  # Turkiye saati
 
 
@@ -67,26 +82,45 @@ def dig(obj, path):
     return cur
 
 
-def fetch(url: str, retries: int = 4, timeout: int = 30) -> str:
+def fetch(url: str, retries: int = 4, timeout: int = 30, referer: str = None) -> str:
+    headers = dict(BROWSER_HEADERS)
+    if referer:
+        headers["Referer"] = referer
+        headers["Sec-Fetch-Site"] = "same-origin"
     last = None
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(
-                url, headers={"User-Agent": UA, "Accept-Language": "tr,en;q=0.8"}
-            )
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 raw = resp.read()
-            charset = "utf-8"
-            try:
                 charset = resp.headers.get_content_charset() or "utf-8"
-            except Exception:
-                pass
             return raw.decode(charset, errors="replace")
-        except (urllib.error.URLError, urllib.error.HTTPError, OSError) as exc:
+        except urllib.error.HTTPError as exc:
+            last = exc
+            # 4xx tekrar denemekle duzelmez (429 haric); bosuna beklemeyelim.
+            if exc.code != 429 and 400 <= exc.code < 500:
+                break
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)
+        except (urllib.error.URLError, OSError) as exc:
             last = exc
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
     raise RuntimeError(f"{url} alinamadi: {last}")
+
+
+def describe_page(html: str) -> str:
+    """Sayfa alindi ama tablo cikmadiysa: icerigin ne oldugunu tarif eder."""
+    marks = []
+    if "__NEXT_DATA__" in html:
+        marks.append("__NEXT_DATA__ (Next.js gomulu JSON)")
+    if "window.__NUXT__" in html:
+        marks.append("__NUXT__ gomulu JSON")
+    if "<table" in html.lower():
+        marks.append("<table> var ama ayristirilamadi")
+    else:
+        marks.append("<table> yok (icerik JS ile yukleniyor olabilir)")
+    return f"{len(html)} bayt; " + ", ".join(marks)
 
 
 # --------------------------------------------------------------------------
@@ -697,7 +731,7 @@ def main():
                         fixtures.extend(rows)
                     used_sources.append(url)
                     break
-                tried.append(f"{url} -> tablo bulunamadi")
+                tried.append(f"{url} -> veri yok [{describe_page(body)}]")
             else:
                 errors.append(f"{kind} icin calisan adres bulunamadi: " + " | ".join(tried))
 
