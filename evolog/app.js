@@ -391,6 +391,164 @@
       "Y yenilen sayı · AV averaj · P puan</p>";
   }
 
+  // ------------------------------------------------------- oyuncu istatistiği
+  // Maç istatistikleri TBF'den boxscore olarak geliyor; burada oyuncu bazında
+  // sezona toplanır. Rakip takımın satırları alınmaz.
+  function seasonStats() {
+    var out = {};
+    ((state.league && state.league.fixtures) || []).forEach(function (f) {
+      if (!f.boxscore || !f.played) return;
+      var ourHome = isOurTeam(f.home);
+      var rows = ourHome ? f.boxscore.home : f.boxscore.away;
+      if (!rows || !rows.length) return;
+      var opp = ourHome ? f.away : f.home;
+      var bizim = ourHome ? f.homeScore : f.awayScore;
+      var rakip = ourHome ? f.awayScore : f.homeScore;
+      rows.forEach(function (r) {
+        var key = norm(r.name);
+        if (!key) return;
+        var p = out[key] || (out[key] = {
+          name: r.name, no: r.no, games: 0, points: 0, rebounds: 0, assists: 0,
+          steals: 0, blocks: 0, turnovers: 0, fouls: 0, minutes: 0, starts: 0, log: []
+        });
+        p.games++;
+        if (r.starter) p.starts++;
+        ["points", "rebounds", "assists", "steals", "blocks", "turnovers", "fouls"].forEach(function (k) {
+          p[k] += Number(r[k]) || 0;
+        });
+        p.minutes += mmss(r.min);
+        if (r.no != null) p.no = r.no;
+        p.log.push({
+          date: f.date, opp: opp, week: f.week,
+          win: bizim != null && rakip != null && bizim > rakip,
+          score: (bizim == null ? "" : bizim + "-" + rakip),
+          min: r.min, points: Number(r.points) || 0,
+          rebounds: Number(r.rebounds) || 0, assists: Number(r.assists) || 0,
+          plusMinus: r.plusMinus
+        });
+      });
+    });
+    return out;
+  }
+
+  function mmss(v) {
+    var m = String(v || "").split(":");
+    if (m.length < 2) return 0;
+    return (Number(m[0]) || 0) + (Number(m[1]) || 0) / 60;
+  }
+
+  function avg(total, games) {
+    if (!games) return "–";
+    var x = total / games;
+    return (Math.round(x * 10) / 10).toString().replace(".", ",");
+  }
+
+  // Tek sayıya indirgenmiş sezon özeti: grafiğe gerek yok, rakam daha okunur.
+  function tile(label, value, sub) {
+    return '<div class="tile"><div class="tv">' + esc(value) + "</div>" +
+      '<div class="tl">' + esc(label) + "</div>" +
+      (sub ? '<div class="ts2">' + esc(sub) + "</div>" : "") + "</div>";
+  }
+
+  // TBF iki ayrı kaydında aynı ismi farklı yazabiliyor ("Eda" / "Ela" gibi).
+  // Birebir eşleşme yoksa bir-iki harflik farkı tolere ederiz; daha fazlasını
+  // eşleştirmek yanlış oyuncuya istatistik yazma riski taşır.
+  function editDistance(a, b) {
+    if (Math.abs(a.length - b.length) > 2) return 99;
+    var prev = [], cur = [], i, j;
+    for (j = 0; j <= b.length; j++) prev[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      cur[0] = i;
+      for (j = 1; j <= b.length; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1,
+          prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+      }
+      prev = cur.slice();
+    }
+    return prev[b.length];
+  }
+
+  function matchStats(stats, name) {
+    var key = norm(name);
+    if (stats[key]) return key;
+    var best = null, bestD = 3;
+    Object.keys(stats).forEach(function (k) {
+      var d = editDistance(key, k);
+      if (d < bestD) { bestD = d; best = k; }
+    });
+    return best;
+  }
+
+  function openPlayer(key) {
+    var stats = seasonStats()[key];
+    var players = (state.team && state.team.players) || [];
+    // Önce birebir, olmazsa bir-iki harflik yazım farkını tolere ederek eşleştir.
+    var roster = players.filter(function (p) { return norm(p.name) === key; })[0] ||
+      players.filter(function (p) { return editDistance(norm(p.name), key) <= 2; })[0];
+    if (!stats && !roster) return;
+
+    var name = (stats && stats.name) || roster.name;
+    var no = (roster && roster.no != null) ? roster.no : (stats && stats.no);
+    var meta = [];
+    if (roster && roster.birthYear) meta.push(roster.birthYear + " doğumlu");
+    if (roster && roster.height) meta.push(roster.height + " cm");
+
+    var body = "";
+    if (stats && stats.games) {
+      // En yüksek sayı, satır içi çubukların ölçeği olur.
+      var peak = Math.max.apply(null, stats.log.map(function (m) { return m.points; })) || 1;
+      body =
+        '<div class="tiles">' +
+          tile("Sayı ort.", avg(stats.points, stats.games), stats.points + " toplam") +
+          tile("Ribaund ort.", avg(stats.rebounds, stats.games), stats.rebounds + " toplam") +
+          tile("Asist ort.", avg(stats.assists, stats.games), stats.assists + " toplam") +
+          tile("Top çalma", avg(stats.steals, stats.games), stats.steals + " toplam") +
+          tile("Süre ort.", avg(stats.minutes, stats.games) + "′", null) +
+          tile("Maç", String(stats.games), stats.starts + " ilk beş") +
+        "</div>" +
+        '<h3 class="eyebrow">Maç maç</h3>' +
+        '<div class="scroll"><table class="box mlog"><thead><tr>' +
+          "<th>Maç</th><th>Rakip</th><th>DK</th><th>SAY</th><th>RİB</th><th>AST</th>" +
+        "</tr></thead><tbody>" +
+        stats.log.map(function (m) {
+          var w = Math.max(4, Math.round((m.points / peak) * 100));
+          return "<tr>" +
+            '<td class="mw">' + esc(m.week != null ? m.week + ". h" : "") + "</td>" +
+            '<td class="mo"><span class="' + (m.win ? "w" : "l") + '"></span>' + esc(m.opp) + "</td>" +
+            "<td>" + esc((m.min || "").slice(0, 5)) + "</td>" +
+            '<td class="pts barcell"><span class="bar" style="width:' + w + '%"></span>' +
+              "<b>" + esc(m.points) + "</b></td>" +
+            "<td>" + esc(m.rebounds) + "</td><td>" + esc(m.assists) + "</td></tr>";
+        }).join("") +
+        "</tbody></table></div>";
+    } else {
+      body = '<div class="blank">Bu oyuncu için henüz maç istatistiği yok. ' +
+        "TBF maç raporunu yayımladığında burada görünecek.</div>";
+    }
+
+    var ov = el("playerSheet");
+    ov.innerHTML =
+      '<div class="psheet" role="dialog" aria-modal="true" aria-label="' + esc(name) + '">' +
+        '<header class="ph">' +
+          '<div class="pno">' + esc(no != null ? no : "–") + "</div>" +
+          "<div><h2>" + esc(name) + "</h2>" +
+          (meta.length ? '<div class="pmeta">' + esc(meta.join(" · ")) + "</div>" : "") + "</div>" +
+          '<button class="pclose" aria-label="Kapat">✕</button>' +
+        "</header>" +
+        '<div class="pbody">' + body + "</div>" +
+      "</div>";
+    ov.hidden = false;
+    document.body.classList.add("locked");
+  }
+
+  function closePlayer() {
+    var ov = el("playerSheet");
+    if (!ov || ov.hidden) return;
+    ov.hidden = true;
+    ov.innerHTML = "";
+    document.body.classList.remove("locked");
+  }
+
   // ------------------------------------------------------------- kadro
   function renderRoster() {
     var t = state.team, slot = el("rosterSlot");
@@ -399,15 +557,42 @@
       el("staffSlot").innerHTML = "";
       return;
     }
+    var stats = seasonStats();
+    var used = {};
     slot.innerHTML = t.players.slice()
       .sort(function (a, b) { return (a.no || 99) - (b.no || 99); })
       .map(function (p) {
+        var key = matchStats(stats, p.name) || norm(p.name);
+        var st = stats[key];
+        if (st) used[key] = true;
         var meta = [p.position, p.height ? p.height + " cm" : null].filter(Boolean).join(" · ");
-        return '<div class="pl"><div class="no">' + esc(p.no != null ? p.no : "–") + "</div>" +
+        // Maç oynamışsa sezon ortalaması satırda görünür, satır profile açılır.
+        var right = st && st.games
+          ? '<div class="yr avgpts"><b>' + esc(avg(st.points, st.games)) + "</b><span>sayı ort.</span></div>"
+          : '<div class="yr">' + esc(p.birthYear || "") + "</div>";
+        return '<button class="pl' + (st && st.games ? " has" : "") + '" data-player="' + esc(key) + '">' +
+          '<div class="no">' + esc(p.no != null ? p.no : "–") + "</div>" +
           '<div><div class="nm">' + esc(p.name) + "</div>" +
           (meta ? '<div class="meta">' + esc(meta) + "</div>" : "") + "</div>" +
-          '<div class="yr">' + esc(p.birthYear || "") + "</div></div>";
+          right + "</button>";
       }).join("");
+
+    // Maç kadrosunda oynayıp lisans listesinde görünmeyenler (üst yaş takviyesi
+    // ya da TBF listesi henüz güncellenmemiş olabilir) kaybolmasın.
+    var extra = Object.keys(stats).filter(function (k) { return !used[k]; });
+    if (extra.length) {
+      slot.innerHTML += extra.sort(function (a, b) {
+        return (stats[a].no || 99) - (stats[b].no || 99);
+      }).map(function (k) {
+        var st = stats[k];
+        return '<button class="pl has" data-player="' + esc(k) + '">' +
+          '<div class="no">' + esc(st.no != null ? st.no : "–") + "</div>" +
+          '<div><div class="nm">' + esc(st.name) + "</div>" +
+          '<div class="meta">maç kadrosu</div></div>' +
+          '<div class="yr avgpts"><b>' + esc(avg(st.points, st.games)) +
+          "</b><span>sayı ort.</span></div></button>";
+      }).join("");
+    }
 
     el("staffSlot").innerHTML = (t.staff || []).map(function (s) {
       return '<div class="ss"><div><div class="role">' + esc(s.role) + "</div>" +
@@ -554,6 +739,16 @@
     head.setAttribute("aria-expanded", open ? "true" : "false");
     var caret = head.querySelector(".caret");
     if (caret) caret.textContent = open ? "Kapat ▴" : "Detay ▾";
+  });
+
+  document.addEventListener("click", function (ev) {
+    var row = ev.target.closest && ev.target.closest(".pl[data-player]");
+    if (row) { openPlayer(row.dataset.player); return; }
+    if (ev.target.closest && (ev.target.closest(".pclose") ||
+        (ev.target.id === "playerSheet"))) closePlayer();
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") closePlayer();
   });
 
   window.addEventListener("hashchange", function () {

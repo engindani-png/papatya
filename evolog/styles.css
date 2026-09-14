@@ -477,3 +477,69 @@ img.lg.big { width: 46px; height: 46px; margin-bottom: 8px; }
 .colorrow span { font-size: .78rem; letter-spacing: .1em; text-transform: uppercase;
   color: var(--chalk-faint); }
 .colorrow input[type=color] { width: 3.2rem; height: 2rem; padding: 2px; }
+
+/* Başlıktaki kulüp arması (TBF'deki resmî logo). */
+img.crest { width: 44px; height: 44px; object-fit: contain; border-radius: 0;
+  background: none; border: 0; padding: 0; flex: 0 0 auto;
+  filter: drop-shadow(0 1px 3px rgb(0 0 0 / .6)); }
+
+/* ===================================================== oyuncu profili ===== */
+/* Kadro satırı artık bir düğme: profil açar. */
+.sheet button.pl { width: 100%; background: none; border: 0; border-bottom: 1px solid var(--line-soft);
+  color: inherit; font: inherit; text-align: left; cursor: default; }
+.sheet button.pl.has { cursor: pointer; }
+.sheet button.pl.has:hover .nm { color: var(--amber); }
+.sheet button.pl.has:focus-visible { outline: 2px solid var(--amber); outline-offset: -2px; }
+.yr.avgpts { text-align: right; line-height: 1.15; }
+.yr.avgpts b { display: block; font-family: var(--display); font-size: 19px; color: var(--amber); }
+.yr.avgpts span { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--chalk-faint); }
+
+body.locked { overflow: hidden; }
+.overlay { position: fixed; inset: 0; background: rgb(4 10 9 / .72);
+  backdrop-filter: blur(2px); z-index: 80; display: flex; align-items: flex-end; }
+@media (min-width: 640px) { .overlay { align-items: center; justify-content: center; } }
+
+.psheet { background: var(--ink); width: 100%; max-height: 88vh; overflow-y: auto;
+  border-top: 1px solid var(--line); border-radius: 16px 16px 0 0;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 640px) {
+  .psheet { max-width: 38rem; border-radius: 14px; border: 1px solid var(--line); }
+}
+
+.ph { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px;
+  align-items: center; padding: 18px var(--gutter) 14px;
+  border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--ink); z-index: 2; }
+.ph h2 { font-family: var(--display); font-size: 20px; font-weight: 500; letter-spacing: .03em; margin: 0; }
+.pno { font-family: var(--display); font-size: 30px; color: var(--amber); line-height: 1;
+  min-width: 1.6rem; text-align: center; }
+.pmeta { font-size: 12.5px; color: var(--chalk-dim); margin-top: 3px; }
+.pclose { background: none; border: 1px solid var(--line); color: var(--chalk-dim);
+  width: 34px; height: 34px; border-radius: 50%; font-size: 15px; cursor: pointer; }
+.pclose:hover { color: var(--amber); border-color: var(--amber); }
+.pbody { padding: 16px var(--gutter) 0; }
+.pbody .eyebrow { margin-top: 22px; }
+
+/* Sezon özeti: rakam başrolde, grafik değil. */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 400px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { background: var(--ink-2); border: 1px solid var(--line-soft); border-radius: 10px;
+  padding: 12px 10px; }
+.tv { font-family: var(--display); font-size: 25px; line-height: 1; color: var(--chalk);
+  font-variant-numeric: tabular-nums; }
+.tl { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--chalk-faint); margin-top: 6px; }
+.ts2 { font-size: 11.5px; color: var(--chalk-dim); margin-top: 3px; }
+
+/* Maç dökümü: sayı sütununda satır içi büyüklük çubuğu (tek renk, tek ölçek). */
+table.mlog td.barcell { position: relative; }
+table.mlog td.barcell .bar { position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  height: 17px; background: var(--amber-dim); border-radius: 0 4px 4px 0;
+  border-left: 2px solid var(--amber); }
+table.mlog td.barcell b { position: relative; font-family: var(--display); font-size: 15px;
+  color: var(--amber); }
+table.mlog td.mw { text-align: left; color: var(--chalk-faint); font-family: var(--display); }
+table.mlog td.mo { text-align: left; white-space: nowrap; }
+table.mlog td.mo span { display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  margin-right: 7px; vertical-align: middle; }
+table.mlog td.mo span.w { background: var(--win); }
+table.mlog td.mo span.l { background: var(--loss); }

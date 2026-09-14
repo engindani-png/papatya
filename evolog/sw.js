@@ -1,6 +1,6 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-u14-v4";
-var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./manifest.webmanifest"];
+var CACHE = "evolog-u14-v6";
+var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./logo.png", "./icon-192.png", "./manifest.webmanifest"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () {
