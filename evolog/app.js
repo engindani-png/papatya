@@ -161,6 +161,7 @@
       sync.lastCheck = Date.now();
       render();
       startAutoRefresh();
+      initPush();
     });
   }
 
@@ -764,6 +765,117 @@
         : "");
   }
 
+  // -------------------------------------------------------------- bildirim
+  // PWA kapalıyken veri kendiliğinden güncellenemez (tarayıcılar izin vermiyor);
+  // maç öncesi ve sonrası haber vermenin tek güvenilir yolu push bildirimi.
+  var push = { sub: null, busy: false };
+
+  function pushSupported() {
+    return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  }
+
+  function standalone() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+
+  function urlB64ToUint8(base64) {
+    var pad = "=".repeat((4 - (base64.length % 4)) % 4);
+    var raw = atob((base64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    var out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+
+  function renderPush() {
+    var slot = el("pushSlot");
+    if (!slot || INLINE) return;
+
+    if (!pushSupported()) {
+      slot.innerHTML = "";
+      return;
+    }
+    // iOS'ta bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır.
+    if (isIOS() && !standalone()) {
+      slot.innerHTML = '<div class="note"><div><b>Maç bildirimleri için</b> Paylaş → ' +
+        "“Ana Ekrana Ekle” deyip uygulamayı oradan açın. iPhone'da bildirimler " +
+        "yalnızca böyle çalışıyor.</div></div>";
+      return;
+    }
+    if (Notification.permission === "denied") {
+      slot.innerHTML = '<div class="note"><div><b>Bildirimler engellenmiş.</b> ' +
+        "Tarayıcı ayarlarından bu siteye bildirim izni verirseniz maç " +
+        "hatırlatması ve skoru gönderebiliriz.</div></div>";
+      return;
+    }
+    var on = !!push.sub;
+    slot.innerHTML = '<div class="pushrow' + (on ? " on" : "") + '">' +
+      "<div>" + (on
+        ? "<b>Maç bildirimleri açık</b><span>Maçtan 4 saat önce ve maç bitince haber vereceğiz.</span>"
+        : "<b>Maç bildirimi al</b><span>Maçtan 4 saat önce hatırlatma, maç bitince skor.</span>") +
+      "</div>" +
+      '<button id="pushBtn"' + (push.busy ? " disabled" : "") + ">" +
+        (push.busy ? "…" : on ? "Kapat" : "Aç") + "</button></div>";
+  }
+
+  function initPush() {
+    if (!pushSupported() || INLINE) return;
+    navigator.serviceWorker.ready.then(function (reg) {
+      return reg.pushManager.getSubscription();
+    }).then(function (sub) {
+      push.sub = sub;
+      renderPush();
+    }).catch(function () { renderPush(); });
+  }
+
+  function togglePush() {
+    if (push.busy) return;
+    push.busy = true;
+    renderPush();
+
+    var done = function () { push.busy = false; renderPush(); };
+
+    if (push.sub) {
+      var endpoint = push.sub.endpoint;
+      push.sub.unsubscribe().catch(function () {}).then(function () {
+        push.sub = null;
+        return fetch("/api/push/unsubscribe", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ endpoint: endpoint })
+        }).catch(function () {});
+      }).then(done);
+      return;
+    }
+
+    Notification.requestPermission().then(function (perm) {
+      if (perm !== "granted") { done(); return; }
+      return fetch("/api/push/key").then(function (r) { return r.json(); })
+        .then(function (k) {
+          if (!k.publicKey) throw new Error("Sunucu anahtarı yok");
+          return navigator.serviceWorker.ready.then(function (reg) {
+            return reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlB64ToUint8(k.publicKey)
+            });
+          });
+        })
+        .then(function (sub) {
+          push.sub = sub;
+          return fetch("/api/push/subscribe", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sub)
+          });
+        })
+        .then(function () { toast("Bildirimler açıldı"); })
+        .catch(function () { toast("Bildirim açılamadı, sonra tekrar deneyin"); })
+        .then(done);
+    }).catch(done);
+  }
+
   // ------------------------------------------------------------- sekmeler
   function showPanel(name) {
     PANELS.forEach(function (p) {
@@ -777,6 +889,7 @@
 
   function render() {
     renderSync();
+    renderPush();
     renderMatches();
     renderLeagueWeeks();
     renderStandings();
@@ -804,6 +917,7 @@
   });
 
   document.addEventListener("click", function (ev) {
+    if (ev.target.id === "pushBtn") { togglePush(); return; }
     var row = ev.target.closest && ev.target.closest(".pl[data-player]");
     if (row) { openPlayer(row.dataset.player); return; }
     if (ev.target.closest && (ev.target.closest(".pclose") ||
