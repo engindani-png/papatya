@@ -12,6 +12,11 @@
 
   var state = { team: null, training: null, league: null, timer: null };
 
+  // Arka planda kendini tazeleme: sunucu TBF'den her 10 dk veri çektiği için
+  // uygulama da açık kaldığı sürece yeni skoru/istatistiği kendiliğinden alır.
+  var REFRESH_MS = 90000;
+  var sync = { poll: null, lastCheck: 0, busy: false, sig: null };
+
   // ------------------------------------------------------------- yardımcı
   function esc(v) {
     return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
@@ -64,16 +69,87 @@
       .catch(function () { return null; });
   }
 
-  function boot() {
-    Promise.all([
+  function loadAll() {
+    return Promise.all([
       load("team", "team.json"),
       load("training", "training.json"),
       load(DEMO ? "leagueDemo" : "league", DEMO ? "league.example.json" : "league.json")
-    ]).then(function (res) {
+    ]);
+  }
+
+  // Verinin "parmak izi": bunlardan biri değişmişse ekran yenilenir.
+  function signature(team, training, league) {
+    var lg = league || {};
+    var skor = (lg.fixtures || []).map(function (f) {
+      return [f.matchId, f.homeScore, f.awayScore,
+        (f.boxscore && f.boxscore.home ? f.boxscore.home.length : 0),
+        (f.quarters || []).length].join(":");
+    }).join("|");
+    var puan = (lg.standings || []).map(function (r) {
+      return [r.team, r.played, r.points, r.pointsFor, r.pointsAgainst].join(":");
+    }).join("|");
+    return [lg.updatedAt, skor, puan,
+      ((team || {}).players || []).length,
+      JSON.stringify((training || {}).sessions || []).length].join("#");
+  }
+
+  function toast(msg) {
+    var box = el("toast");
+    if (!box) return;
+    box.textContent = msg;
+    box.hidden = false;
+    box.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(function () {
+      box.classList.remove("show");
+      setTimeout(function () { box.hidden = true; }, 400);
+    }, 4200);
+  }
+
+  function refresh(announce) {
+    if (INLINE || sync.busy) return Promise.resolve(false);
+    sync.busy = true;
+    sync.lastCheck = Date.now();
+    return loadAll().then(function (res) {
+      sync.busy = false;
+      if (!res[2] && !res[0]) return false;      // ağ yok: eldeki veriyi koru
+      var sig = signature(res[0], res[1], res[2]);
+      if (sig === sync.sig) { renderSync(); return false; }
+      sync.sig = sig;
+      state.team = res[0] || state.team;
+      state.training = res[1] || state.training;
+      state.league = res[2] || state.league;
+      var y = window.scrollY;
+      render();
+      window.scrollTo(0, y);
+      if (announce) toast("Yeni veri geldi — ekran güncellendi");
+      return true;
+    }).catch(function () { sync.busy = false; return false; });
+  }
+
+  function startAutoRefresh() {
+    if (INLINE || sync.poll) return;
+    sync.poll = setInterval(function () {
+      if (document.visibilityState === "visible") refresh(true);
+    }, REFRESH_MS);
+    document.addEventListener("visibilitychange", function () {
+      // Uygulamaya dönüldüğünde (telefonda en sık bu olur) hemen bak.
+      if (document.visibilityState === "visible" && Date.now() - sync.lastCheck > 15000) {
+        refresh(true);
+      }
+    });
+    window.addEventListener("online", function () { refresh(true); });
+  }
+
+  function boot() {
+    loadAll().then(function (res) {
       state.team = res[0];
       state.training = res[1];
       state.league = res[2];
+      sync.sig = signature(res[0], res[1], res[2]);
+      sync.lastCheck = Date.now();
       render();
+      startAutoRefresh();
     });
   }
 
@@ -104,8 +180,8 @@
     }
     if (lg.isPlaceholder || (!(lg.standings || []).length && !(lg.fixtures || []).length)) {
       return '<div class="note"><div><b>TBF verisi henüz çekilmedi.</b> ' +
-        "<code>scripts/tbf_config.json</code> içine lig sayfası adreslerini girip " +
-        "“TBF veri senkronizasyonu” iş akışını çalıştırın.</div></div>";
+        "Sunucudaki senkronizasyon birazdan çalışacak; ekran kendiliğinden " +
+        "güncellenecek.</div></div>";
     }
     if (lg.errors && lg.errors.length) {
       return '<div class="note bad"><div><b>Son senkronizasyon uyarıları</b><br>' +

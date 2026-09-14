@@ -1,5 +1,5 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-u14-v2";
+var CACHE = "evolog-u14-v3";
 var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./manifest.webmanifest"];
 
 self.addEventListener("install", function (e) {
@@ -31,7 +31,16 @@ self.addEventListener("fetch", function (e) {
     return;
   }
 
+  // Kabuk: onbellekten aninda goster, arka planda yenile (stale-while-revalidate).
+  // Boylece yeni surum bir sonraki acilista kendiliginden gelir.
   e.respondWith(caches.match(e.request).then(function (hit) {
-    return hit || fetch(e.request);
+    var net = fetch(e.request).then(function (res) {
+      if (res && res.ok) {
+        var copy = res.clone();
+        caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
+      }
+      return res;
+    }).catch(function () { return hit; });
+    return hit || net;
   }));
 });

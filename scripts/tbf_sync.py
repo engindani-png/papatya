@@ -1,910 +1,420 @@
 #!/usr/bin/env python3
-"""TBF Istanbul U14 Kiz A Grubu verisini cekip data/league.json dosyasina yazar.
+"""TBF verisini resmi JSON API'sinden ceker ve data/league.json dosyasini uretir.
 
-Sadece standart kutuphane kullanir (GitHub Actions'ta ek kurulum gerekmez).
+TBF sitesi (www.tbf.org.tr) bir Nuxt uygulamasi: sayfa HTML'inde tablo yok,
+puan durumu / fikstur / mac istatistigi tarayicida su adresten aliniyor:
+
+    https://miniappapi.tbf.org.tr/webapi-service/api/...
+
+Bu script dogrudan o API'yi kullanir. Kimlik dogrulama, cerez ya da tarayici
+gerekmez; yalnizca Python standart kutuphanesi kullanilir.
 
 Kullanim:
-    python3 scripts/tbf_sync.py                 # config'teki kaynaklardan cek
-    python3 scripts/tbf_sync.py --dry-run       # dosyaya yazma, sonucu ekrana bas
-    python3 scripts/tbf_sync.py --from-file puan.html --kind standings
+    python3 scripts/tbf_sync.py                # cek ve data/league.json yaz
+    python3 scripts/tbf_sync.py --dry-run      # cek, ekrana yaz, dosyaya dokunma
+    python3 scripts/tbf_sync.py --probe        # endpoint'leri dene, ne donuyor goster
+    python3 scripts/tbf_sync.py --roster       # data/team.json kadrosunu da guncelle
+    python3 scripts/tbf_sync.py --no-details   # ceyrek/oyuncu istatistigi cekme
 """
 
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import gzip
 import json
-import os
+import pathlib
 import re
 import sys
 import time
-import unicodedata
 import urllib.error
 import urllib.request
-from html.parser import HTMLParser
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = os.path.join(ROOT, "scripts", "tbf_config.json")
-OUT_PATH = os.path.join(ROOT, "data", "league.json")
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+CONFIG_PATH = ROOT / "scripts" / "tbf_config.json"
+LEAGUE_PATH = ROOT / "data" / "league.json"
+TEAM_PATH = ROOT / "data" / "team.json"
 
-# TBF, sade bir bot kimligine 403 donuyor; normal bir tarayici gibi istek yapiyoruz.
-BROWSER_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
-              "image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Connection": "keep-alive",
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
+HEADERS = {
+    "User-Agent": UA,
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "tr-TR,tr;q=0.9,en;q=0.8",
+    "Accept-Encoding": "gzip",
+    "Origin": "https://www.tbf.org.tr",
+    "Referer": "https://www.tbf.org.tr/",
 }
-TZ = dt.timezone(dt.timedelta(hours=3))  # Turkiye saati
 
 
-# --------------------------------------------------------------------------
-# Yardimcilar
-# --------------------------------------------------------------------------
-def norm(text: str) -> str:
-    """Turkce karakterleri sadelestirip kucuk harfe cevirir (eslestirme icin)."""
-    if text is None:
-        return ""
-    text = str(text).replace("İ", "i").replace("I", "i").replace("ı", "i")
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(c for c in text if not unicodedata.combining(c))
-    return re.sub(r"\s+", " ", text).strip().lower()
+# --------------------------------------------------------------------- yardim
+def log(msg: str = "") -> None:
+    print(msg, flush=True)
 
 
-def to_int(value):
-    if value is None:
-        return None
-    m = re.search(r"-?\d+", str(value).replace("\xa0", " "))
-    return int(m.group()) if m else None
+def load_config() -> dict:
+    return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
-def dig(obj, path):
-    """'a.b.c' yolunu sozlukte takip eder."""
-    cur = obj
-    for part in str(path).split("."):
-        if isinstance(cur, list):
-            idx = to_int(part)
-            cur = cur[idx] if idx is not None and idx < len(cur) else None
-        elif isinstance(cur, dict):
-            cur = cur.get(part)
-        else:
-            return None
-        if cur is None:
-            return None
-    return cur
+def now_iso() -> str:
+    tz = dt.timezone(dt.timedelta(hours=3))
+    return dt.datetime.now(tz).replace(microsecond=0).isoformat()
 
 
-def fetch(url: str, retries: int = 4, timeout: int = 30, referer: str = None) -> str:
-    if USE_BROWSER:
-        try:
-            return render_fetch(url, timeout=max(timeout, 45))
-        except Exception as exc:  # noqa: BLE001 - duz HTTP'ye dus
-            print(f"  tarayici ile alinamadi ({url}): {exc}", file=sys.stderr)
-    headers = dict(BROWSER_HEADERS)
-    if referer:
-        headers["Referer"] = referer
-        headers["Sec-Fetch-Site"] = "same-origin"
+def api_get(base: str, path: str, tries: int = 3, timeout: int = 45):
+    """API'den JSON ceker. Basarisizsa RuntimeError firlatir."""
+    url = base.rstrip("/") + path
     last = None
-    for attempt in range(retries):
+    for attempt in range(1, tries + 1):
         try:
-            req = urllib.request.Request(url, headers=headers)
+            req = urllib.request.Request(url, headers=HEADERS)
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 raw = resp.read()
-                charset = resp.headers.get_content_charset() or "utf-8"
-            return raw.decode(charset, errors="replace")
+                if resp.headers.get("Content-Encoding") == "gzip":
+                    raw = gzip.decompress(raw)
+                payload = json.loads(raw.decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            last = exc
-            # 4xx tekrar denemekle duzelmez (429 haric); bosuna beklemeyelim.
-            if exc.code != 429 and 400 <= exc.code < 500:
-                break
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt)
-        except (urllib.error.URLError, OSError) as exc:
-            last = exc
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt)
-    raise RuntimeError(f"{url} alinamadi: {last}")
+            body = ""
+            try:
+                body = exc.read().decode("utf-8", "replace")[:300]
+            except Exception:
+                pass
+            last = f"HTTP {exc.code} — {body or exc.reason}"
+        except Exception as exc:  # aglar, zaman asimi, bozuk JSON
+            last = f"{type(exc).__name__}: {exc}"
+        else:
+            if not payload.get("isSuccess", True):
+                detail = (payload.get("problemDetails") or {}).get("detail", "")
+                raise RuntimeError(f"{path} — API hata: {detail or payload.get('message')}")
+            return payload.get("data")
+        if attempt < tries:
+            time.sleep(1.5 * attempt)
+    raise RuntimeError(f"{path} — {last}")
 
 
-# --------------------------------------------------------------------------
-# Basliksiz tarayici ile getirme (TBF sade HTTP isteklerine 403 donuyor)
-# --------------------------------------------------------------------------
-USE_BROWSER = os.environ.get("TBF_RENDER", "").strip() not in ("", "0", "false")
-_renderer = {"pw": None, "browser": None, "ctx": None}
-
-
-def _renderer_context():
-    """Playwright tarayicisini tembel baslatir, tum adresler icin tekrar kullanir."""
-    if _renderer["ctx"] is not None:
-        return _renderer["ctx"]
-    from playwright.sync_api import sync_playwright  # yalnizca gerektiginde
-
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(
-        args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
-    )
-    ctx = browser.new_context(
-        locale="tr-TR",
-        timezone_id="Europe/Istanbul",
-        user_agent=BROWSER_HEADERS["User-Agent"],
-        viewport={"width": 1366, "height": 900},
-        extra_http_headers={"Accept-Language": BROWSER_HEADERS["Accept-Language"]},
-    )
-    _renderer.update({"pw": pw, "browser": browser, "ctx": ctx})
-    return ctx
-
-
-def close_renderer():
-    for key in ("browser", "pw"):
-        obj = _renderer.get(key)
-        if obj is None:
-            continue
-        try:
-            obj.close() if key == "browser" else obj.stop()
-        except Exception:  # noqa: BLE001
-            pass
-    _renderer.update({"pw": None, "browser": None, "ctx": None})
-
-
-def render_fetch(url: str, timeout: int = 45) -> str:
-    """Sayfayi gercek tarayicida acar, JS calistiktan sonraki HTML'i dondurur."""
-    page = _renderer_context().new_page()
+def num(value, default=None):
     try:
-        resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout * 1000)
-        status = resp.status if resp else 0
-        if status >= 400:
-            raise RuntimeError(f"HTTP {status}")
-        # Icerik JS ile geliyorsa tablolarin dolmasini bekle.
-        try:
-            page.wait_for_selector("table tr td", timeout=12000)
-        except Exception:  # noqa: BLE001
-            page.wait_for_timeout(3000)
-        return page.content()
-    finally:
-        page.close()
+        if value is None or value == "":
+            return default
+        return int(float(value))
+    except (TypeError, ValueError):
+        return default
 
 
-def describe_page(html: str) -> str:
-    """Sayfa alindi ama tablo cikmadiysa: icerigin ne oldugunu tarif eder."""
-    marks = []
-    if "__NEXT_DATA__" in html:
-        marks.append("__NEXT_DATA__ (Next.js gomulu JSON)")
-    if "window.__NUXT__" in html:
-        marks.append("__NUXT__ gomulu JSON")
-    if "<table" in html.lower():
-        marks.append("<table> var ama ayristirilamadi")
-    else:
-        marks.append("<table> yok (icerik JS ile yukleniyor olabilir)")
-    return f"{len(html)} bayt; " + ", ".join(marks)
+def title_tr(name: str) -> str:
+    """TBF adlari BUYUK harf gonderir; okunur hale getirir (Turkce uyumlu)."""
+    if not name:
+        return ""
+    parts = []
+    for word in re.split(r"(\s+|-)", name.strip()):
+        if not word.strip() or word == "-":
+            parts.append(word)
+            continue
+        low = word.lower()
+        low = low.replace("i̇", "i")  # ust-uste nokta birlesimi
+        parts.append(low[0].upper() + low[1:])
+    out = "".join(parts)
+    # I -> i donusumu Turkce'de yanlis olur; yaygin harfleri duzelt
+    return out.replace("Ii", "İi").replace("Ş", "Ş")
 
 
-# --------------------------------------------------------------------------
-# HTML tablo ayristirma
-# --------------------------------------------------------------------------
-class TableParser(HTMLParser):
-    """Sayfadaki butun <table> ogelerini satir/hucre metnine cevirir."""
+# ------------------------------------------------------------------ cekicilik
+def fetch_standings(cfg: dict) -> tuple[list, str | None, list]:
+    """Puan durumunu ceker. (satirlar, grup_adi, uyarilar)"""
+    base = cfg["apiBaseUrl"]
+    league_id = cfg["leagueId"]
+    our_id = num(cfg["teamProcessId"])
+    groups = api_get(base, f"/api/League/get-standings-table?leagueId={league_id}") or []
+    if not groups:
+        return [], None, ["Puan durumu bos dondu."]
 
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.tables = []
-        self._stack = []
-        self._row = None
-        self._cell = None
-        self._links = []
-        self._cell_link = None
+    chosen = None
+    for grp in groups:
+        rows = grp.get("standings") or []
+        if any(num(r.get("takimIslemId")) == our_id for r in rows):
+            chosen = grp
+            break
+    if chosen is None:
+        chosen = groups[0]
 
-    def handle_starttag(self, tag, attrs):
-        if tag == "table":
-            self._stack.append({"rows": [], "links": []})
-        elif tag == "tr" and self._stack:
-            self._row = []
-            self._links = []
-        elif tag in ("td", "th") and self._row is not None:
-            self._cell = []
-            self._cell_link = dict(attrs).get("href")
-        elif tag == "a" and self._cell is not None and self._cell_link is None:
-            self._cell_link = dict(attrs).get("href")
-        elif tag == "br" and self._cell is not None:
-            self._cell.append(" ")
-
-    def handle_endtag(self, tag):
-        if tag in ("td", "th") and self._cell is not None:
-            self._row.append(re.sub(r"\s+", " ", "".join(self._cell)).strip())
-            self._links.append(self._cell_link)
-            self._cell = None
-            self._cell_link = None
-        elif tag == "tr" and self._row is not None and self._stack:
-            if any(c for c in self._row):
-                self._stack[-1]["rows"].append(self._row)
-                self._stack[-1]["links"].append(self._links)
-            self._row = None
-            self._links = []
-        elif tag == "table" and self._stack:
-            self.tables.append(self._stack.pop())
-
-    def handle_data(self, data):
-        if self._cell is not None:
-            self._cell.append(data)
-
-    def close(self):
-        super().close()
-        while self._stack:  # kapanmamis <table> etiketleri
-            self.tables.append(self._stack.pop())
+    out = []
+    for row in chosen.get("standings") or []:
+        scored = num(row.get("a"), 0)
+        against = num(row.get("y"), 0)
+        out.append({
+            "rank": num(row.get("sira")),
+            "team": row.get("takimAdi") or "",
+            "played": num(row.get("o")),
+            "won": num(row.get("g")),
+            "lost": num(row.get("m")),
+            "pointsFor": scored,
+            "pointsAgainst": against,
+            "diff": (scored - against) if scored is not None and against is not None else None,
+            "points": num(row.get("puan")),
+            "logo": row.get("teamLogo") or None,
+            "isOurs": num(row.get("takimIslemId")) == our_id,
+        })
+    out.sort(key=lambda r: (r["rank"] is None, r["rank"] or 0))
+    return out, chosen.get("grup"), []
 
 
-def extract_tables(html: str):
-    parser = TableParser()
-    parser.feed(html)
-    parser.close()
-    return [t for t in parser.tables if len(t["rows"]) >= 2]
+WEEK_RE = re.compile(r"(\d+)")
 
 
-# --------------------------------------------------------------------------
-# Puan durumu
-# --------------------------------------------------------------------------
-STANDING_COLUMNS = [
-    ("played", ["o", "om", "oyn", "oynadigi", "macs", "mac", "g+m"]),
-    ("won", ["g", "gal", "galibiyet", "w"]),
-    ("lost", ["m", "mag", "maglubiyet", "l"]),
-    ("pointsFor", ["a", "att", "attigi", "sayi at", "ap", "for"]),
-    ("pointsAgainst", ["y", "yed", "yedigi", "sayi yed", "yp", "against"]),
-    ("diff", ["av", "avr", "averaj", "fark", "+/-", "dif"]),
-    ("points", ["p", "puan", "pts"]),
+def fetch_fixtures(cfg: dict) -> tuple[list, list]:
+    """Takimin tum sezon maclarini ceker."""
+    base = cfg["apiBaseUrl"]
+    our_id = num(cfg["teamProcessId"])
+    query = (f"?teamProcessId={cfg['teamProcessId']}"
+             f"&leagueId={cfg['leagueId']}&seasonId={cfg['seasonId']}")
+    data = api_get(base, "/api/Team/get-team-detail-matches-by-season-and-league" + query) or {}
+    matches = data.get("maclar") or []
+    if not matches:
+        return [], ["Fikstur bos dondu."]
+
+    out = []
+    for m in matches:
+        stamp = m.get("tarih") or ""
+        date = stamp[:10] if len(stamp) >= 10 else None
+        clock = stamp[11:16] if len(stamp) >= 16 else None
+        played = bool(m.get("isPlayed"))
+        week_match = WEEK_RE.search(m.get("formattedWeek") or "")
+        out.append({
+            "matchId": num(m.get("matchId")),
+            "date": date,
+            "time": clock,
+            "home": m.get("takimA") or "",
+            "away": m.get("takimB") or "",
+            "homeScore": num(m.get("skorA")) if played else None,
+            "awayScore": num(m.get("skorB")) if played else None,
+            "venue": m.get("salon") or None,
+            "city": m.get("sehir") or None,
+            "week": num(week_match.group(1)) if week_match else None,
+            "homeLogo": m.get("takimALogo") or None,
+            "awayLogo": m.get("takimBLogo") or None,
+            "isOurs": num(m.get("takimAId")) == our_id or num(m.get("takimBId")) == our_id,
+            "isHome": bool(m.get("isHome")),
+            "played": played,
+        })
+    out.sort(key=lambda f: (f["date"] or "9999", f["time"] or ""))
+    return out, []
+
+
+BOX_FIELDS = [
+    ("no", "jerseyNumber"),
+    ("name", "playerName"),
+    ("min", "minutesPlayed"),
+    ("points", "points"),
+    ("rebounds", "totalRebounds"),
+    ("assists", "assists"),
+    ("steals", "steals"),
+    ("blocks", "blocks"),
+    ("turnovers", "turnovers"),
+    ("fouls", "fouls"),
 ]
 
 
-def _match_column(header: str):
-    h = norm(header)
-    if not h:
-        return None
-    for key, aliases in STANDING_COLUMNS:
-        for alias in aliases:
-            if h == alias or h.startswith(alias + " ") or h == alias + ".":
-                return key
-    for key, aliases in STANDING_COLUMNS:
-        if any(alias in h for alias in aliases if len(alias) > 2):
-            return key
-    return None
+def box_rows(players: list) -> list:
+    rows = []
+    for p in players or []:
+        row = {}
+        for out_key, src_key in BOX_FIELDS:
+            value = p.get(src_key)
+            if out_key == "name":
+                value = title_tr(value or "")
+            elif out_key == "no":
+                value = num(value)
+            row[out_key] = value
+        row["starter"] = bool(p.get("isStarter"))
+        row["plusMinus"] = p.get("plusMinus")
+        row["efficiency"] = p.get("efficiency")
+        rows.append(row)
+    return rows
 
 
-def parse_standings(tables):
-    """Basliginda takim + puan gecen tabloyu puan durumu olarak yorumlar."""
-    best = None
-    for table in tables:
-        rows = table["rows"]
-        header = rows[0]
-        hnorm = [norm(c) for c in header]
-        if not any("takim" in h or "kulup" in h for h in hnorm):
-            continue
-        if not any(h in ("p", "puan", "pts") or "puan" in h for h in hnorm):
-            continue
-        if len(rows) - 1 < 2:
-            continue
-        if best is None or len(rows) > len(best["rows"]):
-            best = table
-    if best is None:
-        return []
+def fetch_detail(cfg: dict, match_id: int) -> dict:
+    """Bir macin ceyrek skorlari ve oyuncu istatistiklerini ceker."""
+    base = cfg["apiBaseUrl"]
+    detail: dict = {}
 
-    header = best["rows"][0]
-    team_idx = next(
-        (i for i, c in enumerate(header) if "takim" in norm(c) or "kulup" in norm(c)), 1
-    )
-    colmap = {}
-    for i, cell in enumerate(header):
-        if i == team_idx:
-            continue
-        key = _match_column(cell)
-        if key and key not in colmap:
-            colmap[key] = i
-
-    standings = []
-    for rank, row in enumerate(best["rows"][1:], start=1):
-        if len(row) <= team_idx:
-            continue
-        team = row[team_idx].strip()
-        if not team or norm(team) in ("takim", "kulup"):
-            continue
-        entry = {"rank": to_int(row[0]) or rank, "team": team}
-        for key, idx in colmap.items():
-            entry[key] = to_int(row[idx]) if idx < len(row) else None
-        if entry.get("diff") is None and entry.get("pointsFor") is not None \
-                and entry.get("pointsAgainst") is not None:
-            entry["diff"] = entry["pointsFor"] - entry["pointsAgainst"]
-        standings.append(entry)
-    return standings
-
-
-# --------------------------------------------------------------------------
-# Fikstur / sonuclar
-# --------------------------------------------------------------------------
-DATE_PATTERNS = [
-    (re.compile(r"(\d{1,2})[./-](\d{1,2})[./-](\d{4})"), ("d", "m", "y")),
-    (re.compile(r"(\d{4})-(\d{2})-(\d{2})"), ("y", "m", "d")),
-]
-TIME_RE = re.compile(r"\b([0-2]?\d)[:.]([0-5]\d)\b")
-SCORE_RE = re.compile(r"\b(\d{1,3})\s*[-:]\s*(\d{1,3})\b")
-
-
-def parse_date(cell: str):
-    for pattern, order in DATE_PATTERNS:
-        m = pattern.search(cell or "")
-        if not m:
-            continue
-        parts = dict(zip(order, m.groups()))
-        try:
-            return dt.date(int(parts["y"]), int(parts["m"]), int(parts["d"])).isoformat()
-        except ValueError:
-            return None
-    return None
-
-
-def strip_date(cell: str) -> str:
-    """Hucredeki tarih metnini temizler (ayni hucredeki saati okuyabilmek icin)."""
-    out = cell or ""
-    for pattern, _ in DATE_PATTERNS:
-        out = pattern.sub(" ", out)
-    return out
-
-
-def parse_time(cell: str):
-    m = TIME_RE.search(cell or "")
-    if not m:
-        return None
-    hour, minute = int(m.group(1)), m.group(2)
-    if hour > 23:
-        return None
-    return f"{hour:02d}:{minute}"
-
-
-def looks_like_team(cell: str) -> bool:
-    c = (cell or "").strip()
-    if len(c) < 3 or len(c) > 60:
-        return False
-    if SCORE_RE.fullmatch(c) or parse_date(c) or TIME_RE.fullmatch(c):
-        return False
-    return bool(re.search(r"[A-Za-zÇĞİÖŞÜçğıöşü]{3}", c))
-
-
-MATCH_ID_RE = re.compile(r"/mac-detay/(\d+)")
-
-
-def row_match_id(links):
-    """Satirdaki baglantilardan TBF mac kimligini cikarir."""
-    for href in links or []:
-        if not href:
-            continue
-        m = MATCH_ID_RE.search(href)
-        if m:
-            return m.group(1)
-    return None
-
-
-def parse_fixtures(tables):
-    """Tarih + iki takim adi iceren satirlari mac olarak yorumlar."""
-    fixtures = []
-    seen = set()
-    for table in tables:
-        rows = table["rows"]
-        row_links = table.get("links") or []
-        header_norm = [norm(c) for c in rows[0]]
-        has_header = any(
-            any(k in h for k in ("tarih", "saat", "ev sahibi", "misafir", "salon", "hafta"))
-            for h in header_norm
-        )
-        body = rows[1:] if has_header else rows
-
-        idx = {}
-        if has_header:
-            for i, h in enumerate(header_norm):
-                if "tarih" in h and "date" not in idx:
-                    idx["date"] = i
-                elif "saat" in h and "time" not in idx:
-                    idx["time"] = i
-                elif ("ev sahibi" in h or h == "ev") and "home" not in idx:
-                    idx["home"] = i
-                elif ("misafir" in h or "deplasman" in h or "konuk" in h) and "away" not in idx:
-                    idx["away"] = i
-                elif ("salon" in h or "saha" in h or "yer" in h) and "venue" not in idx:
-                    idx["venue"] = i
-                elif "hafta" in h and "week" not in idx:
-                    idx["week"] = i
-
-        offset = len(rows) - len(body)
-        for row_index, row in enumerate(body):
-            links = row_links[row_index + offset] if row_index + offset < len(row_links) else []
-            cells = [c.strip() for c in row]
-            joined = " | ".join(cells)
-            date = None
-            for i, c in enumerate(cells):
-                if idx.get("date") is not None and i != idx["date"]:
-                    continue
-                date = parse_date(c)
-                if date:
-                    break
-            if not date:
-                continue
-
-            inline_score = None
-            if "home" in idx and "away" in idx and max(idx["home"], idx["away"]) < len(cells):
-                home, away = cells[idx["home"]], cells[idx["away"]]
-            else:
-                teams = [c for c in cells if looks_like_team(c)]
-                if len(teams) >= 2:
-                    home, away = teams[0], teams[1]
-                else:
-                    # skorlu tek hucre: "Takim A 61 - 48 Takim B"
-                    pair = None
-                    for c in cells:
-                        if parse_date(c):
-                            continue
-                        m = re.search(
-                            r"^(.+?)\s+(\d{1,3})\s*[-:]\s*(\d{1,3})\s+(.+)$", c.strip()
-                        )
-                        if m and looks_like_team(m.group(1)) and looks_like_team(m.group(4)):
-                            pair = (m.group(1).strip(), m.group(4).strip(),
-                                    int(m.group(2)), int(m.group(3)))
-                            break
-                    if not pair:
-                        continue
-                    home, away = pair[0], pair[1]
-                    inline_score = (pair[2], pair[3])
-            if not looks_like_team(home) or not looks_like_team(away):
-                continue
-
-            home_score = away_score = None
-            for c in cells:
-                m = SCORE_RE.search(c)
-                if m and not parse_date(c) and not TIME_RE.search(c):
-                    home_score, away_score = int(m.group(1)), int(m.group(2))
-                    break
-            if home_score is None and inline_score:
-                home_score, away_score = inline_score
-
-            time_val = None
-            if idx.get("time") is not None and idx["time"] < len(cells):
-                time_val = parse_time(cells[idx["time"]])
-            if not time_val:
-                for c in cells:
-                    time_val = parse_time(strip_date(c))
-                    if time_val:
-                        break
-
-            venue = None
-            if idx.get("venue") is not None and idx["venue"] < len(cells):
-                venue = cells[idx["venue"]] or None
-            if not venue:
-                candidates = [
-                    c for c in cells
-                    if looks_like_team(c) and c not in (home, away)
-                    and re.search(r"salon|spor|hall|kompleks", norm(c))
-                ]
-                venue = candidates[0] if candidates else None
-
-            key = (date, norm(home), norm(away))
-            if key in seen:
-                continue
-            seen.add(key)
-            fixtures.append({
-                "matchId": row_match_id(links),
-                "id": f"{date}-{norm(home)[:12]}-{norm(away)[:12]}".replace(" ", "_"),
-                "week": to_int(cells[idx["week"]]) if idx.get("week") is not None
-                        and idx["week"] < len(cells) else None,
-                "date": date,
-                "time": time_val,
-                "venue": venue,
-                "home": home,
-                "away": away,
-                "homeScore": home_score,
-                "awayScore": away_score,
-                "status": "played" if home_score is not None else "scheduled",
-            })
-    fixtures.sort(key=lambda f: (f["date"], f["time"] or "99:99"))
-    return fixtures
-
-
-
-# --------------------------------------------------------------------------
-# Mac detayi: ceyrek skorlari + oyuncu istatistikleri
-# --------------------------------------------------------------------------
-BOX_COLUMNS = [
-    ("no", ["no", "#", "forma"]),
-    ("min", ["dk", "dak", "sure", "min", "dakika"]),
-    ("points", ["sayi", "say", "pts", "pt", "sy"]),
-    ("rebounds", ["rib", "ribaund", "reb", "rb", "top toplama"]),
-    ("assists", ["ast", "asist", "as"]),
-    ("steals", ["cal", "top calma", "stl", "cl"]),
-    ("blocks", ["blk", "blok", "bs"]),
-    ("turnovers", ["tk", "top kaybi", "hata", "to"]),
-    ("fouls", ["faul", "fl", "pf", "kf"]),
-]
-NAME_HEADERS = ["oyuncu", "isim", "ad soyad", "adi soyadi", "sporcu", "player"]
-
-
-def _box_column(header: str):
-    h = norm(header)
-    if not h:
-        return None
-    for key, aliases in BOX_COLUMNS:
-        if h in aliases:
-            return key
-    for key, aliases in BOX_COLUMNS:
-        if any(a in h for a in aliases if len(a) > 2):
-            return key
-    return None
-
-
-def parse_boxscore_table(table):
-    """Basliginda oyuncu adi sutunu olan bir tabloyu istatistik satirlarina cevirir."""
-    rows = table["rows"]
-    header = rows[0]
-    hnorm = [norm(c) for c in header]
-    name_idx = next(
-        (i for i, h in enumerate(hnorm) if any(n in h for n in NAME_HEADERS)), None
-    )
-    if name_idx is None:
-        return []
-
-    colmap = {}
-    for i, cell in enumerate(header):
-        if i == name_idx:
-            continue
-        key = _box_column(cell)
-        if key and key not in colmap:
-            colmap[key] = i
-    if "points" not in colmap:
-        return []
-
-    players = []
-    for row in rows[1:]:
-        if len(row) <= name_idx:
-            continue
-        name = row[name_idx].strip()
-        if not name or norm(name) in NAME_HEADERS:
-            continue
-        if norm(name).startswith(("toplam", "takim toplam", "total")):
-            continue
-        entry = {"name": name}
-        for key, idx in colmap.items():
-            if idx >= len(row):
-                continue
-            raw = row[idx].strip()
-            entry[key] = raw if key == "min" and ":" in raw else to_int(raw)
-        if any(entry.get(k) is not None for k in ("points", "rebounds", "assists")):
-            players.append(entry)
-    return players
-
-
-PERIOD_RE = re.compile(r"^\s*(\d)\s*[.\-]?\s*(periyot|ceyrek|c|p)\b", re.I)
-
-
-def parse_quarters(tables):
-    """Periyot basliklari olan tablodan ceyrek skorlarini cikarir."""
-    for table in tables:
-        rows = table["rows"]
-        hnorm = [norm(c) for c in rows[0]]
-        idxs = [i for i, h in enumerate(hnorm) if PERIOD_RE.match(h) or h in
-                ("1", "2", "3", "4") and len(hnorm) >= 5]
-        if len(idxs) < 4:
-            continue
-        numeric_rows = []
-        for row in rows[1:]:
-            vals = [to_int(row[i]) if i < len(row) else None for i in idxs]
-            if all(v is not None for v in vals):
-                numeric_rows.append(vals)
-        if len(numeric_rows) >= 2:
-            home, away = numeric_rows[0], numeric_rows[1]
-            return [{"home": h, "away": a} for h, a in zip(home, away)]
-    return []
-
-
-def fetch_match_detail(url):
-    """Tek bir mac detay sayfasindan ceyrekleri ve iki takimin box score'unu okur."""
-    tables = extract_tables(fetch(url))
-    boxes = []
-    for table in tables:
-        players = parse_boxscore_table(table)
-        if players:
-            boxes.append(players)
-    detail = {}
-    quarters = parse_quarters(tables)
+    summary = api_get(base, f"/api/Match/mac-ozet?matchId={match_id}") or {}
+    home_q = summary.get("homeTeamScore") or []
+    away_q = summary.get("awayTeamScore") or []
+    quarters = []
+    for i in range(max(len(home_q), len(away_q))):
+        quarters.append({
+            "home": home_q[i].get("score") if i < len(home_q) else None,
+            "away": away_q[i].get("score") if i < len(away_q) else None,
+        })
     if quarters:
         detail["quarters"] = quarters
-    if boxes:
-        detail["boxscore"] = {
-            "home": boxes[0],
-            "away": boxes[1] if len(boxes) > 1 else [],
-        }
+
+    stats = api_get(base, f"/api/Match/mac-istatistik?matchId={match_id}") or {}
+    home = box_rows((stats.get("homeTopFive") or []) + (stats.get("homeBenchPlayers") or []))
+    away = box_rows((stats.get("awayTopFive") or []) + (stats.get("awayBenchPlayers") or []))
+    if home or away:
+        detail["boxscore"] = {"home": home, "away": away}
     return detail
 
 
-def enrich_with_details(fixtures, config, errors):
-    """Oynanmis maclarin detay sayfalarindan istatistikleri cekip ekler."""
-    cfg = config.get("matchDetail") or {}
-    if not cfg.get("enabled"):
-        return 0
-    base = (config.get("baseUrl") or "").rstrip("/")
-    template = cfg.get("pathTemplate") or ""
-    league_id = str(config.get("leagueId") or "")
-    if not base or not template or not league_id:
-        return 0
-
-    limit = cfg.get("maxMatches", 30)
-    done = 0
-    for fix in fixtures:
-        if done >= limit:
-            break
-        if not fix.get("matchId") or fix.get("homeScore") is None:
-            continue
-        if cfg.get("onlyOurMatches") and not fix.get("isOurs"):
-            continue
-        if fix.get("boxscore") or fix.get("quarters"):
-            continue  # zaten var
-        url = base + template.replace("{leagueId}", league_id).replace(
-            "{matchId}", str(fix["matchId"])
-        )
-        try:
-            detail = fetch_match_detail(url)
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"mac detayi ({url}): {exc}")
-            continue
-        if detail:
-            fix.update(detail)
-            fix["detailUrl"] = url
-            done += 1
-    return done
-
-# --------------------------------------------------------------------------
-# JSON kaynak adaptoru
-# --------------------------------------------------------------------------
-def parse_json_source(payload, source):
-    rows = dig(payload, source.get("rowsPath", "")) if source.get("rowsPath") else payload
-    if not isinstance(rows, list):
-        return []
-    fields = source.get("fields", {})
+def fetch_roster(cfg: dict) -> list:
+    base = cfg["apiBaseUrl"]
+    query = (f"?teamProcessId={cfg['teamProcessId']}"
+             f"&leagueId={cfg['leagueId']}&seasonId={cfg['seasonId']}")
+    players = api_get(base, "/api/Team/get-team-active-player-list-by-season-and-league" + query) or []
     out = []
-    for row in rows:
-        item = {key: dig(row, path) for key, path in fields.items()}
-        if source.get("kind") == "fixtures":
-            item.setdefault("date", None)
-            if item.get("date"):
-                item["date"] = parse_date(str(item["date"])) or str(item["date"])[:10]
-            item["homeScore"] = to_int(item.get("homeScore"))
-            item["awayScore"] = to_int(item.get("awayScore"))
-            item["status"] = "played" if item["homeScore"] is not None else "scheduled"
-            item["id"] = f"{item.get('date')}-{norm(item.get('home'))[:12]}-{norm(item.get('away'))[:12]}"
-        else:
-            for key in ("played", "won", "lost", "pointsFor", "pointsAgainst", "diff", "points", "rank"):
-                if key in item:
-                    item[key] = to_int(item[key])
-        out.append(item)
+    for p in players:
+        birthday = p.get("birthDay") or ""
+        full = f"{p.get('firstName') or ''} {p.get('lastName') or ''}".strip()
+        out.append({
+            "no": num(p.get("jerseyNo")),
+            "name": title_tr(full),
+            "position": None,
+            "birthYear": num(birthday[:4]) if len(birthday) >= 4 else None,
+            "height": num(p.get("height")),
+            "photo": p.get("playerPhoto") or None,
+            "tbfPlayerId": num(p.get("personId")),
+        })
+    out.sort(key=lambda p: (p["no"] is None, p["no"] or 0, p["name"]))
     return out
 
 
-# --------------------------------------------------------------------------
-# Ana akis
-# --------------------------------------------------------------------------
-def mark_ours(data, aliases):
-    alias_norm = [norm(a) for a in aliases if a]
-
-    def is_ours(name):
-        n = norm(name)
-        return any(a and a in n for a in alias_norm)
-
-    for row in data.get("standings", []):
-        row["isOurs"] = is_ours(row.get("team"))
-    for fix in data.get("fixtures", []):
-        fix["isOurs"] = is_ours(fix.get("home")) or is_ours(fix.get("away"))
-    return data
-
-
-def candidate_urls(source, config):
-    """Kaynak icin denenecek adresleri sirayla verir."""
-    explicit = (source.get("url") or "").strip()
-    if explicit:
-        return [explicit]
-    base = (config.get("baseUrl") or "").rstrip("/")
-    league_id = str(config.get("leagueId") or "")
-    team_id = str(config.get("teamId") or "")
-    if not base or not league_id:
-        return []
-    urls = []
-    for path in source.get("candidatePaths", []):
-        if "{teamId}" in path and not team_id:
-            continue  # takim kimligi yoksa o adresi atla
-        urls.append(
-            base + path.replace("{leagueId}", league_id).replace("{teamId}", team_id)
-        )
-    return urls
-
-
-def load_json(path, default=None):
-    try:
-        with open(path, encoding="utf-8") as fh:
-            return json.load(fh)
-    except (OSError, ValueError):
-        return default if default is not None else {}
-
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default=CONFIG_PATH)
-    ap.add_argument("--out", default=OUT_PATH)
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--from-file", help="URL yerine yerel HTML/JSON dosyasi kullan")
-    ap.add_argument("--kind", choices=["standings", "fixtures"], help="--from-file ile birlikte")
-    ap.add_argument("--probe", action="store_true",
-                    help="Aday adresleri dene ve ne geldigini yaz (dosyaya yazmaz)")
-    args = ap.parse_args()
-
-    config = load_json(args.config)
-    previous = load_json(args.out, {})
-    aliases = config.get("teamAliases", ["evolog"])
-
-    if args.probe:
-        print(f"Tarayici modu: {'acik' if USE_BROWSER else 'kapali'}")
-        for source in config.get("sources", []):
-            for url in candidate_urls(source, config):
-                print(f"\n--- {source.get('kind')}: {url}")
-                try:
-                    body = fetch(url, retries=1, timeout=45)
-                except Exception as exc:  # noqa: BLE001
-                    print(f"    HATA: {exc}")
-                    continue
-                tables = extract_tables(body)
-                print(f"    {describe_page(body)}")
-                print(f"    ayristirilabilir tablo: {len(tables)}")
-                for i, tbl in enumerate(tables[:6]):
-                    head = " | ".join(tbl["rows"][0][:9])[:150]
-                    print(f"      tablo{i} ({len(tbl['rows'])} satir) basligi: {head}")
-                title = re.search(r"<title[^>]*>(.*?)</title>", body, re.S | re.I)
-                if title:
-                    print(f"    <title>: {title.group(1).strip()[:120]}")
-        close_renderer()
-        return 0
-
-    standings, fixtures, errors, used_sources = [], [], [], []
-
-    if args.from_file:
-        if not args.kind:
-            ap.error("--from-file ile --kind zorunlu")
-        with open(args.from_file, encoding="utf-8") as fh:
-            body = fh.read()
-        tables = extract_tables(body)
-        if args.kind == "standings":
-            standings = parse_standings(tables)
-        else:
-            fixtures = parse_fixtures(tables)
-        used_sources.append(f"file:{os.path.basename(args.from_file)}")
-    else:
-        for source in config.get("sources", []):
-            if source.get("enabled") is False:
-                continue
-            kind = source.get("kind")
-            urls = candidate_urls(source, config)
-            if not urls:
-                errors.append(f"{kind}: denenecek adres uretilemedi (url/leagueId bos).")
-                continue
-
-            tried = []
-            # Aday adreslerde az deneme yeterli; tek/acik adreste israrli ol.
-            tries = 4 if len(urls) == 1 else 2
-            for url in urls:
-                try:
-                    body = fetch(url, retries=tries, timeout=20)
-                    if source.get("type") == "json":
-                        rows = parse_json_source(json.loads(body), source)
-                    else:
-                        tables = extract_tables(body)
-                        rows = (parse_standings(tables) if kind == "standings"
-                                else parse_fixtures(tables))
-                except Exception as exc:  # noqa: BLE001
-                    # fetch() hatasi zaten adresi iceriyor; tekrarlamayalim.
-                    reason = str(exc).split(" alinamadi: ")[-1]
-                    tried.append(f"{url} -> {reason}")
-                    continue
-
-                if rows:
-                    if kind == "standings":
-                        standings.extend(rows)
-                    else:
-                        fixtures.extend(rows)
-                    used_sources.append(url)
-                    break
-                tried.append(f"{url} -> veri yok [{describe_page(body)}]")
-            else:
-                errors.append(f"{kind} icin calisan adres bulunamadi: " + " | ".join(tried))
-
-    if not args.from_file and not config.get("leagueId") and all(
-        not (src.get("url") or "").strip() for src in config.get("sources", [])
-    ):
-        errors.append(
-            "scripts/tbf_config.json icinde ne leagueId ne de kaynak URL'i tanimli."
-        )
-
-    # Yeni veri bos ise eskisini koru (yayindaki uygulama bosalmasin).
-    if not standings and previous.get("standings"):
-        standings = previous["standings"]
-        errors.append("Puan durumu cekilemedi, onceki veri korundu.")
-    if not fixtures and previous.get("fixtures"):
-        fixtures = previous["fixtures"]
-        errors.append("Fikstur cekilemedi, onceki veri korundu.")
-
-    # Fikstur birlestirme: ayni mac birden fazla kaynaktan gelirse skoru olani tut.
-    merged = {}
-    for fix in fixtures:
-        key = (fix.get("date"), norm(fix.get("home")), norm(fix.get("away")))
-        if key not in merged or (fix.get("homeScore") is not None
-                                 and merged[key].get("homeScore") is None):
-            merged[key] = {**merged.get(key, {}), **fix}
-    fixtures = sorted(merged.values(), key=lambda f: (f.get("date") or "", f.get("time") or "99:99"))
-
-    for rank, row in enumerate(standings, start=1):
-        row.setdefault("rank", rank)
-
-    # Onceki calismada cekilmis mac detaylarini tasi, eksikleri tamamla.
-    previous_detail = {
-        (f.get("date"), norm(f.get("home")), norm(f.get("away"))): f
-        for f in previous.get("fixtures", [])
-    }
-    for fix in fixtures:
-        old_fix = previous_detail.get(
-            (fix.get("date"), norm(fix.get("home")), norm(fix.get("away")))
-        )
-        if old_fix:
-            for key in ("quarters", "boxscore", "detailUrl"):
-                if old_fix.get(key) and not fix.get(key):
-                    fix[key] = old_fix[key]
-
-    mark_ours({"standings": standings, "fixtures": fixtures}, aliases)
-    if not args.from_file:
+# ------------------------------------------------------------------- teshis
+def probe(cfg: dict) -> int:
+    base = cfg["apiBaseUrl"]
+    checks = [
+        ("puan durumu", f"/api/League/get-standings-table?leagueId={cfg['leagueId']}"),
+        ("haftalar", f"/api/League/get-league-weeks?leagueId={cfg['leagueId']}&seasonId={cfg['seasonId']}"),
+        ("fikstur", f"/api/Team/get-team-detail-matches-by-season-and-league"
+                    f"?teamProcessId={cfg['teamProcessId']}&leagueId={cfg['leagueId']}&seasonId={cfg['seasonId']}"),
+        ("kadro", f"/api/Team/get-team-active-player-list-by-season-and-league"
+                  f"?teamProcessId={cfg['teamProcessId']}&leagueId={cfg['leagueId']}&seasonId={cfg['seasonId']}"),
+    ]
+    bad = 0
+    log(f"API: {base}")
+    for label, path in checks:
         try:
-            added = enrich_with_details(fixtures, config, errors)
-            if added:
-                print(f"  {added} mac detayi cekildi", file=sys.stderr)
-        except Exception as exc:  # noqa: BLE001
-            errors.append(f"mac detaylari cekilemedi: {exc}")
+            data = api_get(base, path, tries=1)
+        except Exception as exc:
+            bad += 1
+            log(f"  [HATA] {label}: {exc}")
+            continue
+        if isinstance(data, list):
+            size = f"{len(data)} kayit"
+        elif isinstance(data, dict):
+            size = f"{len(data)} alan"
+        else:
+            size = str(type(data).__name__)
+        log(f"  [OK]   {label}: {size}")
+    return 1 if bad else 0
 
-    # Hicbir kaynak cekilemediyse zaman damgasini degistirme: dosya ayni kalsin,
-    # basarisiz her calisma bos bir commit uretmesin.
-    fetched_any = bool(used_sources)
-    data = {
-        "isPlaceholder": not (standings or fixtures),
-        "updatedAt": (dt.datetime.now(TZ).isoformat(timespec="seconds")
-                      if fetched_any else previous.get("updatedAt")),
-        "source": used_sources or previous.get("source"),
-        "season": config.get("season"),
-        "league": config.get("league"),
-        "group": config.get("group"),
-        "ourTeamKey": norm(aliases[0]) if aliases else "evolog",
+
+# ------------------------------------------------------------------- ana akis
+def build(cfg: dict, want_details: bool) -> dict:
+    errors: list[str] = []
+    previous = {}
+    if LEAGUE_PATH.exists():
+        try:
+            previous = json.loads(LEAGUE_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            previous = {}
+    old_details = {}
+    for f in previous.get("fixtures") or []:
+        if f.get("matchId") and (f.get("quarters") or f.get("boxscore")):
+            old_details[f["matchId"]] = {k: f[k] for k in ("quarters", "boxscore") if k in f}
+
+    try:
+        standings, group, warn = fetch_standings(cfg)
+        errors += warn
+    except Exception as exc:
+        standings, group = previous.get("standings") or [], previous.get("group")
+        errors.append(f"Puan durumu cekilemedi: {exc}")
+
+    try:
+        fixtures, warn = fetch_fixtures(cfg)
+        errors += warn
+    except Exception as exc:
+        fixtures = previous.get("fixtures") or []
+        errors.append(f"Fikstur cekilemedi: {exc}")
+
+    if want_details and fixtures:
+        detail_cfg = cfg.get("matchDetail") or {}
+        only_ours = detail_cfg.get("onlyOurMatches", True)
+        limit = int(detail_cfg.get("maxMatches", 30))
+        done = 0
+        for f in fixtures:
+            if not f.get("played") or not f.get("matchId"):
+                continue
+            if only_ours and not f.get("isOurs"):
+                continue
+            cached = old_details.get(f["matchId"])
+            if cached:
+                f.update(cached)
+                continue
+            if done >= limit:
+                break
+            try:
+                f.update(fetch_detail(cfg, f["matchId"]))
+                done += 1
+            except Exception as exc:
+                errors.append(f"Mac {f['matchId']} detayi alinamadi: {exc}")
+
+    played = [f for f in fixtures if f.get("played")]
+    return {
+        "isPlaceholder": not standings and not fixtures,
+        "updatedAt": now_iso(),
+        "source": cfg["apiBaseUrl"],
+        "season": cfg.get("season"),
+        "league": cfg.get("league"),
+        "group": group or cfg.get("group"),
+        "ourTeamKey": cfg.get("ourTeamKey", "evolog"),
+        "ourTeamId": num(cfg.get("teamProcessId")),
+        "counts": {"standings": len(standings), "fixtures": len(fixtures), "played": len(played)},
         "standings": standings,
         "fixtures": fixtures,
         "errors": errors,
     }
-    mark_ours(data, aliases)
 
-    body = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="TBF API senkronizasyonu")
+    ap.add_argument("--dry-run", action="store_true", help="dosyaya yazma, ozeti goster")
+    ap.add_argument("--probe", action="store_true", help="endpoint'leri dene ve cik")
+    ap.add_argument("--roster", action="store_true", help="data/team.json kadrosunu da guncelle")
+    ap.add_argument("--no-details", action="store_true", help="ceyrek/oyuncu istatistigi cekme")
+    args = ap.parse_args()
+
+    cfg = load_config()
+
+    if args.probe:
+        return probe(cfg)
+
+    league = build(cfg, want_details=not args.no_details)
+    counts = league["counts"]
+    log(f"Puan durumu: {counts['standings']} takim · Fikstur: {counts['fixtures']} mac "
+        f"({counts['played']} oynanmis) · Grup: {league['group']}")
+    for err in league["errors"]:
+        log(f"  uyari: {err}")
+
+    if args.roster:
+        try:
+            players = fetch_roster(cfg)
+            team = json.loads(TEAM_PATH.read_text(encoding="utf-8"))
+            team["players"] = players
+            team["league"] = f"{cfg.get('league')} - {league['group']}" if league.get("group") else cfg.get("league")
+            team["season"] = cfg.get("season")
+            if not args.dry_run:
+                TEAM_PATH.write_text(json.dumps(team, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            log(f"Kadro: {len(players)} oyuncu")
+        except Exception as exc:
+            log(f"  uyari: Kadro cekilemedi: {exc}")
+
     if args.dry_run:
-        print(body)
-    else:
-        with open(args.out, "w", encoding="utf-8") as fh:
-            fh.write(body)
-        print(f"Yazildi: {args.out}")
-    print(
-        f"  puan durumu: {len(standings)} satir, fikstur: {len(fixtures)} mac, "
-        f"hata: {len(errors)}",
-        file=sys.stderr,
-    )
-    for err in errors:
-        print(f"  ! {err}", file=sys.stderr)
-    close_renderer()
+        log(json.dumps(league, ensure_ascii=False, indent=1)[:2000])
+        return 0
+
+    LEAGUE_PATH.write_text(json.dumps(league, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    log(f"Yazildi: {LEAGUE_PATH.relative_to(ROOT)}")
     return 0
 
 

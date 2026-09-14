@@ -1,27 +1,228 @@
 {
   "club": "EVOLOG",
   "team": "U14 Kız Takımı",
-  "season": "2025-2026",
-  "league": "TBF İstanbul U14 Kız - A Grubu",
-  "colors": { "primary": "#e5195f", "secondary": "#1b2a4a" },
+  "season": "2026-2027",
+  "league": "TBF İstanbul U14 Kız - KIZLAR U14A LİGİ",
+  "colors": {
+    "primary": "#e5195f",
+    "secondary": "#1b2a4a"
+  },
   "staff": [
-    { "role": "Baş Antrenör", "name": "Antrenör adı", "phone": "" },
-    { "role": "Yardımcı Antrenör", "name": "Yardımcı antrenör adı", "phone": "" },
-    { "role": "Takım Sorumlusu", "name": "Sorumlu adı", "phone": "" }
+    {
+      "role": "Baş Antrenör",
+      "name": "Antrenör adı",
+      "phone": ""
+    },
+    {
+      "role": "Yardımcı Antrenör",
+      "name": "Yardımcı antrenör adı",
+      "phone": ""
+    },
+    {
+      "role": "Takım Sorumlusu",
+      "name": "Sorumlu adı",
+      "phone": ""
+    }
   ],
   "players": [
-    { "no": 4,  "name": "Oyuncu 1",  "position": "Guard",   "birthYear": 2012, "height": null },
-    { "no": 5,  "name": "Oyuncu 2",  "position": "Guard",   "birthYear": 2012, "height": null },
-    { "no": 6,  "name": "Oyuncu 3",  "position": "Forvet",  "birthYear": 2012, "height": null },
-    { "no": 7,  "name": "Oyuncu 4",  "position": "Guard",   "birthYear": 2013, "height": null },
-    { "no": 8,  "name": "Oyuncu 5",  "position": "Forvet",  "birthYear": 2012, "height": null },
-    { "no": 9,  "name": "Oyuncu 6",  "position": "Pivot",   "birthYear": 2012, "height": null },
-    { "no": 10, "name": "Oyuncu 7",  "position": "Guard",   "birthYear": 2013, "height": null },
-    { "no": 11, "name": "Oyuncu 8",  "position": "Forvet",  "birthYear": 2012, "height": null },
-    { "no": 12, "name": "Oyuncu 9",  "position": "Pivot",   "birthYear": 2012, "height": null },
-    { "no": 13, "name": "Oyuncu 10", "position": "Guard",   "birthYear": 2013, "height": null },
-    { "no": 14, "name": "Oyuncu 11", "position": "Forvet",  "birthYear": 2013, "height": null },
-    { "no": 15, "name": "Oyuncu 12", "position": "Pivot",   "birthYear": 2012, "height": null }
+    {
+      "no": 2,
+      "name": "Zeynep Danişmen",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/d7a944d3-aaf7-4e27-9928-ba7e4e0aa51e.webp",
+      "tbfPlayerId": 750529
+    },
+    {
+      "no": 5,
+      "name": "Yağmur Gündoğdu",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/ff81dc88-55a4-494a-ad7d-7a38a1d6da78.webp",
+      "tbfPlayerId": 607558
+    },
+    {
+      "no": 8,
+      "name": "Feyza Biçakçi",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/5297e863-7d78-4184-bc19-1335cab264a6.webp",
+      "tbfPlayerId": 626643
+    },
+    {
+      "no": 11,
+      "name": "Ela Gülüzar Kartal",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/7bd27d26-eee7-4909-8e0f-8cb2b893acbc.webp",
+      "tbfPlayerId": 735398
+    },
+    {
+      "no": 12,
+      "name": "Zeynep Taylan",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/75b80c22-78fa-41e8-93d5-467aa1baf961.webp",
+      "tbfPlayerId": 628042
+    },
+    {
+      "no": 14,
+      "name": "Ege Özyildirim",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": null,
+      "tbfPlayerId": 607744
+    },
+    {
+      "no": 24,
+      "name": "Defne Sencer",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/83ccb296-6b36-4bcf-a1fd-41195cbdec30.webp",
+      "tbfPlayerId": 618317
+    },
+    {
+      "no": 30,
+      "name": "Elif Konak",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/f37cb465-f6ca-493d-9ee5-8423f6040bf4.webp",
+      "tbfPlayerId": 735397
+    },
+    {
+      "no": 96,
+      "name": "Zeynep Yazicioğlu",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/6921072a-a653-4586-a6f4-f90349a5e4fd.webp",
+      "tbfPlayerId": 618325
+    },
+    {
+      "no": 99,
+      "name": "Asya Şentürk",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/991c9e56-1beb-4d67-8824-46f2c5af2558.webp",
+      "tbfPlayerId": 735392
+    },
+    {
+      "no": null,
+      "name": "Arin Lara Eski",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/910106bf-acd7-4a1e-9898-66d9d31dc526.webp",
+      "tbfPlayerId": 621511
+    },
+    {
+      "no": null,
+      "name": "Arnisa Erva Çalim",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/9a6bf422-149d-4a07-8bc5-482f3042873d.webp",
+      "tbfPlayerId": 611184
+    },
+    {
+      "no": null,
+      "name": "Azra Bozgedik",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/7075b390-4ccf-47b8-a426-cee48fdaa1c8.webp",
+      "tbfPlayerId": 737245
+    },
+    {
+      "no": null,
+      "name": "Azra Merve Akansu",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/d1417a4c-ece0-40eb-a923-c7e8b5f65545.webp",
+      "tbfPlayerId": 530030
+    },
+    {
+      "no": null,
+      "name": "Cemre Cürgül",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/5b429ebd-bdb7-4a2b-80b7-b89aecf63ccd.webp",
+      "tbfPlayerId": 740769
+    },
+    {
+      "no": null,
+      "name": "Derin Subaşi",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/99f52ea8-b9f4-4e81-8caa-b7fb7662e9a9.webp",
+      "tbfPlayerId": 743452
+    },
+    {
+      "no": null,
+      "name": "Destan Bakir",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": null,
+      "tbfPlayerId": 735390
+    },
+    {
+      "no": null,
+      "name": "Doğa Ekşioğlu",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": null,
+      "tbfPlayerId": 759947
+    },
+    {
+      "no": null,
+      "name": "Eda Naz Tanyeri",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/414eee13-ac34-429c-8f05-3c653ea21542.webp",
+      "tbfPlayerId": 607538
+    },
+    {
+      "no": null,
+      "name": "Işik Baytok",
+      "position": null,
+      "birthYear": 2014,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/bedcbc70-c2f5-4a6c-a27b-1658cda2308f.webp",
+      "tbfPlayerId": 776349
+    },
+    {
+      "no": null,
+      "name": "Loya Nisa Üstbaş",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/7fd6f680-9a72-4a9f-b0a8-b0f5b70d05f6.webp",
+      "tbfPlayerId": 750512
+    },
+    {
+      "no": null,
+      "name": "Nisan Yilmaz",
+      "position": null,
+      "birthYear": 2013,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/af8e82a1-7c6e-4cce-aa4d-d6c5712233b9.webp",
+      "tbfPlayerId": 568355
+    }
   ],
   "_not": "Bu dosya elle düzenlenir. Oyuncu adlarını, numaralarını ve mevkilerini gerçek kadroyla değiştirin."
 }
