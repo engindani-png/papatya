@@ -1,6 +1,6 @@
 {
  "isPlaceholder": false,
- "updatedAt": "2026-09-15T01:11:41+03:00",
+ "updatedAt": "2026-09-15T01:12:21+03:00",
  "source": "https://miniappapi.tbf.org.tr/webapi-service",
  "season": "2026-2027",
  "league": "TBF İstanbul U14 Kız",
@@ -24,7 +24,7 @@
    "diff": 31,
    "points": 4,
    "teamId": 269310,
-   "logo": null,
+   "logo": "../evolog/logos/269310.png",
    "isOurs": false
   },
   {
@@ -52,7 +52,7 @@
    "diff": -51,
    "points": 2,
    "teamId": 270177,
-   "logo": null,
+   "logo": "../evolog/logos/270177.png",
    "isOurs": false
   },
   {
@@ -197,7 +197,7 @@
    "homeId": 269325,
    "awayId": 270177,
    "homeLogo": "../evolog/logos/269325.png",
-   "awayLogo": null,
+   "awayLogo": "../evolog/logos/270177.png",
    "isOurs": true,
    "isHome": true,
    "played": true,
@@ -637,7 +637,7 @@
    "week": 4,
    "homeId": 269310,
    "awayId": 269325,
-   "homeLogo": null,
+   "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
@@ -789,7 +789,7 @@
    "week": 12,
    "homeId": 270177,
    "awayId": 269325,
-   "homeLogo": null,
+   "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
@@ -847,7 +847,7 @@
    "homeId": 269325,
    "awayId": 269310,
    "homeLogo": "../evolog/logos/269325.png",
-   "awayLogo": null,
+   "awayLogo": "../evolog/logos/269310.png",
    "isOurs": true,
    "isHome": true,
    "played": false

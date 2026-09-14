@@ -29,6 +29,7 @@ import re
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -324,6 +325,10 @@ def fetch_logo(url: str, team_id) -> str | None:
     public = f"{LOGO_URL_BASE}/{name}"
     if target.exists() and target.stat().st_size > 0:
         return public
+    # TBF dosya adlarinda bosluk olabiliyor ("..._Galatasaray SK.png");
+    # kodlanmadan istenirse baglanti kuruIamiyor.
+    parts = urllib.parse.urlsplit(url)
+    url = urllib.parse.urlunsplit(parts._replace(path=urllib.parse.quote(parts.path, safe="/%")))
     try:
         req = urllib.request.Request(url, headers=IMAGE_HEADERS)
         with urllib.request.urlopen(req, timeout=45) as resp:
