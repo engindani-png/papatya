@@ -306,7 +306,8 @@
       }).join("") + "</tbody></table></div>";
   }
 
-  function fixtureRow(f, idx) {
+  function fixtureRow(f, idx, opts) {
+    opts = opts || {};
     var d = f._d;
     var played = f.homeScore != null && f.awayScore != null;
     var homeWin = played && f.homeScore > f.awayScore;
@@ -346,19 +347,33 @@
         boxTable(f.boxscore && f.boxscore.away, f.away) +
         "</div>";
     }
-    return '<article class="fx' + (f.isOurs ? " ours" : "") + '">' + head + body + "</article>";
+    return '<article class="fx' + (f.isOurs ? " ours" : "") +
+      (opts.hot ? " hot" : "") + '">' + head + body + "</article>";
   }
 
   function renderMatches() {
     el("matchNotice").innerHTML = notice(state.league);
     var sets = splitFixtures();
     renderBoard(sets.upcoming.filter(function (f) { return f.isOurs !== false; })[0] || sets.upcoming[0]);
+
+    // Sıralama: sıradaki maç → son oynanan maç → yaklaşan fikstür → önceki
+    // maçlar. Taze sonuç en üstte dursun; geçmişe bakmak isteyen aşağı iner.
+    var son = sets.played[0] || null;
+    var oncekiler = sets.played.slice(1);
+
+    el("lastTitle").hidden = !son;
+    el("lastMatch").innerHTML = son
+      ? fixtureRow(son, "s0", { hot: true })
+      : "";
+
     el("upcomingList").innerHTML = sets.upcoming.length
       ? sets.upcoming.map(function (f, i) { return fixtureRow(f, "u" + i); }).join("")
       : '<div class="blank">Planlanmış maç görünmüyor.</div>';
-    el("playedList").innerHTML = sets.played.length
-      ? sets.played.map(function (f, i) { return fixtureRow(f, "p" + i); }).join("")
-      : '<div class="blank">Henüz oynanmış maç yok.</div>';
+
+    el("prevTitle").hidden = !oncekiler.length;
+    el("playedList").innerHTML = oncekiler.length
+      ? oncekiler.map(function (f, i) { return fixtureRow(f, "p" + i); }).join("")
+      : "";
   }
 
   // ---------------------------------------------------------- lig geneli

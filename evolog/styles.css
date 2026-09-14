@@ -595,3 +595,7 @@ table.mlog td.mo span.l { background: var(--loss); }
   font-family: var(--display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; }
 .pushrow.on button { background: transparent; color: var(--chalk-dim); border: 1px solid var(--line); }
 .pushrow button:disabled { opacity: .5; cursor: default; }
+
+/* Son oynanan maç: listede öne çıksın ama detayı kapalı başlar. */
+.fx.hot { border: 1px solid var(--amber); border-radius: 10px; background: var(--ink-2); }
+.fx.hot .fx-head { padding-left: 12px; padding-right: 12px; }
