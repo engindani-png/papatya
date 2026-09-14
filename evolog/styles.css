@@ -372,3 +372,8 @@ footer { color: var(--chalk-faint); font-size: 11px; line-height: 1.75;
 }
 .toast.show{ opacity:1; transform:translate(-50%, 0); }
 @media (prefers-reduced-motion:reduce){ .toast{ transition:none; } }
+
+.adminlink{ margin:1.8rem 0 0; text-align:center; }
+.adminlink a{ color:var(--chalk-faint); font-size:.78rem; letter-spacing:.04em; text-decoration:none;
+  border-bottom:1px dotted var(--line); padding-bottom:1px; }
+.adminlink a:hover{ color:var(--amber); border-color:var(--amber); }

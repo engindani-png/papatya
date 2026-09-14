@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evolog U14 · Antrenman programı yönetimi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0f1e1c; --ink-2:#132825; --ink-3:#1b3733; --line:#24423d; --line-soft:#1c3531;
+  --chalk:#eff5f2; --chalk-dim:#8fa9a3; --chalk-faint:#5e7a75;
+  --amber:#f2a03d; --amber-dim:rgba(242,160,61,.13);
+  --win:#4fd48a; --loss:#f2695e;
+  --display:"Oswald","Arial Narrow",Arial,sans-serif;
+  --body:"Karla",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --gutter:18px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ink);color:var(--chalk);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:52rem;margin:0 auto;padding:var(--gutter) var(--gutter) 5rem}
+header{border-bottom:1px solid var(--line);padding:1rem var(--gutter) .9rem;background:var(--ink-2)}
+header .in{max-width:52rem;margin:0 auto;display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:600;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase;margin:0}
+header a{color:var(--chalk-dim);font-size:.82rem;text-decoration:none;margin-left:auto}
+header a:hover{color:var(--amber)}
+h2{font-family:var(--display);font-weight:500;font-size:.82rem;letter-spacing:.16em;text-transform:uppercase;
+   color:var(--chalk-faint);margin:2rem 0 .7rem;padding-bottom:.4rem;border-bottom:1px solid var(--line-soft)}
+p.hint{color:var(--chalk-dim);font-size:.86rem;margin:.3rem 0 .9rem}
+textarea,input,select{
+  width:100%;background:var(--ink-2);color:var(--chalk);border:1px solid var(--line);
+  border-radius:8px;padding:.6rem .7rem;font-family:var(--body);font-size:.93rem}
+textarea{min-height:11rem;resize:vertical;line-height:1.55}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent}
+button{
+  font-family:var(--display);font-size:.88rem;letter-spacing:.09em;text-transform:uppercase;font-weight:500;
+  background:var(--amber);color:#14110b;border:0;border-radius:999px;padding:.62rem 1.3rem;cursor:pointer}
+button.ghost{background:transparent;color:var(--chalk-dim);border:1px solid var(--line)}
+button.ghost:hover{color:var(--amber);border-color:var(--amber)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.9rem 0}
+.card{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:10px;padding:.8rem;margin-bottom:.6rem}
+.card.bad{border-color:var(--loss)}
+.grid{display:grid;grid-template-columns:7.5rem 5rem 5rem 1fr;gap:.5rem;align-items:center}
+.grid label{grid-column:1/-1;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint)}
+.grid .full{grid-column:1/-1}
+@media (max-width:560px){ .grid{grid-template-columns:1fr 1fr} .grid .full{grid-column:1/-1} }
+.note{background:var(--amber-dim);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;
+  padding:.65rem .8rem;margin:.6rem 0;font-size:.88rem}
+.note.bad{background:rgba(242,105,94,.12);border-left-color:var(--loss)}
+.note.ok{background:rgba(79,212,138,.12);border-left-color:var(--win)}
+.pill{display:inline-block;font-family:var(--display);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.16rem .55rem;border-radius:999px;background:var(--ink-3);color:var(--chalk-dim);margin-left:.4rem}
+.pill.guess{background:rgba(242,160,61,.2);color:var(--amber)}
+.src{color:var(--chalk-faint);font-size:.8rem;font-style:italic;margin-top:.45rem;word-break:break-word}
+.del{background:none;border:0;color:var(--chalk-faint);font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;line-height:1}
+.del:hover{color:var(--loss)}
+.head{display:flex;align-items:center;gap:.5rem;margin-bottom:.55rem}
+.head strong{font-family:var(--display);letter-spacing:.06em;font-size:.95rem}
+.head .del{margin-left:auto}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--ink-2);border-top:1px solid var(--line);
+  padding:.7rem var(--gutter) calc(.7rem + env(safe-area-inset-bottom,0px));z-index:10}
+.bar .in{max-width:52rem;margin:0 auto;display:flex;gap:.6rem;align-items:center}
+.bar .msg{font-size:.85rem;color:var(--chalk-dim);flex:1;min-width:0}
+</style>
+</head>
+<body>
+
+<header><div class="in">
+  <h1>Antrenman programı</h1>
+  <a href="./">← Uygulamaya dön</a>
+</div></header>
+
+<div class="wrap">
+
+  <section id="loginBox">
+    <h2>Giriş</h2>
+    <p class="hint">Bu ekran yalnızca antrenör ve takım sorumlusu içindir.</p>
+    <div class="row">
+      <input type="password" id="pass" placeholder="Yönetim şifresi" autocomplete="current-password" style="max-width:18rem">
+      <button id="loginBtn">Gir</button>
+    </div>
+    <div id="loginMsg"></div>
+  </section>
+
+  <main id="adminBox" hidden>
+    <h2>WhatsApp mesajını yapıştırın</h2>
+    <p class="hint">Gruptan gelen mesajı olduğu gibi yapıştırın — tarih, saat, salon ve iptal
+      bilgileri ayıklanır. Anlaşılmayan satırlar aşağıda ayrıca gösterilir; hepsini
+      kaydetmeden önce düzeltebilirsiniz.</p>
+    <textarea id="raw" placeholder="Örnek:&#10;Merhabalar, bu haftanın programı:&#10;Salı 18:30-20:00 Şerifali Spor Salonu&#10;Perşembe 19:00 Ülker&#10;Cumartesi maç var, antrenman yok"></textarea>
+    <div class="row">
+      <button id="parseBtn">Çözümle</button>
+      <button class="ghost" id="addBtn">Elle satır ekle</button>
+      <button class="ghost" id="reloadBtn">Kayıtlıyı getir</button>
+    </div>
+
+    <div id="parseMsg"></div>
+
+    <h2>Antrenmanlar</h2>
+    <div id="sessions"></div>
+
+    <h2>Program değişiklikleri</h2>
+    <p class="hint">İptal, tatil ya da saat değişikliği gibi tek seferlik durumlar.</p>
+    <div id="exceptions"></div>
+    <div class="row"><button class="ghost" id="addExcBtn">Değişiklik ekle</button></div>
+
+    <h2>Salonlar</h2>
+    <div id="venues"></div>
+    <div class="row"><button class="ghost" id="addVenueBtn">Salon ekle</button></div>
+  </main>
+</div>
+
+<div class="bar" id="bar" hidden><div class="in">
+  <div class="msg" id="saveMsg">Değişiklikler kaydedilmedi.</div>
+  <button id="saveBtn">Kaydet</button>
+</div></div>
+
+<script src="parser.js"></script>
+<script src="yonetim.js"></script>
+</body>
+</html>
