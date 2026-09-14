@@ -13,6 +13,23 @@ sayfalarından otomatik çekilir**.
 
 Arayüzü örnek verilerle görmek için adresin sonuna `?demo=1` ekleyin.
 
+Tek dosyalık, kendi kendine yeten bir önizleme (`evolog/preview.html`) da var;
+veriyi sayfaya gömer, sunucu gerektirmez:
+
+```bash
+python3 scripts/build_artifact.py        # evolog/preview.html üretir
+```
+
+## Tasarım
+
+Loş salonlarda okunacağı için bilinçli olarak tek temalı: zemin derin saha
+yeşili (`#0f1e1c`), aksan parke/top kehribarı (`#f2a03d`), galibiyet ve
+mağlubiyet için aksandan ayrı anlamsal renkler. Skorbord rakamları ve
+etiketler sıkışık **Oswald**, gövde metni **Karla**. Maçlar, kadro ve
+antrenman aynı üç sütunlu çizelge ritmini paylaşır (sol oluk · içerik · etiket);
+kart görünümü yalnızca skorbord için ayrılmıştır, takımın kendi satırları
+kehribar rayla ayrışır.
+
 ## Verileri düzenleme
 
 Tüm veriler `data/` klasöründeki JSON dosyalarında. GitHub üzerinden doğrudan

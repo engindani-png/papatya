@@ -1,23 +1,23 @@
-/* Evolog U14 Kız - uygulama mantığı */
+/* Evolog U14 Kız — uygulama mantığı */
 (function () {
   "use strict";
 
-  var DATA = "../data/";
-  var params = new URLSearchParams(location.search);
-  var DEMO = params.get("demo") === "1";
+  var DATA = window.EVOLOG_DATA_PATH || "../data/";
+  var INLINE = window.EVOLOG_INLINE_DATA || null;
+  var DEMO = new URLSearchParams(location.search).get("demo") === "1";
+  var PANELS = ["maclar", "puan", "kadro", "antrenman"];
 
   var GUNLER = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
   var AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
-  var state = { team: null, training: null, league: null, countdownTimer: null };
+  var state = { team: null, training: null, league: null, timer: null };
 
-  // ---------------------------------------------------------------- yardımcı
+  // ------------------------------------------------------------- yardımcı
   function esc(v) {
     return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
   }
-
   function el(id) { return document.getElementById(id); }
 
   function norm(s) {
@@ -27,7 +27,15 @@
       .trim().toLowerCase();
   }
 
-  /** "2026-01-24" + "13:30" -> Date (yerel saat) */
+  var ICONS = {
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    pin: '<path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/>',
+    cal: '<rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/>'
+  };
+  function ico(name) {
+    return '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + "</svg>";
+  }
+
   function matchDate(f) {
     if (!f || !f.date) return null;
     var p = String(f.date).split("-").map(Number);
@@ -37,9 +45,8 @@
   }
 
   function fmtDate(d) {
-    if (!d) return "";
-    return d.getDate() + " " + AYLAR[d.getMonth()] + " " + d.getFullYear() +
-      ", " + GUNLER[d.getDay()];
+    return d ? d.getDate() + " " + AYLAR[d.getMonth()] + " " + d.getFullYear() +
+      ", " + GUNLER[d.getDay()] : "";
   }
 
   function isOurTeam(name) {
@@ -49,20 +56,19 @@
     return aliases.some(function (a) { return a && n.indexOf(a) !== -1; });
   }
 
-  // ---------------------------------------------------------------- veri
-  function load(file) {
+  // ------------------------------------------------------------- veri
+  function load(key, file) {
+    if (INLINE) return Promise.resolve(INLINE[key] || null);
     return fetch(DATA + file, { cache: "no-cache" })
-      .then(function (r) {
-        if (!r.ok) throw new Error(file + " okunamadı (" + r.status + ")");
-        return r.json();
-      });
+      .then(function (r) { if (!r.ok) throw new Error(file); return r.json(); })
+      .catch(function () { return null; });
   }
 
   function boot() {
     Promise.all([
-      load("team.json").catch(function () { return null; }),
-      load("training.json").catch(function () { return null; }),
-      load(DEMO ? "league.example.json" : "league.json").catch(function () { return null; })
+      load("team", "team.json"),
+      load("training", "training.json"),
+      load(DEMO ? "leagueDemo" : "league", DEMO ? "league.example.json" : "league.json")
     ]).then(function (res) {
       state.team = res[0];
       state.training = res[1];
@@ -71,125 +77,120 @@
     });
   }
 
-  // ---------------------------------------------------------------- başlık
+  // ------------------------------------------------------------- üst bar
   function renderSync() {
-    var box = el("syncBox");
-    var lg = state.league;
-    if (!lg) {
-      box.innerHTML = '<span><span class="dot off"></span> veri yok</span>';
-      return;
-    }
+    var box = el("syncBox"), lg = state.league;
+    if (!lg) { box.innerHTML = '<span class="dot off"></span>veri yok'; return; }
     if (lg.league) {
       el("leagueLabel").textContent = lg.league + (lg.group ? " · " + lg.group : "");
     }
-    if (!lg.updatedAt) {
-      box.innerHTML = '<span><span class="dot off"></span> senkronize değil</span>';
-      return;
-    }
+    if (!lg.updatedAt) { box.innerHTML = '<span class="dot off"></span>senkronize değil'; return; }
     var d = new Date(lg.updatedAt);
-    var saatFarki = (Date.now() - d.getTime()) / 36e5;
-    var cls = saatFarki < 24 ? "ok" : saatFarki < 96 ? "stale" : "off";
-    box.innerHTML =
-      '<span><span class="dot ' + cls + '"></span> TBF verisi</span>' +
-      '<span>' + esc(d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" })) +
-      " " + esc(d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })) + "</span>";
+    var saat = (Date.now() - d.getTime()) / 36e5;
+    box.innerHTML = '<span class="dot ' + (saat < 24 ? "ok" : saat < 96 ? "stale" : "off") +
+      '"></span>TBF verisi<br><span class="stamp">' +
+      esc(d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" })) + " " +
+      esc(d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })) + "</span>";
   }
 
   function notice(lg) {
     if (!lg) {
-      return '<div class="banner error"><span>⚠️</span><div>Lig verisi yüklenemedi. ' +
-        'Sayfayı yenileyin veya <code>data/league.json</code> dosyasını kontrol edin.</div></div>';
+      return '<div class="note bad"><div>Lig verisi yüklenemedi. Sayfayı yenileyin ya da ' +
+        "<code>data/league.json</code> dosyasını kontrol edin.</div></div>";
     }
-    var out = "";
     if (lg.isDemo) {
-      out += '<div class="banner"><span>🧪</span><div><b>Önizleme verisi.</b> ' +
-        'Bu ekrandaki maçlar ve puanlar gerçek değildir, yalnızca arayüzü göstermek içindir.</div></div>';
-    } else if (lg.isPlaceholder || (!(lg.standings || []).length && !(lg.fixtures || []).length)) {
-      out += '<div class="banner"><span>⏳</span><div><b>TBF verisi henüz çekilmedi.</b> ' +
-        '<code>scripts/tbf_config.json</code> içine lig sayfası adreslerini girip ' +
-        '“TBF veri senkronizasyonu” iş akışını çalıştırın.</div></div>';
+      return '<div class="note"><div><b>Örnek veri.</b> Buradaki maçlar ve puanlar gerçek değil, ' +
+        "yalnızca ekranın nasıl görüneceğini gösteriyor.</div></div>";
     }
-    if (lg.errors && lg.errors.length && !lg.isDemo && !out) {
-      out += '<div class="banner error"><span>⚠️</span><div><b>Son senkronizasyon uyarıları:</b><br>' +
+    if (lg.isPlaceholder || (!(lg.standings || []).length && !(lg.fixtures || []).length)) {
+      return '<div class="note"><div><b>TBF verisi henüz çekilmedi.</b> ' +
+        "<code>scripts/tbf_config.json</code> içine lig sayfası adreslerini girip " +
+        "“TBF veri senkronizasyonu” iş akışını çalıştırın.</div></div>";
+    }
+    if (lg.errors && lg.errors.length) {
+      return '<div class="note bad"><div><b>Son senkronizasyon uyarıları</b><br>' +
         lg.errors.map(esc).join("<br>") + "</div></div>";
     }
-    return out;
+    return "";
   }
 
-  // ---------------------------------------------------------------- maçlar
+  // ------------------------------------------------------------- maçlar
   function splitFixtures() {
     var list = ((state.league && state.league.fixtures) || []).slice();
     list.forEach(function (f) {
       f._d = matchDate(f);
       if (f.isOurs == null) f.isOurs = isOurTeam(f.home) || isOurTeam(f.away);
     });
-    var now = new Date();
+    var now = Date.now();
     var played = list.filter(function (f) { return f.homeScore != null && f.awayScore != null; });
     var upcoming = list.filter(function (f) {
       return !(f.homeScore != null && f.awayScore != null) &&
-        (!f._d || f._d.getTime() > now.getTime() - 3 * 36e5);
+        (!f._d || f._d.getTime() > now - 3 * 36e5);
     });
     played.sort(function (a, b) { return (b.date || "").localeCompare(a.date || ""); });
     upcoming.sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); });
     return { played: played, upcoming: upcoming };
   }
 
-  function renderHero(next) {
-    var slot = el("heroSlot");
+  function renderBoard(next) {
+    var slot = el("boardSlot");
     if (!next) { slot.innerHTML = ""; return; }
     var d = next._d;
     slot.innerHTML =
-      '<div class="hero">' +
-        '<div class="label">Sıradaki Maç' + (next.week ? " · " + esc(next.week) + ". Hafta" : "") + "</div>" +
-        '<div class="teams">' +
-          '<div class="team">' + esc(next.home) + "</div>" +
-          '<div class="vs">VS</div>' +
-          '<div class="team away">' + esc(next.away) + "</div>" +
+      '<section class="board">' +
+        '<div class="label">Sıradaki maç' + (next.week ? " · " + esc(next.week) + ". hafta" : "") + "</div>" +
+        '<div class="board-teams">' +
+          '<div class="side"><div class="tname">' + esc(next.home) + "</div>" +
+            '<div class="trole">Ev sahibi</div></div>' +
+          '<div class="dash">—</div>' +
+          '<div class="side right"><div class="tname">' + esc(next.away) + "</div>" +
+            '<div class="trole">Deplasman</div></div>' +
         "</div>" +
-        '<div class="meta">' +
-          (d ? "<span>📅 " + esc(fmtDate(d)) + "</span>" : "") +
-          (next.time ? "<span>🕐 " + esc(next.time) + "</span>" : "") +
-          (next.venue ? "<span>📍 " + esc(next.venue) + "</span>" : "") +
+        '<div class="board-meta">' +
+          (d ? "<span>" + ico("cal") + esc(fmtDate(d)) + "</span>" : "") +
+          (next.time ? "<span>" + ico("clock") + esc(next.time) + "</span>" : "") +
+          (next.venue ? "<span>" + ico("pin") + esc(next.venue) + "</span>" : "") +
         "</div>" +
-        (d ? '<div class="countdown" id="countdown"></div>' : "") +
-      "</div>";
-    if (d) startCountdown(d);
+        (d ? '<div class="clock" id="clock"></div>' : "") +
+      "</section>";
+    if (d) startClock(d);
   }
 
-  function startCountdown(target) {
-    if (state.countdownTimer) clearInterval(state.countdownTimer);
+  function startClock(target) {
+    if (state.timer) clearInterval(state.timer);
     function tick() {
-      var box = el("countdown");
-      if (!box) { clearInterval(state.countdownTimer); return; }
+      var box = el("clock");
+      if (!box) { clearInterval(state.timer); return; }
       var diff = target.getTime() - Date.now();
       if (diff <= 0) {
-        box.innerHTML = '<div class="cd-box"><span class="n">🏀</span>' +
-          '<span class="u">Maç zamanı!</span></div>';
-        clearInterval(state.countdownTimer);
+        box.className = "clock live";
+        box.innerHTML = '<div class="seg" style="grid-column:1/-1">' +
+          '<span class="n">MAÇ GÜNÜ</span></div>';
+        clearInterval(state.timer);
         return;
       }
-      var gun = Math.floor(diff / 864e5);
-      var saat = Math.floor(diff / 36e5) % 24;
-      var dk = Math.floor(diff / 6e4) % 60;
-      var sn = Math.floor(diff / 1e3) % 60;
-      box.innerHTML = [[gun, "gün"], [saat, "saat"], [dk, "dakika"], [sn, "saniye"]]
-        .map(function (p) {
-          return '<div class="cd-box"><span class="n">' + p[0] +
-            '</span><span class="u">' + p[1] + "</span></div>";
-        }).join("");
+      box.innerHTML = [
+        [Math.floor(diff / 864e5), "gün"],
+        [Math.floor(diff / 36e5) % 24, "saat"],
+        [Math.floor(diff / 6e4) % 60, "dakika"],
+        [Math.floor(diff / 1e3) % 60, "saniye"]
+      ].map(function (p) {
+        return '<div class="seg"><span class="n">' + p[0] +
+          '</span><span class="u">' + p[1] + "</span></div>";
+      }).join("");
     }
     tick();
-    state.countdownTimer = setInterval(tick, 1000);
+    state.timer = setInterval(tick, 1000);
   }
 
-  function resultPill(f) {
-    if (f.homeScore == null) return '<span class="pill s">Oynanacak</span>';
+  function tagFor(f) {
+    if (f.homeScore == null) return '<span class="tag s">Oynanacak</span>';
     if (!f.isOurs) return "";
     var ourHome = isOurTeam(f.home);
-    var bizim = ourHome ? f.homeScore : f.awayScore;
+    var biz = ourHome ? f.homeScore : f.awayScore;
     var rakip = ourHome ? f.awayScore : f.homeScore;
-    return bizim > rakip ? '<span class="pill w">Galibiyet</span>'
-                         : '<span class="pill l">Mağlubiyet</span>';
+    return biz > rakip ? '<span class="tag w">Galibiyet</span>'
+                       : '<span class="tag l">Mağlubiyet</span>';
   }
 
   function hasDetail(f) {
@@ -199,152 +200,143 @@
 
   function boxTable(rows, title) {
     if (!rows || !rows.length) return "";
-    var cols = [
-      ["min", "DK"], ["points", "SAY"], ["rebounds", "RIB"], ["assists", "AST"],
-      ["steals", "TOP Ç"], ["blocks", "BLK"], ["turnovers", "HATA"], ["fouls", "FAUL"]
-    ].filter(function (c) {
-      return rows.some(function (r) { return r[c[0]] != null; });
-    });
-    return '<div class="section-title">' + esc(title) + "</div>" +
-      '<div class="table-wrap"><table class="box"><thead><tr><th>#</th><th>Oyuncu</th>' +
+    var cols = [["min", "DK"], ["points", "SAY"], ["rebounds", "RIB"], ["assists", "AST"],
+      ["steals", "TOP Ç"], ["blocks", "BLK"], ["turnovers", "HATA"], ["fouls", "FAUL"]]
+      .filter(function (c) { return rows.some(function (r) { return r[c[0]] != null; }); });
+    return '<div class="box-title">' + esc(title) + "</div>" +
+      '<div class="scroll"><table class="box"><thead><tr><th>#</th><th>Oyuncu</th>' +
       cols.map(function (c) { return "<th>" + esc(c[1]) + "</th>"; }).join("") +
       "</tr></thead><tbody>" +
       rows.map(function (r) {
         return "<tr><td>" + esc(r.no != null ? r.no : "") + "</td><td>" + esc(r.name || "") + "</td>" +
           cols.map(function (c) {
-            var cls = c[0] === "points" ? ' class="pts"' : "";
-            return "<td" + cls + ">" + esc(r[c[0]] != null ? r[c[0]] : "-") + "</td>";
+            return "<td" + (c[0] === "points" ? ' class="pts"' : "") + ">" +
+              esc(r[c[0]] != null ? r[c[0]] : "–") + "</td>";
           }).join("") + "</tr>";
       }).join("") + "</tbody></table></div>";
   }
 
-  function matchCard(f, idx) {
+  function fixtureRow(f, idx) {
     var d = f._d;
     var played = f.homeScore != null && f.awayScore != null;
     var homeWin = played && f.homeScore > f.awayScore;
     var awayWin = played && f.awayScore > f.homeScore;
     var detail = hasDetail(f);
-    var bodyId = "mb-" + idx;
+    var bodyId = "fb-" + idx;
+
+    var sub = [f.venue, f.week ? f.week + ". hafta" : null].filter(Boolean).join(" · ");
 
     var head =
-      '<button class="match-head" ' + (detail ? 'aria-expanded="false" aria-controls="' + bodyId + '"' : 'disabled') + '>' +
-        '<div class="match-date"><span class="d">' + (d ? d.getDate() : "?") + "</span>" +
-          '<span class="m">' + (d ? esc(AYLAR[d.getMonth()]) : "") + "</span></div>" +
-        '<div class="match-teams">' +
-          '<div class="row ' + (homeWin ? "win" : awayWin ? "lose" : "") + '">' +
+      '<button class="fx-head"' +
+        (detail ? ' aria-expanded="false" aria-controls="' + bodyId + '"' : " disabled") + ">" +
+        '<time class="fx-when"><span class="dd">' + (d ? d.getDate() : "–") + "</span>" +
+          '<span class="mm">' + (d ? esc(AYLAR[d.getMonth()]) : "") + "</span>" +
+          (f.time ? '<span class="hh">' + esc(f.time) + "</span>" : "") + "</time>" +
+        "<div>" +
+          '<div class="fx-team ' + (homeWin ? "won" : awayWin ? "lost" : "") + '">' +
             '<span class="nm">' + esc(f.home) + "</span>" +
             '<span class="sc">' + (played ? esc(f.homeScore) : "") + "</span></div>" +
-          '<div class="row ' + (awayWin ? "win" : homeWin ? "lose" : "") + '">' +
+          '<div class="fx-team ' + (awayWin ? "won" : homeWin ? "lost" : "") + '">' +
             '<span class="nm">' + esc(f.away) + "</span>" +
             '<span class="sc">' + (played ? esc(f.awayScore) : "") + "</span></div>" +
-          '<div class="info">' +
-            (f.time ? "<span>🕐 " + esc(f.time) + "</span>" : "") +
-            (f.venue ? "<span>📍 " + esc(f.venue) + "</span>" : "") +
-            (f.week ? "<span>" + esc(f.week) + ". hafta</span>" : "") +
-          "</div>" +
+          (sub ? '<div class="fx-sub">' + ico("pin") + "<span>" + esc(sub) + "</span></div>" : "") +
         "</div>" +
-        "<div>" + resultPill(f) + (detail ? '<div class="chev">▾</div>' : "") + "</div>" +
+        "<div>" + tagFor(f) + (detail ? '<div class="caret">Detay ▾</div>' : "") + "</div>" +
       "</button>";
 
     var body = "";
     if (detail) {
-      var q = (f.quarters || []).map(function (x, i) {
-        return '<div class="q"><span class="qn">' + (i + 1) + '. Ç</span>' +
-          '<span class="qs">' + esc(x.home) + "-" + esc(x.away) + "</span></div>";
+      var per = (f.quarters || []).map(function (x, i) {
+        return '<div class="p"><span class="pn">' + (i + 1) + '. Ç</span>' +
+          '<span class="ps">' + esc(x.home) + "–" + esc(x.away) + "</span></div>";
       }).join("");
-      body = '<div class="match-body" id="' + bodyId + '" hidden>' +
-        (q ? '<div class="quarters">' + q + "</div>" : "") +
-        boxTable(f.boxscore && f.boxscore.home, f.home + " istatistikleri") +
-        boxTable(f.boxscore && f.boxscore.away, f.away + " istatistikleri") +
+      body = '<div class="fx-body" id="' + bodyId + '" hidden>' +
+        (per ? '<div class="periods">' + per + "</div>" : "") +
+        boxTable(f.boxscore && f.boxscore.home, f.home) +
+        boxTable(f.boxscore && f.boxscore.away, f.away) +
         "</div>";
     }
-    return '<article class="match' + (f.isOurs ? " ours" : "") + '">' + head + body + "</article>";
+    return '<article class="fx' + (f.isOurs ? " ours" : "") + '">' + head + body + "</article>";
   }
 
   function renderMatches() {
     el("matchNotice").innerHTML = notice(state.league);
     var sets = splitFixtures();
-    renderHero(sets.upcoming.filter(function (f) { return f.isOurs !== false; })[0] || sets.upcoming[0]);
-
+    renderBoard(sets.upcoming.filter(function (f) { return f.isOurs !== false; })[0] || sets.upcoming[0]);
     el("upcomingList").innerHTML = sets.upcoming.length
-      ? sets.upcoming.map(matchCard).join("")
-      : '<div class="empty">Planlanmış maç görünmüyor.</div>';
+      ? sets.upcoming.map(function (f, i) { return fixtureRow(f, "u" + i); }).join("")
+      : '<div class="blank">Planlanmış maç görünmüyor.</div>';
     el("playedList").innerHTML = sets.played.length
-      ? sets.played.map(function (f, i) { return matchCard(f, "p" + i); }).join("")
-      : '<div class="empty">Henüz oynanmış maç yok.</div>';
+      ? sets.played.map(function (f, i) { return fixtureRow(f, "p" + i); }).join("")
+      : '<div class="blank">Henüz oynanmış maç yok.</div>';
   }
 
-  // ---------------------------------------------------------------- puan durumu
+  // ------------------------------------------------------------- puan durumu
   function renderStandings() {
     el("standingsNotice").innerHTML = notice(state.league);
     var rows = (state.league && state.league.standings) || [];
     var slot = el("standingsSlot");
     if (state.league && state.league.group) {
-      el("standingsTitle").textContent = "Puan Durumu · " + state.league.group;
+      el("standingsTitle").textContent = "Puan durumu · " + state.league.group;
     }
     if (!rows.length) {
-      slot.innerHTML = '<div class="empty">Puan durumu henüz çekilmedi.</div>';
+      slot.innerHTML = '<div class="blank">Puan durumu henüz çekilmedi.</div>';
       return;
     }
+    function v(x) { return x == null ? "–" : esc(x); }
     slot.innerHTML =
-      '<div class="card" style="padding:8px 10px"><div class="table-wrap"><table class="standings">' +
-      "<thead><tr><th>#</th><th>Takım</th><th>O</th><th>G</th><th>M</th>" +
-      "<th>A</th><th>Y</th><th>AV</th><th>P</th></tr></thead><tbody>" +
+      '<div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>Takım</th>' +
+      "<th>O</th><th>G</th><th>M</th><th>A</th><th>Y</th><th>AV</th><th>P</th></tr></thead><tbody>" +
       rows.map(function (r, i) {
         var ours = r.isOurs != null ? r.isOurs : isOurTeam(r.team);
-        function v(x) { return x == null ? "-" : esc(x); }
         return '<tr class="' + (ours ? "ours" : "") + '">' +
-          '<td class="rank">' + (r.rank != null ? esc(r.rank) : i + 1) + "</td>" +
-          '<td class="tm">' + esc(r.team) + "</td>" +
+          "<td>" + (r.rank != null ? esc(r.rank) : i + 1) + "</td>" +
+          "<td>" + esc(r.team) + "</td>" +
           "<td>" + v(r.played) + "</td><td>" + v(r.won) + "</td><td>" + v(r.lost) + "</td>" +
           "<td>" + v(r.pointsFor) + "</td><td>" + v(r.pointsAgainst) + "</td>" +
-          "<td>" + (r.diff == null ? "-" : (r.diff > 0 ? "+" : "") + esc(r.diff)) + "</td>" +
-          '<td class="pts-col">' + v(r.points) + "</td></tr>";
-      }).join("") +
-      "</tbody></table></div>" +
-      '<div class="legend">O: oynanan · G: galibiyet · M: mağlubiyet · ' +
-      "A: atılan sayı · Y: yenilen sayı · AV: averaj · P: puan</div></div>";
+          "<td>" + (r.diff == null ? "–" : (r.diff > 0 ? "+" : "") + esc(r.diff)) + "</td>" +
+          "<td>" + v(r.points) + "</td></tr>";
+      }).join("") + "</tbody></table></div>" +
+      '<p class="key">O oynanan · G galibiyet · M mağlubiyet · A atılan sayı · ' +
+      "Y yenilen sayı · AV averaj · P puan</p>";
   }
 
-  // ---------------------------------------------------------------- kadro
+  // ------------------------------------------------------------- kadro
   function renderRoster() {
-    var t = state.team;
-    var slot = el("rosterSlot");
+    var t = state.team, slot = el("rosterSlot");
     if (!t || !(t.players || []).length) {
-      slot.innerHTML = '<div class="empty">Kadro bilgisi bulunamadı.</div>';
+      slot.innerHTML = '<div class="blank">Kadro bilgisi bulunamadı.</div>';
       el("staffSlot").innerHTML = "";
       return;
     }
     slot.innerHTML = t.players.slice()
       .sort(function (a, b) { return (a.no || 99) - (b.no || 99); })
       .map(function (p) {
-        var detay = [p.position, p.birthYear || null,
-          p.height ? p.height + " cm" : null].filter(Boolean).join(" · ");
-        return '<div class="player"><div class="jersey">' + esc(p.no != null ? p.no : "-") + "</div>" +
+        var meta = [p.position, p.height ? p.height + " cm" : null].filter(Boolean).join(" · ");
+        return '<div class="pl"><div class="no">' + esc(p.no != null ? p.no : "–") + "</div>" +
           '<div><div class="nm">' + esc(p.name) + "</div>" +
-          '<div class="po">' + esc(detay) + "</div></div></div>";
+          (meta ? '<div class="meta">' + esc(meta) + "</div>" : "") + "</div>" +
+          '<div class="yr">' + esc(p.birthYear || "") + "</div></div>";
       }).join("");
 
     el("staffSlot").innerHTML = (t.staff || []).map(function (s) {
-      return '<div class="staff-row"><div><div>' + esc(s.name) + "</div>" +
-        '<div class="role">' + esc(s.role) + "</div></div>" +
-        (s.phone ? '<a href="tel:' + esc(s.phone) + '">Ara</a>' : "") + "</div>";
-    }).join("") || '<div class="empty">Teknik kadro bilgisi girilmemiş.</div>';
+      return '<div class="ss"><div><div class="role">' + esc(s.role) + "</div>" +
+        '<div class="nm">' + esc(s.name) + "</div></div>" +
+        (s.phone ? '<a href="tel:' + esc(s.phone) + '">Ara</a>' : "<span></span>") + "</div>";
+    }).join("") || '<div class="blank">Teknik kadro bilgisi girilmemiş.</div>';
   }
 
-  // ---------------------------------------------------------------- antrenman
+  // ------------------------------------------------------------- antrenman
   function venueOf(id) {
     return ((state.training && state.training.venues) || [])
       .filter(function (v) { return v.id === id; })[0] || null;
   }
 
-  /** Verilen haftanın gününe ait bir sonraki tarihi bulur (1=Pzt ... 7=Paz). */
+  /** 1=Pazartesi … 7=Pazar için bir sonraki tarih. */
   function nextOccurrence(day, start) {
     var now = new Date();
-    var jsDay = day % 7; // 7 (Pazar) -> 0
     var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    var delta = (jsDay - d.getDay() + 7) % 7;
-    d.setDate(d.getDate() + delta);
+    d.setDate(d.getDate() + ((day % 7) - d.getDay() + 7) % 7);
     var hm = (start || "00:00").split(":").map(Number);
     d.setHours(hm[0] || 0, hm[1] || 0, 0, 0);
     if (d.getTime() < now.getTime()) d.setDate(d.getDate() + 7);
@@ -352,45 +344,45 @@
   }
 
   function renderTraining() {
-    var tr = state.training;
-    var sessionsSlot = el("sessionsSlot");
+    var tr = state.training, slot = el("sessionsSlot");
     if (!tr || !(tr.sessions || []).length) {
-      sessionsSlot.innerHTML = '<div class="empty">Antrenman programı girilmemiş.</div>';
+      slot.innerHTML = '<div class="blank">Antrenman programı girilmemiş.</div>';
       el("nextTrainingSlot").innerHTML = "";
       el("venuesSlot").innerHTML = "";
       return;
     }
 
-    var today = new Date().getDay(); // 0=Pazar
+    var today = new Date().getDay();
     var sorted = tr.sessions.slice().sort(function (a, b) {
       return (a.day - b.day) || String(a.start).localeCompare(String(b.start));
     });
-
-    var next = sorted.map(function (s) {
-      return { s: s, when: nextOccurrence(s.day, s.start) };
-    }).sort(function (a, b) { return a.when - b.when; })[0];
+    var next = sorted.map(function (s) { return { s: s, when: nextOccurrence(s.day, s.start) }; })
+      .sort(function (a, b) { return a.when - b.when; })[0];
 
     if (next) {
-      var v = venueOf(next.s.venue);
+      var nv = venueOf(next.s.venue);
       el("nextTrainingSlot").innerHTML =
-        '<div class="hero"><div class="label">Sıradaki Antrenman</div>' +
-        '<div class="teams"><div class="team">' + esc(next.s.title || "Antrenman") + "</div></div>" +
-        '<div class="meta"><span>📅 ' + esc(fmtDate(next.when)) + "</span>" +
-        "<span>🕐 " + esc(next.s.start) + (next.s.end ? " - " + esc(next.s.end) : "") + "</span>" +
-        (v ? "<span>📍 " + esc(v.name) + "</span>" : "") + "</div></div>";
+        '<section class="board"><div class="label">Sıradaki antrenman</div>' +
+        '<div class="board-teams"><div class="side"><div class="tname">' +
+        esc(next.s.title || "Antrenman") + "</div>" +
+        (next.s.coach ? '<div class="trole">' + esc(next.s.coach) + "</div>" : "") + "</div></div>" +
+        '<div class="board-meta"><span>' + ico("cal") + esc(fmtDate(next.when)) + "</span>" +
+        "<span>" + ico("clock") + esc(next.s.start) +
+        (next.s.end ? " – " + esc(next.s.end) : "") + "</span>" +
+        (nv ? "<span>" + ico("pin") + esc(nv.name) + "</span>" : "") + "</div></section>";
     }
 
-    sessionsSlot.innerHTML = sorted.map(function (s) {
-      var v = venueOf(s.venue);
-      var jsDay = s.day % 7;
-      return '<div class="session' + (jsDay === today ? " today" : "") + '">' +
-        '<div class="day"><div class="dn">' + esc(GUNLER[jsDay]) + "</div>" +
-        (jsDay === today ? '<div class="badge">BUGÜN</div>' : "") + "</div>" +
+    slot.innerHTML = sorted.map(function (s) {
+      var v = venueOf(s.venue), jsDay = s.day % 7;
+      return '<div class="ts' + (jsDay === today ? " today" : "") + '">' +
+        '<div class="dy">' + esc(GUNLER[jsDay]) +
+        (jsDay === today ? '<span class="now">BUGÜN</span>' : "") + "</div>" +
         '<div><div class="tt">' + esc(s.title || "Antrenman") + "</div>" +
-        '<div class="hh">🕐 ' + esc(s.start) + (s.end ? " - " + esc(s.end) : "") + "</div>" +
-        '<div class="vv">📍 ' + (v ? esc(v.name) : esc(s.venue || "-")) +
-        (v && v.maps ? ' · <a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Yol tarifi</a>' : "") +
-        (s.coach ? " · " + esc(s.coach) : "") + "</div></div></div>";
+        '<div class="hr">' + esc(s.start) + (s.end ? " – " + esc(s.end) : "") + "</div>" +
+        '<div class="wh">' + ico("pin") + "<span>" + (v ? esc(v.name) : esc(s.venue || "–")) +
+        (s.coach ? " · " + esc(s.coach) : "") + "</span>" +
+        (v && v.maps ? '<a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Yol tarifi</a>' : "") +
+        "</div></div></div>";
     }).join("");
 
     var exc = (tr.exceptions || []).filter(function (e) {
@@ -398,31 +390,29 @@
     });
     el("venuesSlot").innerHTML =
       (tr.venues || []).map(function (v) {
-        return '<div class="card"><div style="font-weight:700">' + esc(v.name) + "</div>" +
-          '<div style="font-size:12.5px;color:var(--muted);margin-top:4px">' + esc(v.address || "") + "</div>" +
-          (v.maps ? '<div style="margin-top:8px"><a href="' + esc(v.maps) +
-            '" target="_blank" rel="noopener" style="color:var(--pink);font-weight:700;font-size:13px">Haritada aç →</a></div>' : "") +
+        return '<div class="venue"><div class="vn">' + esc(v.name) + "</div>" +
+          '<div class="va">' + esc(v.address || "") + "</div>" +
+          (v.maps ? '<a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Haritada aç →</a>' : "") +
           "</div>";
       }).join("") +
       (exc.length
-        ? '<h2 class="section-title">Program Değişiklikleri</h2>' +
+        ? '<h2 class="eyebrow">Program değişiklikleri</h2>' +
           exc.map(function (e) {
-            return '<div class="banner"><span>ℹ️</span><div><b>' + esc(e.date) + "</b> · " +
-              esc(e.type || "") + (e.reason ? " - " + esc(e.reason) : "") + "</div></div>";
+            return '<div class="note"><div><b>' + esc(e.date) + "</b> · " + esc(e.type || "") +
+              (e.reason ? " — " + esc(e.reason) : "") + "</div></div>";
           }).join("")
         : "");
   }
 
-  // ---------------------------------------------------------------- sekmeler
+  // ------------------------------------------------------------- sekmeler
   function showPanel(name) {
-    ["maclar", "puan", "kadro", "antrenman"].forEach(function (p) {
+    PANELS.forEach(function (p) {
       var panel = el("panel-" + p), tab = el("tab-" + p);
       if (!panel || !tab) return;
-      var active = p === name;
-      panel.hidden = !active;
-      tab.setAttribute("aria-selected", active ? "true" : "false");
+      panel.hidden = p !== name;
+      tab.setAttribute("aria-selected", p === name ? "true" : "false");
     });
-    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+    window.scrollTo(0, 0);
   }
 
   function render() {
@@ -435,36 +425,34 @@
 
   document.querySelectorAll(".tabbar button").forEach(function (btn) {
     btn.addEventListener("click", function () {
-      var name = btn.dataset.panel;
-      location.hash = name;
-      showPanel(name);
+      location.hash = btn.dataset.panel;
+      showPanel(btn.dataset.panel);
     });
   });
 
   document.addEventListener("click", function (ev) {
-    var head = ev.target.closest && ev.target.closest(".match-head");
+    var head = ev.target.closest && ev.target.closest(".fx-head");
     if (!head || head.disabled) return;
-    var id = head.getAttribute("aria-controls");
-    var body = id && el(id);
+    var body = el(head.getAttribute("aria-controls") || "");
     if (!body) return;
     var open = body.hidden;
     body.hidden = !open;
     head.setAttribute("aria-expanded", open ? "true" : "false");
-    var chev = head.querySelector(".chev");
-    if (chev) chev.textContent = open ? "▴" : "▾";
+    var caret = head.querySelector(".caret");
+    if (caret) caret.textContent = open ? "Kapat ▴" : "Detay ▾";
   });
 
   window.addEventListener("hashchange", function () {
     var name = location.hash.replace("#", "");
-    if (["maclar", "puan", "kadro", "antrenman"].indexOf(name) !== -1) showPanel(name);
+    if (PANELS.indexOf(name) !== -1) showPanel(name);
   });
 
   var initial = location.hash.replace("#", "");
-  if (["maclar", "puan", "kadro", "antrenman"].indexOf(initial) !== -1) showPanel(initial);
+  if (PANELS.indexOf(initial) !== -1) showPanel(initial);
 
-  if ("serviceWorker" in navigator) {
+  if ("serviceWorker" in navigator && !INLINE) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () { /* çevrimdışı desteği isteğe bağlı */ });
+      navigator.serviceWorker.register("sw.js").catch(function () {});
     });
   }
 

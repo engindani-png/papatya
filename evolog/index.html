@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0c1220">
-<meta name="description" content="Evolog U14 Kız Basketbol Takımı - kadro, fikstür, puan durumu ve antrenman programı">
+<meta name="theme-color" content="#0f1e1c">
+<meta name="description" content="Evolog U14 Kız Basketbol Takımı — kadro, fikstür, puan durumu ve antrenman programı">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Evolog U14">
@@ -12,74 +12,77 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Karla:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
 <header class="topbar">
-  <div class="crest">EVO</div>
-  <div>
-    <h1>Evolog U14 Kız</h1>
-    <div class="sub" id="leagueLabel">TBF İstanbul U14 Kız</div>
-  </div>
-  <div class="sync" id="syncBox">
-    <span><span class="dot off"></span> yükleniyor</span>
+  <div class="wrap">
+    <div class="crest">EVO</div>
+    <div>
+      <h1>Evolog U14 Kız</h1>
+      <div class="sub" id="leagueLabel">TBF İstanbul U14 Kız</div>
+    </div>
+    <div class="sync" id="syncBox"><span class="dot off"></span>yükleniyor</div>
   </div>
 </header>
 
-<main>
-  <!-- MAÇLAR -->
+<main class="wrap">
   <section class="panel" id="panel-maclar" role="tabpanel" aria-labelledby="tab-maclar">
     <div id="matchNotice"></div>
-    <div id="heroSlot"></div>
-    <h2 class="section-title">Yaklaşan Maçlar</h2>
-    <div id="upcomingList"></div>
-    <h2 class="section-title">Oynanan Maçlar</h2>
-    <div id="playedList"></div>
+    <div id="boardSlot"></div>
+    <h2 class="eyebrow">Yaklaşan maçlar</h2>
+    <div class="sheet" id="upcomingList"></div>
+    <h2 class="eyebrow">Sonuçlar</h2>
+    <div class="sheet" id="playedList"></div>
   </section>
 
-  <!-- PUAN DURUMU -->
   <section class="panel" id="panel-puan" role="tabpanel" aria-labelledby="tab-puan" hidden>
     <div id="standingsNotice"></div>
-    <h2 class="section-title" id="standingsTitle">Puan Durumu</h2>
+    <h2 class="eyebrow" id="standingsTitle">Puan durumu</h2>
     <div id="standingsSlot"></div>
   </section>
 
-  <!-- KADRO -->
   <section class="panel" id="panel-kadro" role="tabpanel" aria-labelledby="tab-kadro" hidden>
-    <h2 class="section-title">Kadro</h2>
-    <div class="roster" id="rosterSlot"></div>
-    <h2 class="section-title">Teknik Kadro</h2>
-    <div class="card" id="staffSlot"></div>
+    <h2 class="eyebrow">Kadro</h2>
+    <div class="sheet" id="rosterSlot"></div>
+    <h2 class="eyebrow">Teknik kadro</h2>
+    <div class="sheet" id="staffSlot"></div>
   </section>
 
-  <!-- ANTRENMAN -->
   <section class="panel" id="panel-antrenman" role="tabpanel" aria-labelledby="tab-antrenman" hidden>
     <div id="nextTrainingSlot"></div>
-    <h2 class="section-title">Haftalık Program</h2>
-    <div id="sessionsSlot"></div>
-    <h2 class="section-title">Salonlar</h2>
-    <div id="venuesSlot"></div>
+    <h2 class="eyebrow">Haftalık program</h2>
+    <div class="sheet" id="sessionsSlot"></div>
+    <h2 class="eyebrow">Salonlar</h2>
+    <div class="sheet" id="venuesSlot"></div>
   </section>
 
   <footer>
-    Maç ve puan durumu verileri TBF kaynaklarından otomatik çekilir.<br>
+    Fikstür, skorlar ve puan durumu TBF sayfalarından otomatik çekilir.<br>
     Kadro ve antrenman bilgileri <code>data/</code> klasöründen düzenlenir.
   </footer>
 </main>
 
 <nav class="tabbar" role="tablist" aria-label="Bölümler">
   <button role="tab" id="tab-maclar" data-panel="maclar" aria-selected="true" aria-controls="panel-maclar">
-    <span class="ic" aria-hidden="true">🏀</span>Maçlar
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3.4 3 3.4 9.8 0 12.8M18.4 5.6c-3.4 3-3.4 9.8 0 12.8"/></svg>
+    Maçlar
   </button>
   <button role="tab" id="tab-puan" data-panel="puan" aria-selected="false" aria-controls="panel-puan">
-    <span class="ic" aria-hidden="true">📊</span>Puan Durumu
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+    Puan
   </button>
   <button role="tab" id="tab-kadro" data-panel="kadro" aria-selected="false" aria-controls="panel-kadro">
-    <span class="ic" aria-hidden="true">👕</span>Kadro
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 4 5.5V10h3v11h10V10h3V5.5L15 3a3 3 0 0 1-6 0Z"/></svg>
+    Kadro
   </button>
   <button role="tab" id="tab-antrenman" data-panel="antrenman" aria-selected="false" aria-controls="panel-antrenman">
-    <span class="ic" aria-hidden="true">📅</span>Antrenman
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+    Antrenman
   </button>
 </nav>
 
