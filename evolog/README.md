@@ -1,8 +1,20 @@
-# Evolog U14 Kız — Takım Uygulaması
+# Evolog Kız Basketbol — Takım Uygulaması
 
 Mobil uyumlu (telefona kurulabilen) takım uygulaması: kadro, yaklaşan maçlar,
 lig puan durumu ve antrenman programı. Maç sonuçları ve puan durumu **TBF
 sayfalarından otomatik çekilir**.
+
+## Yaş grupları
+
+Uygulama **U14, U16 ve U18 kız** takımlarını taşır. Alt çubuğun sağ ucundaki
+takım sekmesinden geçiş yapılır; seçim tarayıcıda saklanır, yani uygulama bir
+sonraki değişikliğe kadar hep o takımla açılır. Aynı sayfada maç bildirimleri
+yaş yaş açılıp kapatılır (bir veli birden fazla takıma abone olabilir).
+
+Her takımın verisi kendi klasöründe: `data/u14/`, `data/u16/`, `data/u18/`.
+Yeni bir yaş grubu açıldığında `scripts/tbf_config.json` içindeki `teams`
+listesine bir satır eklemek ve `evolog/app.js` içindeki `AGES` listesine aynı
+anahtarı yazmak yeterli.
 
 ## Yayına alma
 
@@ -37,11 +49,15 @@ düzenleyip kaydedebilirsiniz; uygulama bir sonraki açılışta günceli göste
 
 | Dosya | İçerik | Nasıl güncellenir |
 |---|---|---|
-| `data/team.json` | Kadro, teknik kadro | Elle |
-| `data/training.json` | Antrenman gün/saat/salon | Elle |
-| `data/league.json` | Fikstür, skorlar, puan durumu | **Otomatik** (TBF senkronizasyonu) |
+| `data/<yaş>/team.json` | Kadro, teknik kadro | Kadro otomatik, teknik kadro elle |
+| `data/<yaş>/training.json` | Antrenman gün/saat/salon | Yönetim ekranından |
+| `data/<yaş>/league.json` | Fikstür, skorlar, puan durumu | **Otomatik** (TBF senkronizasyonu) |
 
-### Kadro (`data/team.json`)
+Sunucuda antrenman programı git ağacının dışında tutulur
+(`/var/lib/evolog/training-<yaş>.json`); nginx onu `data/<yaş>/training.json`
+adresinde sunar. Yönetim ekranı istekleri `?age=<yaş>` ile gönderir.
+
+### Kadro (`data/<yaş>/team.json`)
 
 ```json
 { "no": 7, "name": "Ayşe Yılmaz", "position": "Guard", "birthYear": 2012, "height": 168 }
@@ -49,7 +65,7 @@ düzenleyip kaydedebilirsiniz; uygulama bir sonraki açılışta günceli göste
 
 `height` bilinmiyorsa `null` bırakın; uygulama boş alanları gizler.
 
-### Antrenman (`data/training.json`)
+### Antrenman (`data/<yaş>/training.json`)
 
 `day`: 1 = Pazartesi … 7 = Pazar. Salonu `venues` listesine ekleyip
 seansta `venue` alanına salonun `id` değerini yazın. `maps` alanına konulan
@@ -59,8 +75,10 @@ Tatil/iptal günlerini `exceptions` listesine ekleyin.
 
 ## TBF senkronizasyonu (önemli kısım)
 
-`scripts/tbf_sync.py` TBF sayfalarındaki tabloları okuyup `data/league.json`
-dosyasını üretir. `.github/workflows/tbf-sync.yml` bunu günde 4 kez
+`scripts/tbf_sync.py` TBF API'sini okuyup her takım için
+`data/<yaş>/league.json` dosyasını üretir. Takımlar sırayla çekilir; birinin
+çekimi başarısız olursa **diğerleri etkilenmez** ve o takımın önceki verisi
+korunur. Tek takım denemek için `--team u16`. `.github/workflows/tbf-sync.yml` bunu günde 4 kez
 (TR saatiyle ~06:00, 12:00, 18:00, 22:00) çalıştırır ve değişiklik varsa
 otomatik commit'ler.
 
@@ -69,10 +87,18 @@ otomatik commit'ler.
 `scripts/tbf_config.json` içinde lig kimliği tanımlı:
 
 ```json
-"baseUrl": "https://www.tbf.org.tr",
-"leagueId": "22859",
-"teamId": "269325"
+"seasonId": "174",
+"teams": [
+  { "key": "u14", "leagueId": "22859", "teamProcessId": "269325", … },
+  { "key": "u16", "leagueId": "22861", "teamProcessId": "270342", … },
+  { "key": "u18", "leagueId": "22863", "teamProcessId": "269435", … }
+]
 ```
+
+Lig kimlikleri TBF'de **il bazında 16'şarlı bloklar** halinde diziliyor
+(Büyük E/K · U10 · U11 · U12 · U14 · U16 · U18 · Ümit, her yaşta önce erkek
+sonra kız). İstanbul 2026-2027 bloğu **22850–22865**. Sezon değişince bu
+numaralar da değişir.
 
 Numaralar TBF adreslerinden gelir:
 
