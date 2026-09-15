@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""TBF verisini resmi JSON API'sinden ceker ve data/league.json dosyasini uretir.
+"""TBF verisini resmi JSON API'sinden ceker ve data/<takim>/league.json uretir.
+
+Ayar dosyasindaki her takim (u14, u16, u18) ayri bir klasore yazilir; birinin
+cekimi basarisiz olursa digerleri etkilenmez ve o takimin onceki verisi kalir.
 
 TBF sitesi (www.tbf.org.tr) bir Nuxt uygulamasi: sayfa HTML'inde tablo yok,
 puan durumu / fikstur / mac istatistigi tarayicida su adresten aliniyor:
@@ -10,10 +13,11 @@ Bu script dogrudan o API'yi kullanir. Kimlik dogrulama, cerez ya da tarayici
 gerekmez; yalnizca Python standart kutuphanesi kullanilir.
 
 Kullanim:
-    python3 scripts/tbf_sync.py                # cek ve data/league.json yaz
+    python3 scripts/tbf_sync.py                # tum takimlari cek, data/<key>/ altina yaz
+    python3 scripts/tbf_sync.py --team u16     # yalnizca U16'yi cek
     python3 scripts/tbf_sync.py --dry-run      # cek, ekrana yaz, dosyaya dokunma
     python3 scripts/tbf_sync.py --probe        # endpoint'leri dene, ne donuyor goster
-    python3 scripts/tbf_sync.py --roster       # data/team.json kadrosunu da guncelle
+    python3 scripts/tbf_sync.py --roster       # kadroyu da guncelle
     python3 scripts/tbf_sync.py --no-details   # ceyrek/oyuncu istatistigi cekme
 """
 
@@ -34,8 +38,15 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "scripts" / "tbf_config.json"
-LEAGUE_PATH = ROOT / "data" / "league.json"
-TEAM_PATH = ROOT / "data" / "team.json"
+DATA_DIR = ROOT / "data"
+
+
+def league_path(key: str) -> pathlib.Path:
+    return DATA_DIR / key / "league.json"
+
+
+def team_path(key: str) -> pathlib.Path:
+    return DATA_DIR / key / "team.json"
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
@@ -76,6 +87,31 @@ def log(msg: str = "") -> None:
 
 def load_config() -> dict:
     return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+
+
+# Ortak alanlar (API adresi, sezon, mac detayi ayari) her takim icin gecerli;
+# takimin kendi alanlari (lig, takim kimligi, ad) bunlarin uzerine yazilir.
+SHARED_KEYS = ("apiBaseUrl", "siteUrl", "seasonId", "season", "matchDetail")
+
+
+def team_configs(cfg: dict, only: str | None = None) -> list[dict]:
+    """Ayar dosyasindaki her takim icin tam bir yapilandirma uretir."""
+    teams = cfg.get("teams") or []
+    if not teams:
+        raise RuntimeError("tbf_config.json icinde 'teams' listesi yok.")
+    out = []
+    for team in teams:
+        if only and team.get("key") != only:
+            continue
+        merged = {k: cfg[k] for k in SHARED_KEYS if k in cfg}
+        merged.update(team)
+        if not merged.get("key"):
+            raise RuntimeError("Takim kaydinda 'key' alani zorunlu.")
+        out.append(merged)
+    if not out:
+        known = ", ".join(t.get("key", "?") for t in teams)
+        raise RuntimeError(f"'{only}' diye bir takim yok. Taninanlar: {known}")
+    return out
 
 
 def now_iso() -> str:
@@ -427,7 +463,7 @@ def probe(cfg: dict) -> int:
                   f"?teamProcessId={cfg['teamProcessId']}&leagueId={cfg['leagueId']}&seasonId={cfg['seasonId']}"),
     ]
     bad = 0
-    log(f"API: {base}")
+    log(f"API: {base}  ({cfg.get('label') or cfg.get('key')} · lig {cfg['leagueId']})")
     for label, path in checks:
         try:
             data = api_get(base, path, tries=1)
@@ -449,9 +485,10 @@ def probe(cfg: dict) -> int:
 def build(cfg: dict, want_details: bool) -> dict:
     errors: list[str] = []
     previous = {}
-    if LEAGUE_PATH.exists():
+    out_path = league_path(cfg["key"])
+    if out_path.exists():
         try:
-            previous = json.loads(LEAGUE_PATH.read_text(encoding="utf-8"))
+            previous = json.loads(out_path.read_text(encoding="utf-8"))
         except Exception:
             previous = {}
     old_details = {}
@@ -507,6 +544,9 @@ def build(cfg: dict, want_details: bool) -> dict:
         "isPlaceholder": not standings and not fixtures,
         "updatedAt": now_iso(),
         "source": cfg["apiBaseUrl"],
+        "key": cfg["key"],
+        "label": cfg.get("label") or cfg["key"].upper(),
+        "teamName": cfg.get("name"),
         "season": cfg.get("season"),
         "league": cfg.get("league"),
         "group": group or cfg.get("group"),
@@ -521,19 +561,8 @@ def build(cfg: dict, want_details: bool) -> dict:
     }
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description="TBF API senkronizasyonu")
-    ap.add_argument("--dry-run", action="store_true", help="dosyaya yazma, ozeti goster")
-    ap.add_argument("--probe", action="store_true", help="endpoint'leri dene ve cik")
-    ap.add_argument("--roster", action="store_true", help="data/team.json kadrosunu da guncelle")
-    ap.add_argument("--no-details", action="store_true", help="ceyrek/oyuncu istatistigi cekme")
-    args = ap.parse_args()
-
-    cfg = load_config()
-
-    if args.probe:
-        return probe(cfg)
-
+def sync_team(cfg: dict, args) -> None:
+    """Tek takimi ceker ve dosyalarini yazar. Hatayi yukari firlatmaz."""
     league = build(cfg, want_details=not args.no_details)
     counts = league["counts"]
     log(f"Puan durumu: {counts['standings']} takim · Fikstur: {counts['fixtures']} mac "
@@ -545,23 +574,65 @@ def main() -> int:
     if args.roster:
         try:
             players = fetch_roster(cfg)
-            team = json.loads(TEAM_PATH.read_text(encoding="utf-8"))
+            tpath = team_path(cfg["key"])
+            team = json.loads(tpath.read_text(encoding="utf-8")) if tpath.exists() else {}
+            team.setdefault("club", cfg.get("club", "EVOLOG"))
+            team.setdefault("team", cfg.get("team") or cfg.get("label", ""))
+            team.setdefault("colors", {"primary": "#e5195f", "secondary": "#1b2a4a"})
+            team.setdefault("staff", [])
             team["players"] = players
-            team["league"] = f"{cfg.get('league')} - {league['group']}" if league.get("group") else cfg.get("league")
+            team["league"] = (f"{cfg.get('league')} - {league['group']}"
+                              if league.get("group") else cfg.get("league"))
             team["season"] = cfg.get("season")
             if not args.dry_run:
-                TEAM_PATH.write_text(json.dumps(team, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                tpath.parent.mkdir(parents=True, exist_ok=True)
+                tpath.write_text(json.dumps(team, ensure_ascii=False, indent=2) + "\n",
+                                 encoding="utf-8")
             log(f"Kadro: {len(players)} oyuncu")
         except Exception as exc:
             log(f"  uyari: Kadro cekilemedi: {exc}")
 
     if args.dry_run:
         log(json.dumps(league, ensure_ascii=False, indent=1)[:2000])
-        return 0
+        return
 
-    LEAGUE_PATH.write_text(json.dumps(league, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    log(f"Yazildi: {LEAGUE_PATH.relative_to(ROOT)}")
-    return 0
+    out_path = league_path(cfg["key"])
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(league, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    log(f"Yazildi: {out_path.relative_to(ROOT)}")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="TBF API senkronizasyonu")
+    ap.add_argument("--dry-run", action="store_true", help="dosyaya yazma, ozeti goster")
+    ap.add_argument("--probe", action="store_true", help="endpoint'leri dene ve cik")
+    ap.add_argument("--roster", action="store_true", help="kadroyu da guncelle")
+    ap.add_argument("--no-details", action="store_true", help="ceyrek/oyuncu istatistigi cekme")
+    ap.add_argument("--team", metavar="KEY", help="yalnizca bu takimi cek (u14/u16/u18)")
+    args = ap.parse_args()
+
+    cfg = load_config()
+    try:
+        teams = team_configs(cfg, args.team)
+    except RuntimeError as exc:
+        log(f"HATA: {exc}")
+        return 1
+
+    if args.probe:
+        return max(probe(t) for t in teams)
+
+    # Bir takimin cekimi patlarsa digerleri etkilenmesin: her takim kendi
+    # dosyasina yaziyor, hata yalnizca o takimin verisini eski halinde birakir.
+    failed = 0
+    for team_cfg in teams:
+        log("")
+        log(f"=== {team_cfg.get('label') or team_cfg['key']} · {team_cfg.get('name') or ''} ===")
+        try:
+            sync_team(team_cfg, args)
+        except Exception as exc:
+            failed += 1
+            log(f"  HATA: {team_cfg['key']} cekilemedi: {exc}")
+    return 1 if failed == len(teams) else 0
 
 
 if __name__ == "__main__":

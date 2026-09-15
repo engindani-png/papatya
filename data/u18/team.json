@@ -1,0 +1,85 @@
+{
+  "club": "EVOLOG",
+  "team": "U18 Kız",
+  "season": "2026-2027",
+  "league": "TBF İstanbul U18 Kız - KIZLAR U18A LİGİ",
+  "colors": {
+    "primary": "#e5195f",
+    "secondary": "#1b2a4a"
+  },
+  "staff": [],
+  "players": [
+    {
+      "no": 0,
+      "name": "Ece Gündüz",
+      "position": null,
+      "birthYear": 2010,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/3ee72d16-6f28-45a9-8811-ced5b55e2e94.webp",
+      "tbfPlayerId": 537918
+    },
+    {
+      "no": 1,
+      "name": "Ecrin Ela Aşci",
+      "position": null,
+      "birthYear": 2010,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/49f492b2-5f27-4565-91e4-75add564660c.webp",
+      "tbfPlayerId": 611216
+    },
+    {
+      "no": 2,
+      "name": "Zeynep Alan",
+      "position": null,
+      "birthYear": 2010,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/dab7ac06-3b52-4eeb-b60d-40d83c160009.webp",
+      "tbfPlayerId": 497075
+    },
+    {
+      "no": 8,
+      "name": "Ecrin Duru Koç",
+      "position": null,
+      "birthYear": 2009,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/55bf4cf7-0338-411b-b067-a74d88ebcd10.webp",
+      "tbfPlayerId": 478247
+    },
+    {
+      "no": 18,
+      "name": "Büşra Ebrar Ersan",
+      "position": null,
+      "birthYear": 2010,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/d2e4b57b-13c3-4f58-a95b-dea9d38e5b36.webp",
+      "tbfPlayerId": 518196
+    },
+    {
+      "no": 24,
+      "name": "Ece Yalçin",
+      "position": null,
+      "birthYear": 2010,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/308543f2-f981-4d18-bbdd-94847d739d1f.webp",
+      "tbfPlayerId": 489357
+    },
+    {
+      "no": 26,
+      "name": "Irem Su Taşkin",
+      "position": null,
+      "birthYear": 2010,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/39458d94-1d56-45db-96f2-d8825a91e121.webp",
+      "tbfPlayerId": 522289
+    },
+    {
+      "no": 30,
+      "name": "Miray Yildirim",
+      "position": null,
+      "birthYear": 2010,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/518cafb9-8948-4f54-ac5a-3d267c767da9.webp",
+      "tbfPlayerId": 513719
+    }
+  ]
+}

@@ -5,27 +5,76 @@
     "leagueId:       www.tbf.org.tr/ligler/22859/... -> 22859",
     "teamProcessId:  www.tbf.org.tr/ligler/22859/takim-detay/269325/... -> 269325",
     "seasonId:       /api/League/get-featured-9-leagues cevabindaki seasonId (2026-2027 -> 174)",
-    "Sezon/lig degisirse yalnizca bu uc alani guncelleyin."
+    "Yeni yas grubu eklemek icin 'teams' listesine bir satir ekleyin; 'key' ayni",
+    "zamanda data/<key>/ klasor adidir. Sezon degisirse seasonId + her takimin",
+    "leagueId/teamProcessId degerlerini guncelleyin.",
+    "Lig kimlikleri il bazinda 16'sarli bloklar halinde: Istanbul 2026-2027 = 22850-22865",
+    "(Buyuk E/K, U10, U11, U12, U14, U16, U18, Umit - her yas once erkek sonra kiz)."
   ],
   "apiBaseUrl": "https://miniappapi.tbf.org.tr/webapi-service",
   "siteUrl": "https://www.tbf.org.tr",
-  "leagueId": "22859",
-  "teamProcessId": "269325",
   "seasonId": "174",
   "season": "2026-2027",
-  "league": "TBF İstanbul U14 Kız",
-  "group": "KIZLAR U14A LİGİ",
-  "ourTeamKey": "evolog",
-  "teamAliases": [
-    "evolog",
-    "evolog daçka şerifali",
-    "evolog dacka serifali",
-    "daçka şerifali"
-  ],
   "matchDetail": {
     "enabled": true,
     "onlyOurMatches": true,
     "maxMatches": 30,
     "_not": "Oynanmis maclarin ceyrek skorlari ve oyuncu istatistikleri API'den cekilir; bir kez cekilen detay korunur."
-  }
+  },
+  "teams": [
+    {
+      "key": "u14",
+      "label": "U14",
+      "name": "Evolog U14 Kız Siyah",
+      "club": "EVOLOG",
+      "team": "U14 Kız Siyah",
+      "leagueId": "22859",
+      "teamProcessId": "269325",
+      "league": "TBF İstanbul U14 Kız",
+      "group": "KIZLAR U14A LİGİ",
+      "ourTeamKey": "evolog",
+      "teamAliases": [
+        "evolog",
+        "evolog daçka şerifali",
+        "evolog dacka serifali",
+        "daçka şerifali"
+      ]
+    },
+    {
+      "key": "u16",
+      "label": "U16",
+      "name": "Evolog U16 Kız",
+      "club": "EVOLOG",
+      "team": "U16 Kız",
+      "leagueId": "22861",
+      "teamProcessId": "270342",
+      "league": "TBF İstanbul U16 Kız",
+      "group": "KIZLAR U16A LİGİ",
+      "ourTeamKey": "daçka şerifali",
+      "teamAliases": [
+        "daçka şerifali sk",
+        "dacka serifali sk",
+        "daçka şerifali",
+        "evolog"
+      ]
+    },
+    {
+      "key": "u18",
+      "label": "U18",
+      "name": "Evolog U18 Kız",
+      "club": "EVOLOG",
+      "team": "U18 Kız",
+      "leagueId": "22863",
+      "teamProcessId": "269435",
+      "league": "TBF İstanbul U18 Kız",
+      "group": "KIZLAR U18A LİGİ",
+      "ourTeamKey": "evolog",
+      "teamAliases": [
+        "evolog",
+        "evolog daçka şerifali",
+        "evolog dacka serifali",
+        "daçka şerifali"
+      ]
+    }
+  ]
 }

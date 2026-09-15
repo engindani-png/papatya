@@ -1,0 +1,184 @@
+{
+  "club": "EVOLOG",
+  "team": "U16 Kız",
+  "season": "2026-2027",
+  "league": "TBF İstanbul U16 Kız - KIZLAR U16A LİGİ",
+  "colors": {
+    "primary": "#e5195f",
+    "secondary": "#1b2a4a"
+  },
+  "staff": [],
+  "players": [
+    {
+      "no": 2,
+      "name": "Ela Yener",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/ca04f4c2-0b6e-4712-b7a4-b61c71b09167.webp",
+      "tbfPlayerId": 516052
+    },
+    {
+      "no": 6,
+      "name": "Ecrin Fatma Ilkin",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/258a7e1e-cbda-439e-a288-e0fce4b57dd2.webp",
+      "tbfPlayerId": 596803
+    },
+    {
+      "no": 7,
+      "name": "Yaren Özel",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/484c1d07-b6f4-4375-b79c-4bd24d24f48e.webp",
+      "tbfPlayerId": 616423
+    },
+    {
+      "no": 8,
+      "name": "Öykü Beren Yüce",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/b1f4c8a6-d688-4f15-8d4d-0c36919e5106.webp",
+      "tbfPlayerId": 517883
+    },
+    {
+      "no": 9,
+      "name": "Emine Miray Candelen",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/2ac8eee1-af88-4f6b-8dd4-aafcda2ff3bf.webp",
+      "tbfPlayerId": 563214
+    },
+    {
+      "no": 10,
+      "name": "Damla Uluçay",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/2611b998-0627-435c-841b-18aee48b941c.webp",
+      "tbfPlayerId": 489412
+    },
+    {
+      "no": 12,
+      "name": "Ayşe Ela Dizdar",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/b1ca351c-af36-4d23-ad2e-a96399739c02.webp",
+      "tbfPlayerId": 507968
+    },
+    {
+      "no": 17,
+      "name": "Ipek Ece Güner",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/41de4a0a-f125-4943-ba5c-0af1a7138c24.webp",
+      "tbfPlayerId": 515983
+    },
+    {
+      "no": 19,
+      "name": "Defne Kuçani",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": null,
+      "tbfPlayerId": 528295
+    },
+    {
+      "no": 24,
+      "name": "Iris Rüya Ekşi",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/397116aa-204c-46b2-9fca-12c00c6534aa.webp",
+      "tbfPlayerId": 637328
+    },
+    {
+      "no": 27,
+      "name": "Beyza Baba",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/d5fda642-4fc0-4124-bd6a-aff6791eb342.webp",
+      "tbfPlayerId": 638426
+    },
+    {
+      "no": 88,
+      "name": "Beren Güleken",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/afa0a25c-4f78-4aff-ab8b-3b3fd8eb0942.webp",
+      "tbfPlayerId": 757930
+    },
+    {
+      "no": null,
+      "name": "Anka Sünbül",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/51ee86d8-6ee0-415a-a934-6c0e2c152d8f.webp",
+      "tbfPlayerId": 515945
+    },
+    {
+      "no": null,
+      "name": "Asya Şişli",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/57c67264-3b6d-4881-b1d8-3d3011ebe91b.webp",
+      "tbfPlayerId": 609754
+    },
+    {
+      "no": null,
+      "name": "Ela Duru Usanmaz",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/ec2b3bc2-2b6c-4a27-8a06-40ad237726a0.webp",
+      "tbfPlayerId": 687123
+    },
+    {
+      "no": null,
+      "name": "Ela Şişli",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/d084078b-20a1-4861-bce4-6d2ddedbd941.webp",
+      "tbfPlayerId": 609753
+    },
+    {
+      "no": null,
+      "name": "Elanur Gülsüm Ünal",
+      "position": null,
+      "birthYear": 2011,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/7c57c22e-13e9-436b-857e-e0f56413269f.webp",
+      "tbfPlayerId": 669072
+    },
+    {
+      "no": null,
+      "name": "Elif Ece Güzel",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/cdbe6331-45b0-416a-8fd6-73bd7970d375.webp",
+      "tbfPlayerId": 568386
+    },
+    {
+      "no": null,
+      "name": "Yemoş Mira Görmez",
+      "position": null,
+      "birthYear": 2012,
+      "height": null,
+      "photo": "https://tbf.org.tr/res/2fe1056e-db27-4745-9585-6b58f205c9f8.webp",
+      "tbfPlayerId": 516812
+    }
+  ]
+}
