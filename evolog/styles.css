@@ -335,9 +335,19 @@ table.tbl tr.ours td:last-child { color: var(--amber); }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
   height: calc(var(--tabbar) + var(--safe-b)); padding-bottom: var(--safe-b);
-  display: grid; grid-template-columns: repeat(4, 1fr);
+  display: grid; grid-template-columns: repeat(4, 1fr) 4.6rem;
   background: var(--ink-2); border-top: 1px solid var(--line);
 }
+/* Yas secici: cubugun sag ucunda, ayirici cizgiyle ayrilmis. */
+.tabbar .agetab { border-left: 1px solid var(--line); }
+.tabbar .agetab[aria-expanded="true"] { color: var(--amber); }
+.agebadge {
+  font-family: var(--display); font-size: 13px; font-weight: 600; letter-spacing: .5px;
+  line-height: 1; color: var(--chalk); border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 9px; background: var(--ink-3);
+}
+.tabbar .agetab[aria-expanded="true"] .agebadge,
+.tabbar .agetab:hover .agebadge { color: var(--amber); border-color: var(--amber); }
 .tabbar button {
   background: none; border: 0; color: var(--chalk-faint); font-family: var(--display);
   font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase;
@@ -599,3 +609,75 @@ table.mlog td.mo span.l { background: var(--loss); }
 /* Son oynanan maç: listede öne çıksın ama detayı kapalı başlar. */
 .fx.hot { border: 1px solid var(--amber); border-radius: 10px; background: var(--ink-2); }
 .fx.hot .fx-head { padding-left: 12px; padding-right: 12px; }
+
+
+/* ---------------------------------------------- takım / ayarlar sayfası */
+.ph.sh { grid-template-columns: minmax(0, 1fr) auto; }
+
+.slist { border-top: 1px solid var(--line-soft); margin-bottom: 18px; }
+.srow {
+  width: 100%; display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 14px 2px; background: none; border: 0;
+  border-bottom: 1px solid var(--line-soft); color: var(--chalk);
+  font-family: var(--body); font-size: 15px; text-align: left; cursor: pointer;
+}
+.srow.flat { cursor: default; }
+.srow.link { text-decoration: none; }
+.srow:disabled { opacity: .5; cursor: progress; }
+.srow .dim { color: var(--chalk-dim); font-size: 13.5px; }
+.srow.pick.on { color: var(--amber); }
+.srow .tick { color: var(--amber); font-size: 15px; min-width: 1rem; text-align: right; }
+.shint { color: var(--chalk-dim); font-size: 12.5px; line-height: 1.6; margin: 10px 2px 0; }
+
+/* Anahtar: iOS'taki gibi kaydiran dugme. */
+.srow .sw {
+  flex: 0 0 auto; width: 44px; height: 26px; border-radius: 999px;
+  background: var(--ink-3); border: 1px solid var(--line); position: relative;
+  transition: background .18s ease, border-color .18s ease;
+}
+.srow .sw::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--chalk-dim); transition: transform .18s ease, background .18s ease;
+}
+.srow.tgl.on .sw { background: var(--amber-dim); border-color: var(--amber); }
+.srow.tgl.on .sw::after { transform: translateX(18px); background: var(--amber); }
+
+/* iOS uyarısını kapatma düğmesi */
+.note .hintx {
+  flex: 0 0 auto; align-self: flex-start; background: none; border: 0;
+  color: var(--chalk-faint); font-size: 14px; line-height: 1; cursor: pointer;
+  padding: 2px 0 2px 10px;
+}
+.note .hintx:hover { color: var(--amber); }
+
+/* Yeni veri geldiğinde: mesaj yok, üst bardaki saat kısaca vurgulanır. */
+@keyframes syncpulse {
+  0%   { color: var(--amber); }
+  100% { color: inherit; }
+}
+.sync.pulse .stamp { animation: syncpulse 1.6s ease-out; }
+
+/* ------------------------------------------------- tablet ve geniş ekran */
+@media (min-width: 768px) {
+  .wrap { max-width: 900px; }
+  .tabbar {
+    grid-template-columns: repeat(4, minmax(0, 7rem)) 5rem;
+    justify-content: center; gap: 0;
+  }
+  .tabbar button { font-size: 11px; }
+  table.tbl, table.box { min-width: 0; }
+}
+
+@media (min-width: 1024px) {
+  .wrap { max-width: 1060px; }
+  /* Maçlar ve puan durumu yan yana sığar: tek sütunluk dar şerit kalmasın. */
+  #viewOurs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+              gap: 0 30px; align-items: start; }
+  #viewOurs > #boardSlot { grid-column: 1 / -1; }
+  #viewOurs > #lastTitle, #viewOurs > #lastMatch { grid-column: 1; }
+  #viewOurs > #upcomingTitle, #viewOurs > #upcomingList { grid-column: 2; }
+  #viewOurs > #prevTitle, #viewOurs > #playedList { grid-column: 1 / -1; }
+  #panel-kadro { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+                 gap: 0 30px; align-items: start; }
+  #panel-kadro > h2:first-child, #panel-kadro > #rosterSlot { grid-column: 1; }
+}

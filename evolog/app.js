@@ -2,10 +2,49 @@
 (function () {
   "use strict";
 
-  var DATA = window.EVOLOG_DATA_PATH || "../data/";
+  var DATA_BASE = window.EVOLOG_DATA_PATH || "../data/";
   var INLINE = window.EVOLOG_INLINE_DATA || null;
-  var DEMO = new URLSearchParams(location.search).get("demo") === "1";
+  var QUERY = new URLSearchParams(location.search);
+  var DEMO = QUERY.get("demo") === "1";
   var PANELS = ["maclar", "puan", "kadro", "antrenman"];
+
+  // Yas gruplari: her birinin kendi veri klasoru var (data/<key>/). Secim
+  // localStorage'da durur, yani uygulama bir sonraki degisiklige kadar hep
+  // secili takimla acilir.
+  var AGES = [
+    { key: "u14", label: "U14", title: "U14 Kızlar" },
+    { key: "u16", label: "U16", title: "U16 Kızlar" },
+    { key: "u18", label: "U18", title: "U18 Kızlar" }
+  ];
+  var AGE_STORE = "evolog.age";
+  var PUSH_STORE = "evolog.pushAges";
+  var IOS_STORE = "evolog.iosHint";
+
+  // localStorage gizli sekmede ya da kapali depolamada patlayabilir.
+  function store(key, value) {
+    try {
+      if (value === undefined) return localStorage.getItem(key);
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch (e) { /* depolama yok: varsayilanlarla devam */ }
+    return null;
+  }
+
+  function knownAge(key) {
+    for (var i = 0; i < AGES.length; i++) if (AGES[i].key === key) return key;
+    return null;
+  }
+
+  // Bildirime dokunulunca gelen ?age=u16 baglantisi secimi de degistirir.
+  var age = knownAge(QUERY.get("age")) || knownAge(store(AGE_STORE)) || AGES[0].key;
+
+  function ageInfo(key) {
+    var want = key || age;
+    for (var i = 0; i < AGES.length; i++) if (AGES[i].key === want) return AGES[i];
+    return AGES[0];
+  }
+
+  function dataPath() { return DATA_BASE + age + "/"; }
 
   var GUNLER = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
   var AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
@@ -79,7 +118,7 @@
   // ------------------------------------------------------------- veri
   function load(key, file) {
     if (INLINE) return Promise.resolve(INLINE[key] || null);
-    return fetch(DATA + file, { cache: "no-cache" })
+    return fetch(dataPath() + file, { cache: "no-cache" })
       .then(function (r) { if (!r.ok) throw new Error(file); return r.json(); })
       .catch(function () { return null; });
   }
@@ -121,6 +160,14 @@
     }, 4200);
   }
 
+  function pulseSync() {
+    var box = el("syncBox");
+    if (!box) return;
+    box.classList.remove("pulse");
+    void box.offsetWidth;   // animasyon yeniden baslasin
+    box.classList.add("pulse");
+  }
+
   function refresh(announce) {
     if (INLINE || sync.busy) return Promise.resolve(false);
     sync.busy = true;
@@ -137,7 +184,9 @@
       var y = window.scrollY;
       render();
       window.scrollTo(0, y);
-      if (announce) toast("Yeni veri geldi — ekran güncellendi");
+      // Yeni veri geldiginde ekrani mesajla bolmuyoruz; ust bardaki saat
+      // sessizce yenilenir ve kisa bir vurgu verir.
+      if (announce) pulseSync();
       return true;
     }).catch(function () { sync.busy = false; return false; });
   }
@@ -156,13 +205,50 @@
     window.addEventListener("online", function () { refresh(true); });
   }
 
+  function applyData(res) {
+    state.team = res[0];
+    state.training = res[1];
+    state.league = res[2];
+    sync.sig = signature(res[0], res[1], res[2]);
+    sync.lastCheck = Date.now();
+  }
+
+  // Yas degistirme: veri yolu degisir, ekran bastan yuklenir. Secim kalici.
+  function setAge(key) {
+    if (!knownAge(key) || key === age) { closeSheet(); return; }
+    age = key;
+    store(AGE_STORE, key);
+    closeSheet();
+    state.team = null; state.training = null; state.league = null;
+    sync.sig = null;
+    renderIdentity();
+    var box = el("syncBox");
+    if (box) box.innerHTML = '<span class="dot off"></span>yükleniyor';
+    loadAll().then(function (res) {
+      applyData(res);
+      render();
+      window.scrollTo(0, 0);
+    });
+  }
+
+  function teamTitle() {
+    var lg = state.league || {}, tm = state.team || {};
+    var parts = [tm.club, tm.team].filter(Boolean).join(" ");
+    return lg.teamName || parts || ("Evolog " + ageInfo().title);
+  }
+
+  function renderIdentity() {
+    var name = teamTitle();
+    var h1 = el("teamName");
+    if (h1) h1.textContent = name;
+    document.title = name;
+    var badge = el("ageBadge");
+    if (badge) badge.textContent = ageInfo().label;
+  }
+
   function boot() {
     loadAll().then(function (res) {
-      state.team = res[0];
-      state.training = res[1];
-      state.league = res[2];
-      sync.sig = signature(res[0], res[1], res[2]);
-      sync.lastCheck = Date.now();
+      applyData(res);
       render();
       startAutoRefresh();
       initPush();
@@ -826,68 +912,33 @@
     return out;
   }
 
-  function renderPush() {
-    var slot = el("pushSlot");
-    if (!slot || INLINE) return;
+  function pushAges() {
+    var raw = store(PUSH_STORE), list = [];
+    try { list = raw ? JSON.parse(raw) : []; } catch (e) { list = []; }
+    return list.filter(knownAge);
+  }
 
-    if (!pushSupported()) {
+  function setPushAges(list) { store(PUSH_STORE, JSON.stringify(list)); }
+
+  // iOS'ta bildirim yalnizca ana ekrana eklenmis uygulamada calisir; bu uyari
+  // ana ekranda bir kez gorunur ve kapatilinca bir daha cikmaz.
+  function renderIosHint() {
+    var slot = el("iosHint");
+    if (!slot) return;
+    if (INLINE || !pushSupported() || !isIOS() || standalone() || store(IOS_STORE) === "off") {
       slot.innerHTML = "";
       return;
     }
-    // iOS'ta bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır.
-    if (isIOS() && !standalone()) {
-      slot.innerHTML = '<div class="note"><div><b>Maç bildirimleri için</b> Paylaş → ' +
-        "“Ana Ekrana Ekle” deyip uygulamayı oradan açın. iPhone'da bildirimler " +
-        "yalnızca böyle çalışıyor.</div></div>";
-      return;
-    }
-    if (Notification.permission === "denied") {
-      slot.innerHTML = '<div class="note"><div><b>Bildirimler engellenmiş.</b> ' +
-        "Tarayıcı ayarlarından bu siteye bildirim izni verirseniz maç " +
-        "hatırlatması ve skoru gönderebiliriz.</div></div>";
-      return;
-    }
-    var on = !!push.sub;
-    slot.innerHTML = '<div class="pushrow' + (on ? " on" : "") + '">' +
-      "<div>" + (on
-        ? "<b>Maç bildirimleri açık</b><span>Maçtan 4 saat önce ve maç bitince haber vereceğiz.</span>"
-        : "<b>Maç bildirimi al</b><span>Maçtan 4 saat önce hatırlatma, maç bitince skor.</span>") +
-      "</div>" +
-      '<button id="pushBtn"' + (push.busy ? " disabled" : "") + ">" +
-        (push.busy ? "…" : on ? "Kapat" : "Aç") + "</button></div>";
+    slot.innerHTML = '<div class="note"><div><b>Maç bildirimleri için</b> Paylaş → ' +
+      "\u201CAna Ekrana Ekle\u201D deyip uygulamayı oradan açın. iPhone'da bildirimler " +
+      "yalnızca böyle çalışıyor.</div>" +
+      '<button class="hintx" id="iosHintClose" aria-label="Uyarıyı kapat">✕</button></div>';
   }
 
-  function initPush() {
-    if (!pushSupported() || INLINE) return;
-    navigator.serviceWorker.ready.then(function (reg) {
-      return reg.pushManager.getSubscription();
-    }).then(function (sub) {
-      push.sub = sub;
-      renderPush();
-    }).catch(function () { renderPush(); });
-  }
-
-  function togglePush() {
-    if (push.busy) return;
-    push.busy = true;
-    renderPush();
-
-    var done = function () { push.busy = false; renderPush(); };
-
-    if (push.sub) {
-      var endpoint = push.sub.endpoint;
-      push.sub.unsubscribe().catch(function () {}).then(function () {
-        push.sub = null;
-        return fetch("/api/push/unsubscribe", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint: endpoint })
-        }).catch(function () {});
-      }).then(done);
-      return;
-    }
-
-    Notification.requestPermission().then(function (perm) {
-      if (perm !== "granted") { done(); return; }
+  function ensureSubscription() {
+    if (push.sub) return Promise.resolve(push.sub);
+    return Notification.requestPermission().then(function (perm) {
+      if (perm !== "granted") return null;
       return fetch("/api/push/key").then(function (r) { return r.json(); })
         .then(function (k) {
           if (!k.publicKey) throw new Error("Sunucu anahtarı yok");
@@ -898,17 +949,153 @@
             });
           });
         })
-        .then(function (sub) {
-          push.sub = sub;
-          return fetch("/api/push/subscribe", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(sub)
-          });
-        })
-        .then(function () { toast("Bildirimler açıldı"); })
-        .catch(function () { toast("Bildirim açılamadı, sonra tekrar deneyin"); })
-        .then(done);
-    }).catch(done);
+        .then(function (sub) { push.sub = sub; return sub; });
+    });
+  }
+
+  function dropSubscription() {
+    var sub = push.sub;
+    if (!sub) return Promise.resolve();
+    var endpoint = sub.endpoint;
+    push.sub = null;
+    return sub.unsubscribe().catch(function () {}).then(function () {
+      return fetch("/api/push/unsubscribe", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endpoint: endpoint })
+      }).catch(function () {});
+    });
+  }
+
+  function sendAges(list) {
+    var j = push.sub.toJSON ? push.sub.toJSON() : push.sub;
+    return fetch("/api/push/subscribe", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys, ages: list })
+    });
+  }
+
+  // Bir yas grubunun bildirimini ac/kapat. Hepsi kapaninca abonelik silinir.
+  function togglePushAge(key, want) {
+    if (push.busy || !knownAge(key)) return;
+    var list = pushAges().slice();
+    var at = list.indexOf(key);
+    if (want && at === -1) list.push(key);
+    if (!want && at !== -1) list.splice(at, 1);
+
+    push.busy = true;
+    renderSheet();
+    var done = function () { push.busy = false; renderSheet(); };
+
+    if (!list.length) {
+      dropSubscription().then(function () { setPushAges([]); }).then(done, done);
+      return;
+    }
+
+    ensureSubscription().then(function (sub) {
+      if (!sub) return null;                 // izin verilmedi
+      setPushAges(list);
+      return sendAges(list);
+    }).catch(function () {
+      toast("Bildirim ayarlanamadı, sonra tekrar deneyin");
+    }).then(done, done);
+  }
+
+  function initPush() {
+    if (!pushSupported() || INLINE) return;
+    navigator.serviceWorker.ready.then(function (reg) {
+      return reg.pushManager.getSubscription();
+    }).then(function (sub) {
+      push.sub = sub;
+      // Bu guncellemeden onceki abonelikler sunucuda ilk yas grubuna kayitli.
+      if (sub && !pushAges().length) setPushAges([AGES[0].key]);
+      if (!sub && pushAges().length) setPushAges([]);
+      renderSheet();
+    }).catch(function () { renderSheet(); });
+  }
+
+  // ------------------------------------------------------- takim / ayarlar
+  function pushSection() {
+    if (!pushSupported()) {
+      return '<p class="shint">Bu tarayıcı maç bildirimlerini desteklemiyor.</p>';
+    }
+    if (isIOS() && !standalone()) {
+      return '<p class="shint">iPhone\u2019da bildirim için uygulamayı Paylaş → ' +
+        "\u201CAna Ekrana Ekle\u201D ile kurup oradan açın.</p>";
+    }
+    if (Notification.permission === "denied") {
+      return '<p class="shint">Bildirimler engellenmiş. Tarayıcı ayarlarından bu ' +
+        "siteye izin verirseniz maç hatırlatması ve skoru gönderebiliriz.</p>";
+    }
+    var on = pushAges();
+    return AGES.map(function (a) {
+      var isOn = on.indexOf(a.key) !== -1;
+      return '<button type="button" class="srow tgl' + (isOn ? " on" : "") + '"' +
+        (push.busy ? " disabled" : "") +
+        ' data-push="' + a.key + '" data-want="' + (isOn ? "0" : "1") + '"' +
+        ' role="switch" aria-checked="' + (isOn ? "true" : "false") + '">' +
+        "<span>" + esc(a.title) + "</span>" +
+        '<span class="sw" aria-hidden="true"></span></button>';
+    }).join("") +
+      '<p class="shint">Maçtan 4 saat önce hatırlatma, maç bitince skor.</p>';
+  }
+
+  function renderSheet() {
+    var ov = el("ageSheet");
+    if (!ov || ov.hidden) return;
+    var lg = state.league || {};
+    var stamp = "";
+    if (lg.updatedAt) {
+      var d = new Date(lg.updatedAt);
+      stamp = d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" }) + " " +
+        d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+    }
+    ov.innerHTML =
+      '<div class="psheet" role="dialog" aria-modal="true" aria-label="Takım ve ayarlar">' +
+        '<header class="ph sh">' +
+          "<div><h2>Takım</h2></div>" +
+          '<button class="pclose" aria-label="Kapat">✕</button>' +
+        "</header>" +
+        '<div class="pbody">' +
+          '<div class="slist">' +
+            AGES.map(function (a) {
+              var on = a.key === age;
+              return '<button type="button" class="srow pick' + (on ? " on" : "") + '"' +
+                ' data-age="' + a.key + '" aria-current="' + (on ? "true" : "false") + '">' +
+                "<span>" + esc(a.title) + "</span>" +
+                '<span class="tick" aria-hidden="true">' + (on ? "✓" : "") + "</span></button>";
+            }).join("") +
+          "</div>" +
+          '<h3 class="eyebrow">Maç bildirimi</h3>' +
+          '<div class="slist">' + pushSection() + "</div>" +
+          '<h3 class="eyebrow">Uygulama</h3>' +
+          '<div class="slist">' +
+            '<div class="srow flat"><span>Son veri</span><span class="dim">' +
+              esc(stamp || "—") + "</span></div>" +
+            '<a class="srow link" href="yonetim.html"><span>Antrenman programını düzenle</span>' +
+              '<span class="dim">›</span></a>' +
+          "</div>" +
+        "</div>" +
+      "</div>";
+  }
+
+  function openSheet() {
+    var ov = el("ageSheet");
+    if (!ov) return;
+    ov.hidden = false;
+    document.body.classList.add("locked");
+    var tab = el("tab-takim");
+    if (tab) tab.setAttribute("aria-expanded", "true");
+    renderSheet();
+  }
+
+  function closeSheet() {
+    var ov = el("ageSheet");
+    if (!ov || ov.hidden) return;
+    ov.hidden = true;
+    ov.innerHTML = "";
+    document.body.classList.remove("locked");
+    var tab = el("tab-takim");
+    if (tab) tab.setAttribute("aria-expanded", "false");
   }
 
   // ------------------------------------------------------------- sekmeler
@@ -923,20 +1110,41 @@
   }
 
   function render() {
+    renderIdentity();
     renderSync();
-    renderPush();
+    renderIosHint();
     renderMatches();
     renderLeagueWeeks();
     renderStandings();
     renderRoster();
     renderTraining();
+    renderSheet();
   }
 
   document.querySelectorAll(".tabbar button").forEach(function (btn) {
     btn.addEventListener("click", function () {
+      if (btn.id === "tab-takim") { openSheet(); return; }
+      if (!btn.dataset.panel) return;
       location.hash = btn.dataset.panel;
       showPanel(btn.dataset.panel);
     });
+  });
+
+  // Takım/ayarlar sayfası: takım seçimi, bildirim anahtarları, kapatma.
+  document.addEventListener("click", function (ev) {
+    var t = ev.target;
+    if (!t.closest) return;
+    if (t.id === "iosHintClose") { store(IOS_STORE, "off"); renderIosHint(); return; }
+
+    var sheet = el("ageSheet");
+    if (!sheet || sheet.hidden) return;
+    if (t === sheet || t.closest(".pclose")) { closeSheet(); return; }
+
+    var pick = t.closest("[data-age]");
+    if (pick) { setAge(pick.dataset.age); return; }
+
+    var tgl = t.closest("[data-push]");
+    if (tgl && !tgl.disabled) { togglePushAge(tgl.dataset.push, tgl.dataset.want === "1"); }
   });
 
   document.addEventListener("click", function (ev) {
@@ -952,14 +1160,16 @@
   });
 
   document.addEventListener("click", function (ev) {
-    if (ev.target.id === "pushBtn") { togglePush(); return; }
     var row = ev.target.closest && ev.target.closest(".pl[data-player]");
     if (row) { openPlayer(row.dataset.player); return; }
     if (ev.target.closest && (ev.target.closest(".pclose") ||
         (ev.target.id === "playerSheet"))) closePlayer();
   });
   document.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape") closePlayer();
+    if (ev.key !== "Escape") return;
+    var sheet = el("ageSheet");
+    if (sheet && !sheet.hidden) { closeSheet(); return; }
+    closePlayer();
   });
 
   document.querySelectorAll(".seg button").forEach(function (btn) {

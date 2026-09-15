@@ -24,6 +24,7 @@ import os
 import pathlib
 import re
 import threading
+import urllib.parse
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -32,9 +33,32 @@ ADMIN_PASS = os.environ.get("EVOLOG_ADMIN_PASS", "")
 PORT = int(os.environ.get("EVOLOG_PORT", "8106"))
 MAX_BODY = 512 * 1024
 
-TRAINING = STATE_DIR / "training.json"
 SUBS = STATE_DIR / "subs.json"
 VAPID = STATE_DIR / "vapid.json"
+
+# Yas gruplari: her birinin kendi antrenman programi var. Listeyi ortam
+# degiskeniyle genisletebilirsiniz (yeni yas acilinca tek satir).
+AGES = tuple(a.strip() for a in os.environ.get("EVOLOG_AGES", "u14,u16,u18").split(",") if a.strip())
+DEFAULT_AGE = AGES[0] if AGES else "u14"
+
+
+def age_of(handler) -> str:
+    """Sorgudaki ?age=... degerini dogrular. Bilinmeyen/eksikse varsayilan."""
+    query = urllib.parse.urlparse(handler.path).query
+    value = (urllib.parse.parse_qs(query).get("age") or [""])[0].strip().lower()
+    return value if value in AGES else DEFAULT_AGE
+
+
+def training_path(age: str) -> pathlib.Path:
+    return STATE_DIR / f"training-{age}.json"
+
+
+def clean_ages(value) -> list:
+    """Bildirim icin secilen yas listesi; bilinmeyenler atilir."""
+    if not isinstance(value, list):
+        return []
+    out = [str(v).strip().lower() for v in value[:10]]
+    return [a for a in dict.fromkeys(out) if a in AGES]
 
 _lock = threading.Lock()
 _fails: dict[str, list] = {}
@@ -178,7 +202,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/health":
             return self.send_json(200, {"ok": True, "hasPass": bool(ADMIN_PASS)})
         if path == "/api/training":
-            return self.send_json(200, read_json(TRAINING, None) or {})
+            return self.send_json(200, read_json(training_path(age_of(self)), None) or {})
         if path == "/api/push/key":
             keys = read_json(VAPID, {})
             return self.send_json(200, {"publicKey": keys.get("publicKey")})
@@ -197,23 +221,27 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/training":
                 if not authorized(self):
                     return self.send_json(401, {"error": "Sifre hatali"})
+                age = age_of(self)
                 data = validate_training(self.body_json())
                 with _lock:
-                    write_json(TRAINING, data)
-                return self.send_json(200, {"ok": True, "sessions": len(data["sessions"])})
+                    write_json(training_path(age), data)
+                return self.send_json(200, {"ok": True, "age": age,
+                                            "sessions": len(data["sessions"])})
 
             if path == "/api/push/subscribe":
                 sub = self.body_json()
                 endpoint = (sub or {}).get("endpoint")
                 if not endpoint or not str(endpoint).startswith("https://"):
                     return self.send_json(400, {"error": "Gecersiz abonelik"})
+                ages = clean_ages(sub.get("ages")) or [DEFAULT_AGE]
                 with _lock:
                     subs = read_json(SUBS, [])
                     subs = [s for s in subs if s.get("endpoint") != endpoint]
                     subs.append({"endpoint": endpoint, "keys": sub.get("keys") or {},
+                                 "ages": ages,
                                  "addedAt": time.strftime("%Y-%m-%dT%H:%M:%S")})
                     write_json(SUBS, subs[-500:])
-                return self.send_json(200, {"ok": True})
+                return self.send_json(200, {"ok": True, "ages": ages})
 
             if path == "/api/push/unsubscribe":
                 endpoint = (self.body_json() or {}).get("endpoint")

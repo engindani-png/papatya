@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evolog U14 — mac bildirimi gonderici.
+"""Evolog — mac bildirimi gonderici (U14/U16/U18).
 
 Senkronizasyondan hemen sonra calisir. Iki tur bildirim uretir:
 
@@ -10,7 +10,7 @@ Ayni olay icin bir kez gonderilir; gonderilenler notified.json'da tutulur.
 Artik gecerli olmayan abonelikler (404/410) listeden dusurulur.
 
 Kullanim:
-    python3 server/evolog_push.py              # olaylari bul ve gonder
+    python3 server/evolog_push.py              # tum yas gruplarini tara ve gonder
     python3 server/evolog_push.py --dry-run    # ne gonderilecegini yaz
     python3 server/evolog_push.py --keys       # VAPID anahtarlarini uret/goster
     python3 server/evolog_push.py --test       # abonelere deneme bildirimi
@@ -27,8 +27,9 @@ import pathlib
 import sys
 
 STATE_DIR = pathlib.Path(os.environ.get("EVOLOG_STATE_DIR", "/var/lib/evolog"))
-LEAGUE_PATH = pathlib.Path(os.environ.get("EVOLOG_LEAGUE",
-                                          "/var/www/evolog/data/league.json"))
+DATA_DIR = pathlib.Path(os.environ.get("EVOLOG_DATA_DIR", "/var/www/evolog/data"))
+AGES = tuple(a.strip() for a in os.environ.get("EVOLOG_AGES", "u14,u16,u18").split(",") if a.strip())
+DEFAULT_AGE = AGES[0] if AGES else "u14"
 SUBS = STATE_DIR / "subs.json"
 NOTIFIED = STATE_DIR / "notified.json"
 VAPID_JSON = STATE_DIR / "vapid.json"
@@ -90,8 +91,21 @@ def our_side(fixture: dict, our_key: str):
     return our_key in home
 
 
-def build_events(league: dict) -> list[dict]:
+def load_leagues() -> list[tuple[str, dict]]:
+    """Her yas grubunun league.json dosyasini okur. Eksik olan atlanir."""
+    out = []
+    for age in AGES:
+        league = read_json(DATA_DIR / age / "league.json", {})
+        if league:
+            out.append((age, league))
+        else:
+            print(f"  uyari: {age} league.json okunamadi, atlandi.")
+    return out
+
+
+def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
     our_key = (league.get("ourTeamKey") or "evolog").lower()
+    label = league.get("label") or age.upper()
     now = dt.datetime.now(TZ)
     events = []
 
@@ -117,7 +131,8 @@ def build_events(league: dict) -> list[dict]:
                 title = f"Maç berabere: {ours}-{theirs}"
             events.append({
                 "id": f"result-{mid}",
-                "title": title,
+                "age": age,
+                "title": f"{label} · {title}",
                 "body": f"{home} {f['homeScore']} - {f['awayScore']} {away}",
                 "tag": f"mac-{mid}",
             })
@@ -137,7 +152,8 @@ def build_events(league: dict) -> list[dict]:
             where = f.get("venue") or ""
             events.append({
                 "id": f"reminder-{mid}",
-                "title": f"Bugün {when} · {opp}",
+                "age": age,
+                "title": f"{label} · Bugün {when} · {opp}",
                 "body": ("Maça yaklaşık " + str(int(round(hours_left))) + " saat kaldı"
                          + (f" · {where}" if where else "")),
                 "tag": f"mac-{mid}",
@@ -154,7 +170,8 @@ def send_all(events: list[dict], dry: bool) -> int:
         return 0
     if dry:
         for e in events:
-            print(f"  [deneme] {e['title']} — {e['body']}  ({len(subs)} abone)")
+            want = [s for s in subs if e.get("age", DEFAULT_AGE) in (s.get("ages") or [DEFAULT_AGE])]
+            print(f"  [deneme] {e['title']} — {e['body']}  ({len(want)}/{len(subs)} abone)")
         return 0
 
     from pywebpush import WebPushException, webpush
@@ -166,10 +183,15 @@ def send_all(events: list[dict], dry: bool) -> int:
 
     for sub in subs:
         drop = False
+        # Abone yalnizca actigi yas gruplarinin macini alir; eski kayitlarda
+        # alan yoksa varsayilan yas kabul edilir.
+        wanted = sub.get("ages") or [DEFAULT_AGE]
         for e in events:
+            if e.get("age", DEFAULT_AGE) not in wanted:
+                continue
             payload = json.dumps({
                 "title": e["title"], "body": e["body"],
-                "tag": e["tag"], "url": APP_URL,
+                "tag": e["tag"], "url": APP_URL + "?age=" + e.get("age", DEFAULT_AGE),
             }, ensure_ascii=False)
             try:
                 webpush(
@@ -212,18 +234,20 @@ def main() -> int:
     if args.test:
         send_all([{
             "id": "test", "tag": "test",
-            "title": "Evolog U14 Kız Siyah",
+            "title": "Evolog Kız Basketbol",
             "body": "Bildirimler çalışıyor. Maç öncesi ve sonrası haber vereceğiz.",
         }], args.dry_run)
         return 0
 
-    league = read_json(LEAGUE_PATH, {})
-    if not league:
-        print("league.json okunamadi.")
+    leagues = load_leagues()
+    if not leagues:
+        print("Hicbir league.json okunamadi.")
         return 1
 
     done = read_json(NOTIFIED, {})
-    events = [e for e in build_events(league) if e["id"] not in done]
+    events = []
+    for age, league in leagues:
+        events += [e for e in build_events(league, age) if e["id"] not in done]
     if not events:
         print("Yeni bildirim yok.")
         return 0
