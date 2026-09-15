@@ -6,7 +6,26 @@
 
   var API = "/api";
   var GUNLER = ["", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"];
+  var KISA = ["", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
   var KEY = "evolog_admin_pass";
+
+  // Uygulamayla ayni secimi paylasiyoruz: yonetimde takim degistirilince
+  // uygulama da o takimla aciliyor.
+  var AGES = [
+    { key: "u14", title: "U14 Kızlar" },
+    { key: "u16", title: "U16 Kızlar" },
+    { key: "u18", title: "U18 Kızlar" }
+  ];
+  var AGE_STORE = "evolog.age";
+
+  function knownAge(key) {
+    for (var i = 0; i < AGES.length; i++) if (AGES[i].key === key) return key;
+    return null;
+  }
+
+  var age = null;
+  try { age = knownAge(localStorage.getItem(AGE_STORE)); } catch (e) { /* depolama yok */ }
+  age = age || AGES[0].key;
 
   var state = { venues: [], sessions: [], exceptions: [], matches: [] };
   var pass = "";
@@ -51,6 +70,7 @@
       el("loginBox").hidden = true;
       el("adminBox").hidden = false;
       el("bar").hidden = false;
+      renderTeamStrip();
       loadCurrent();
     }).catch(function (err) {
       pass = "";
@@ -59,9 +79,41 @@
   }
 
   // --------------------------------------------------------------- yükleme
+  function renderTeamStrip() {
+    var box = el("teamStrip");
+    box.innerHTML = "";
+    AGES.forEach(function (a) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = a.title;
+      b.setAttribute("aria-pressed", a.key === age ? "true" : "false");
+      b.addEventListener("click", function () { switchAge(a.key); });
+      box.appendChild(b);
+    });
+  }
+
+  // Kaydedilmemis degisiklikle takim degistirmek veri kaybettirir; onun
+  // yerine uyariyoruz (tarayici penceresi acmadan).
+  function switchAge(key) {
+    if (key === age || !knownAge(key)) return;
+    if (dirty) {
+      note("parseMsg", "bad", "Önce kaydedin ya da <b>Kayıtlıyı getir</b> ile vazgeçin; " +
+        "sonra takımı değiştirin.");
+      window.scrollTo(0, 0);
+      return;
+    }
+    age = key;
+    try { localStorage.setItem(AGE_STORE, age); } catch (e) { /* yoksay */ }
+    state.venues = []; state.sessions = []; state.exceptions = []; state.matches = [];
+    renderTeamStrip();
+    renderAll();
+    el("parseMsg").innerHTML = "";
+    loadCurrent();
+  }
+
   function loadCurrent() {
-    api("/training").then(function (data) {
-      if (!data || !(data.sessions || []).length) return;
+    api("/training?age=" + age).then(function (data) {
+      if (!data || !(data.sessions || []).length) { renderAll(); mark(false); return; }
       state.venues = data.venues || [];
       state.sessions = (data.sessions || []).map(function (s) {
         return Object.assign({}, s, { kind: s.kind || "basket" });
@@ -112,68 +164,166 @@
   }
 
   // ----------------------------------------------------------------- çizim
-  function daySelect(value, onChange) {
-    var s = document.createElement("select");
+  // Gun: yatay serit, dokun-sec. Acilir liste yok.
+  function dayStrip(value, onChange) {
+    var box = document.createElement("div");
+    box.className = "days full";
     for (var d = 1; d <= 7; d++) {
-      var o = document.createElement("option");
-      o.value = String(d); o.textContent = GUNLER[d];
-      if (d === Number(value)) o.selected = true;
-      s.appendChild(o);
+      (function (day) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = KISA[day];
+        b.setAttribute("aria-label", GUNLER[day]);
+        b.setAttribute("aria-pressed", day === Number(value) ? "true" : "false");
+        b.addEventListener("click", function () { onChange(day); });
+        box.appendChild(b);
+      })(d);
     }
-    s.addEventListener("change", function () { onChange(Number(s.value)); });
-    return s;
+    return box;
   }
 
-  function venueSelect(value, onChange) {
-    var s = document.createElement("select");
-    var none = document.createElement("option");
-    none.value = ""; none.textContent = "— salon yok —";
-    s.appendChild(none);
+  // --------------------------------------------------- saat tekerlegi
+  var ITEM = 38;          // .wheel .wi yuksekligi (styles ile ayni olmali)
+  var HOURS = [];
+  for (var h = 6; h <= 23; h++) HOURS.push(("0" + h).slice(-2));
+  var STEPS = ["00", "15", "30", "45"];
+  var timeTarget = null;  // { get, set, allowEmpty }
+
+  function wheelFill(box, values, current) {
+    box.innerHTML = '<div class="wpad"></div>' +
+      values.map(function (v) { return '<div class="wi">' + v + "</div>"; }).join("") +
+      '<div class="wpad"></div>';
+    var at = values.indexOf(current);
+    if (at < 0) at = 0;
+    box.scrollTop = at * ITEM;
+    wheelMark(box);
+  }
+
+  function wheelIndex(box) {
+    return Math.max(0, Math.round(box.scrollTop / ITEM));
+  }
+
+  function wheelMark(box) {
+    var items = box.querySelectorAll(".wi");
+    var at = wheelIndex(box);
+    for (var i = 0; i < items.length; i++) {
+      if (i === at) items[i].classList.add("on");
+      else items[i].classList.remove("on");
+    }
+  }
+
+  function wheelValue(box, values) {
+    return values[Math.min(values.length - 1, wheelIndex(box))];
+  }
+
+  function minutesFor(mm) {
+    // Kayitli saat 15'lik adimda degilse (orn. 18:20) kaybolmasin diye eklenir.
+    var list = STEPS.slice();
+    if (mm && list.indexOf(mm) === -1) {
+      list.push(mm);
+      list.sort();
+    }
+    return list;
+  }
+
+  var minuteList = STEPS.slice();
+
+  function openTime(title, value, allowEmpty, onPick) {
+    var parts = /^(\d{2}):(\d{2})$/.exec(value || "");
+    var hh = parts ? parts[1] : "19";
+    var mm = parts ? parts[2] : "00";
+    minuteList = minutesFor(mm);
+    timeTarget = { onPick: onPick, allowEmpty: allowEmpty };
+    el("timeTitle").textContent = title;
+    wheelFill(el("wheelH"), HOURS, hh);
+    wheelFill(el("wheelM"), minuteList, mm);
+    el("timeSheet").hidden = false;
+  }
+
+  function closeTime() {
+    el("timeSheet").hidden = true;
+    timeTarget = null;
+  }
+
+  // Saat/salon dugmesi: uzerinde etiket ve secili deger yazar.
+  function pickButton(label, value, placeholder, onOpen) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "pickbtn";
+    b.innerHTML = '<span><span class="lbl">' + esc(label) + '</span>' +
+      '<span class="val' + (value ? "" : " empty") + '">' +
+      esc(value || placeholder) + "</span></span><span>›</span>";
+    b.addEventListener("click", onOpen);
+    return b;
+  }
+
+  function timeButton(label, value, placeholder, allowEmpty, onChange) {
+    return pickButton(label, value, placeholder, function () {
+      openTime(label, value, allowEmpty, onChange);
+    });
+  }
+
+  // --------------------------------------------------------- salon secimi
+  var venueTarget = null;
+
+  function venueName(id) {
+    for (var i = 0; i < state.venues.length; i++) {
+      if (state.venues[i].id === id) return state.venues[i].name;
+    }
+    return null;
+  }
+
+  function renderVenueList() {
+    var box = el("venueList");
+    box.innerHTML = "";
+    var current = venueTarget ? venueTarget.value : null;
+
+    var none = document.createElement("button");
+    none.type = "button";
+    none.setAttribute("aria-checked", current ? "false" : "true");
+    none.innerHTML = "<span>— salon yok —</span><span>" + (current ? "" : "✓") + "</span>";
+    none.addEventListener("click", function () { pickVenue(null); });
+    box.appendChild(none);
+
     state.venues.forEach(function (v) {
-      var o = document.createElement("option");
-      o.value = v.id; o.textContent = v.name;
-      if (v.id === value) o.selected = true;
-      s.appendChild(o);
+      var b = document.createElement("button");
+      b.type = "button";
+      var on = v.id === current;
+      b.setAttribute("aria-checked", on ? "true" : "false");
+      b.innerHTML = '<span style="display:flex;align-items:center;gap:.55rem">' +
+        '<span class="dot2" style="background:' + esc(v.color || "#f2a03d") + '"></span>' +
+        esc(v.name) + "</span><span>" + (on ? "✓" : "") + "</span>";
+      b.addEventListener("click", function () { pickVenue(v.id); });
+      box.appendChild(b);
     });
-    s.addEventListener("change", function () { onChange(s.value || null); });
-    return s;
+
+    var add = document.createElement("button");
+    add.type = "button";
+    add.className = "add";
+    add.innerHTML = "<span>+ Yeni salon</span><span></span>";
+    add.addEventListener("click", function () {
+      var v = {
+        id: "salon-" + (Date.now().toString(36)),
+        name: "Yeni salon", address: null, maps: null,
+        color: EvologParse.COLORS[state.venues.length % EvologParse.COLORS.length]
+      };
+      state.venues.push(v);
+      renderVenues();
+      pickVenue(v.id);
+    });
+    box.appendChild(add);
   }
 
-  // Saat girişi 24 saatlik. <input type="time"> cihazın diline göre AM/PM
-  // gösterebiliyor; bu yüzden maskeli metin alanı kullanılıyor.
-  function timeField(value, placeholder, onChange) {
-    var i = document.createElement("input");
-    i.type = "text";
-    i.inputMode = "numeric";
-    i.autocomplete = "off";
-    i.maxLength = 5;
-    i.pattern = "([01][0-9]|2[0-3]):[0-5][0-9]";
-    i.value = value == null ? "" : value;
-    i.placeholder = placeholder || "19:30";
-    i.addEventListener("input", function () {
-      var digits = i.value.replace(/\D/g, "").slice(0, 4);
-      var out = digits.length > 2 ? digits.slice(0, 2) + ":" + digits.slice(2) : digits;
-      if (out !== i.value) {
-        var atEnd = i.selectionStart === i.value.length;
-        i.value = out;
-        if (atEnd) i.setSelectionRange(out.length, out.length);
-      }
-      onChange(out.length === 5 ? out : (out || null));
-    });
-    i.addEventListener("blur", function () {
-      // "9" -> "09:00", "930" -> "09:30" gibi eksik girişleri tamamla.
-      var d = i.value.replace(/\D/g, "");
-      if (!d) { i.value = ""; onChange(null); i.classList.remove("bad"); return; }
-      if (d.length <= 2) d = ("0" + d).slice(-2) + "00";
-      else if (d.length === 3) d = "0" + d;
-      var hh = Math.min(23, parseInt(d.slice(0, 2), 10));
-      var mm = Math.min(59, parseInt(d.slice(2, 4), 10));
-      var out = ("0" + hh).slice(-2) + ":" + ("0" + mm).slice(-2);
-      i.value = out;
-      i.classList.remove("bad");
-      onChange(out);
-    });
-    return i;
+  function pickVenue(id) {
+    if (venueTarget) venueTarget.onPick(id);
+    el("venueSheet").hidden = true;
+    venueTarget = null;
+  }
+
+  function openVenue(value, onPick) {
+    venueTarget = { value: value, onPick: onPick };
+    renderVenueList();
+    el("venueSheet").hidden = false;
   }
 
   function field(type, value, placeholder, onChange) {
@@ -200,6 +350,16 @@
       head.innerHTML = "<strong>" + esc(GUNLER[s.day] || "?") + " · " + esc(s.start) + "</strong>" +
         (s.dayGuess ? '<span class="pill guess">gün devralındı</span>' : "") +
         (s.venueGuess ? '<span class="pill guess">salon tahmin</span>' : "");
+      var copy = document.createElement("button");
+      copy.className = "copy"; copy.title = "Bu seansı kopyala"; copy.textContent = "⧉";
+      copy.style.marginLeft = "auto";
+      copy.addEventListener("click", function () {
+        var next = Object.assign({}, s, { day: s.day >= 7 ? 1 : s.day + 1, src: null });
+        state.sessions.splice(i + 1, 0, next);
+        renderSessions(); mark(true);
+      });
+      head.appendChild(copy);
+
       var del = document.createElement("button");
       del.className = "del"; del.title = "Sil"; del.textContent = "✕";
       del.addEventListener("click", function () {
@@ -210,10 +370,28 @@
 
       var grid = document.createElement("div");
       grid.className = "grid";
-      grid.appendChild(daySelect(s.day, function (v) { s.day = v; s.dayGuess = false; renderSessions(); mark(true); }));
-      grid.appendChild(timeField(s.start, "Başlangıç 19:30", function (v) { s.start = v; mark(true); }));
-      grid.appendChild(timeField(s.end, "Bitiş (isteğe bağlı)", function (v) { s.end = v; mark(true); }));
-      grid.appendChild(venueSelect(s.venue, function (v) { s.venue = v; s.venueGuess = false; mark(true); }));
+      grid.appendChild(dayStrip(s.day, function (v) {
+        s.day = v; s.dayGuess = false; renderSessions(); mark(true);
+      }));
+
+      var row = document.createElement("div");
+      row.className = "pickrow full";
+      row.appendChild(timeButton("Başlangıç", s.start, "Seçin", false, function (v) {
+        s.start = v; renderSessions(); mark(true);
+      }));
+      row.appendChild(timeButton("Bitiş", s.end, "İsteğe bağlı", true, function (v) {
+        s.end = v; renderSessions(); mark(true);
+      }));
+      grid.appendChild(row);
+
+      var vbtn = pickButton("Salon", venueName(s.venue), "Seçin", function () {
+        openVenue(s.venue, function (id) {
+          s.venue = id; s.venueGuess = false; renderSessions(); mark(true);
+        });
+      });
+      vbtn.classList.add("full");
+      grid.appendChild(vbtn);
+
       var title = field("text", s.title, "İçerik (Basketbol / Kuvvet …)", function (v) { s.title = v; mark(true); });
       title.className = "full";
       grid.appendChild(title);
@@ -288,14 +466,18 @@
       var del = document.createElement("button");
       del.className = "del"; del.textContent = "✕";
       del.addEventListener("click", function () {
-        state.venues.splice(i, 1); renderVenues(); renderSessions(); mark(true);
+        state.venues.splice(i, 1); renderVenues(); renderSessions();
+        if (!el("venueSheet").hidden) renderVenueList();
+        mark(true);
       });
       head.appendChild(del);
       card.appendChild(head);
 
       var grid = document.createElement("div");
       grid.className = "grid";
-      var name = field("text", v.name, "Salon adı", function (val) { v.name = val; mark(true); });
+      var name = field("text", v.name, "Salon adı", function (val) {
+        v.name = val; renderSessions(); mark(true);
+      });
       name.className = "full";
       grid.appendChild(name);
       var addr = field("text", v.address, "Adres (ilçe / İstanbul)", function (val) { v.address = val; mark(true); });
@@ -339,7 +521,7 @@
     }
     el("saveBtn").disabled = true;
     el("saveMsg").textContent = "Kaydediliyor…";
-    api("/training", {
+    api("/training?age=" + age, {
       method: "POST",
       body: JSON.stringify({
         venues: state.venues,
@@ -350,7 +532,8 @@
       })
     }).then(function (res) {
       mark(false);
-      el("saveMsg").textContent = res.sessions + " antrenman kaydedildi. Uygulama birkaç saniyede güncellenir.";
+      el("saveMsg").textContent = res.sessions + " antrenman kaydedildi (" +
+        (knownAge(res.age) || age).toUpperCase() + "). Uygulama birkaç saniyede güncellenir.";
     }).catch(function (err) {
       el("saveMsg").textContent = "Kaydedilemedi: " + err.message;
     }).then(function () { el("saveBtn").disabled = false; });
@@ -362,6 +545,33 @@
   el("parseBtn").addEventListener("click", doParse);
   el("saveBtn").addEventListener("click", save);
   el("reloadBtn").addEventListener("click", loadCurrent);
+
+  // Saat tekerlegi: kaydirinca ortadaki satir vurgulanir.
+  ["wheelH", "wheelM"].forEach(function (id) {
+    el(id).addEventListener("scroll", function () { wheelMark(el(id)); }, { passive: true });
+  });
+  el("timeCancel").addEventListener("click", closeTime);
+  el("timeSheet").addEventListener("click", function (ev) {
+    if (ev.target === el("timeSheet")) closeTime();
+  });
+  el("timeOk").addEventListener("click", function () {
+    if (!timeTarget) return closeTime();
+    var value = wheelValue(el("wheelH"), HOURS) + ":" + wheelValue(el("wheelM"), minuteList);
+    var pick = timeTarget.onPick;
+    closeTime();
+    pick(value);
+  });
+  el("venueCancel").addEventListener("click", function () {
+    el("venueSheet").hidden = true; venueTarget = null;
+  });
+  el("venueSheet").addEventListener("click", function (ev) {
+    if (ev.target === el("venueSheet")) { el("venueSheet").hidden = true; venueTarget = null; }
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Escape") return;
+    if (!el("timeSheet").hidden) closeTime();
+    if (!el("venueSheet").hidden) { el("venueSheet").hidden = true; venueTarget = null; }
+  });
 
   el("addBtn").addEventListener("click", function () {
     state.sessions.push({ day: 1, start: "19:00", end: null, title: "Basketbol", kind: "basket", venue: null });
