@@ -5,9 +5,10 @@ hazırlanmış **kopyala-yapıştır** brief'idir. Veriler 17 Eylül 2026 akşam
 sistemden alındı; Claude Design sunucumuza erişemediği için gerçek değerlerin
 brief'in içinde olması şart.
 
-Yapıştırmadan önce: mevcut ekranların görüntülerini de ekle (Takım sayfası,
-Maçlar, Antrenman, Antrenör paneli). "Neyi koruyalım, neyi değiştirelim"
-sorusunun cevabı görselde.
+Yapıştırmadan önce: mevcut ekranların görüntülerini de ekle. Hepsi hazır ve
+390 px telefon genişliğinde, tam sayfa: **`Desktop\Evolog-Ekranlar\`**
+(01-maclar … 10-antrenor-oyuncu-grafik, açıklamaları `OKU.txt` içinde).
+"Neyi koruyalım, neyi değiştirelim" sorusunun cevabı görselde.
 
 ---
 
