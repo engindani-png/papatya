@@ -29,20 +29,18 @@
 .skor .cey{grid-column:1/-1;border-top:1px solid var(--line-soft);padding-top:.5rem;margin-top:.3rem;
   font-size:.78rem;color:var(--chalk-faint);letter-spacing:.06em}
 
-/* karşılaştırma çubukları */
-.cmp{margin:.2rem 0 1rem}
-.cmp .row{margin-bottom:.7rem}
-.cmp .top{display:grid;grid-template-columns:1fr auto 1fr;gap:.6rem;align-items:baseline;
-  font-size:.8rem;color:var(--chalk-dim);margin-bottom:.3rem}
-.cmp .top b:last-child{text-align:right}
-.cmp .top .ad{text-align:center;white-space:nowrap}
-.cmp .top b{font-family:var(--display);font-weight:600;font-size:.95rem;color:var(--chalk)}
-.cmp .top .ad{font-family:var(--display);font-weight:600;font-size:.7rem;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--chalk-faint)}
-.cmp .bar{display:flex;height:6px;background:var(--ink-3);border:1px solid var(--line-soft)}
-.cmp .bar i{display:block;height:100%}
-.cmp .bar .biz{background:var(--amber)}
-.cmp .bar .rak{background:#40544e;margin-left:auto}
+/* karşılaştırma tablosu */
+.kt{width:100%;border-collapse:collapse;font-size:.9rem;margin:.2rem 0 1rem}
+.kt th{font-family:var(--display);font-weight:600;font-size:.66rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--chalk-faint);border-bottom:1px solid var(--line);
+  padding:.45rem .3rem;text-align:right}
+.kt th:first-child{text-align:left}
+.kt td{border-bottom:1px solid var(--line-soft);padding:.5rem .3rem;text-align:right;
+  color:var(--chalk-dim);white-space:nowrap}
+.kt td:first-child{text-align:left;color:var(--chalk-dim);white-space:normal}
+.kt td b{font-family:var(--display);font-weight:600;font-size:1.05rem;color:var(--chalk)}
+.kt td.one b{color:var(--amber)}
+.kt .dn{display:block;font-size:.72rem;color:var(--chalk-faint);margin-top:.1rem}
 
 /* liste (top kaybı, şut tipi) */
 .dokum{display:grid;grid-template-columns:1fr auto;gap:.3rem .8rem;font-size:.9rem;

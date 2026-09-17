@@ -31,7 +31,7 @@ CEYREK_SN = 10 * 60          # yerel liglerde ceyrek 10 dakika
 
 # Analiz dosyasinin bicim surumu. Artirilinca senkron eski dosyalari
 # yeniden uretir (bkz. tbf_sync.py).
-ANALIZ_SURUM = 3
+ANALIZ_SURUM = 4
 
 # Play-by-play olay adlarindan sut tipi cikarimi. TBF metinleri uzun
 # ("2 Sayı Havada Kayarak Sıçrayarak Atış Başarısız"); veliye ve antrenore
@@ -286,6 +286,9 @@ def mac_analizi_notr(fixture: dict, shot_infos: list, events: list, report: dict
         "besli": {"home": besliler(events, True, box_home),
                   "away": besliler(events, False, box_away)},
         "faul": {"home": faul_dokumu(events, True), "away": faul_dokumu(events, False)},
+        "gecis": {"home": gecis_dokumu(events, True), "away": gecis_dokumu(events, False)},
+        "ikinciSans": {"home": ikinci_sans_dokumu(events, True),
+                       "away": ikinci_sans_dokumu(events, False)},
     }
 
 
@@ -495,3 +498,146 @@ def faul_dokumu(events: list, bizim_ev: bool) -> dict:
         elif action == "Faul Yapılan" and bizde and no:
             aldiran[no] = aldiran.get(no, 0) + 1
     return {"yapan": yapan, "aldiran": aldiran, "ceyrek": ceyrek, "hucum": hucum}
+
+
+# Topu kazandiktan sonra bu surenin icinde atilan sut "gecis hucumu" sayilir.
+# 7 saniye yaygin kabul goren esik; olculen ortanca sure 8 sn oldugu icin
+# takimi ikiye bolen makul bir sinir.
+GECIS_ESIK_SN = 7
+
+# Topu kazandiran olaylar: savunma ribaundu ve top calma. Rakibin olu top
+# kaybi (hatali yurume vb.) tac atisiyla devam ettigi icin gecis sayilmaz.
+KAZANIM = ("Savunma Ribaundu", "Takım Savunma Ribaundu", "Top Çalma")
+
+
+def gecis_dokumu(events: list, bizim_ev: bool) -> dict:
+    """Gecis hucumu (transition) — topu kazandiktan sonraki ilk sut.
+
+    TBF'de pozisyon baslangici isaretlenmiyor; saat saniye hassasiyetinde
+    oldugu icin "kazanimdan sute gecen sure" ile yaklasiyoruz. Pozisyon
+    arada el degistirdiyse (top kaybimiz ya da rakibin sutu) o kazanim
+    sutsuz kapanir.
+
+    Doner:
+      gecis     {"deneme","isabet","sayi"}   <= GECIS_ESIK_SN saniye
+      yariSaha  {"deneme","isabet","sayi"}   daha uzun suren pozisyonlar
+      kazanim   topu kac kez kazandik
+      ortanca   kazanimdan sute gecen ortanca saniye
+      oyuncu    {"24": {"deneme","isabet"}}  gecis sutunu kim bitirdi
+    """
+    olaylar = events or []
+    gecis = {"deneme": 0, "isabet": 0, "sayi": 0}
+    yari = {"deneme": 0, "isabet": 0, "sayi": 0}
+    oyuncu: dict[str, dict] = {}
+    sureler: list[int] = []
+    kazanim = 0
+
+    for i, e in enumerate(olaylar):
+        if str(e.get("action") or "") not in KAZANIM:
+            continue
+        if bool(e.get("isHome")) != bool(bizim_ev):
+            continue
+        kazanim += 1
+        t0 = sure_saniye(e.get("quarterNumber"), e.get("time"))
+
+        for j in range(i + 1, min(len(olaylar), i + 12)):
+            x = olaylar[j]
+            xa = str(x.get("action") or "")
+            bizde = bool(x.get("isHome")) == bool(bizim_ev)
+
+            # Pozisyon el degistirdi: bu kazanim sutsuz kapandi.
+            if bizde and xa.startswith("Top Kaybı"):
+                break
+            if not bizde and (_sut_denemesi(xa) or xa in KAZANIM):
+                break
+
+            if bizde and _sut_denemesi(xa):
+                gecen = sure_saniye(x.get("quarterNumber"), x.get("time")) - t0
+                if gecen < 0:
+                    break
+                sureler.append(gecen)
+                kutu = gecis if gecen <= GECIS_ESIK_SN else yari
+                kutu["deneme"] += 1
+                if "Başarılı" in xa:
+                    kutu["isabet"] += 1
+                    kutu["sayi"] += 3 if "3 Sayı" in xa else 2
+                if gecen <= GECIS_ESIK_SN:
+                    no = str(x.get("jerseyNumber") or "").strip()
+                    if no:
+                        k = oyuncu.setdefault(no, {"deneme": 0, "isabet": 0})
+                        k["deneme"] += 1
+                        if "Başarılı" in xa:
+                            k["isabet"] += 1
+                break
+
+    sureler.sort()
+    ortanca = sureler[len(sureler) // 2] if sureler else None
+    return {"gecis": gecis, "yariSaha": yari, "kazanim": kazanim,
+            "ortanca": ortanca, "oyuncu": oyuncu}
+
+
+# Hucum ribaundundan sonra bu surenin icinde atilan sut "ikinci sans" sayilir.
+# Ribaundu alan takim genelde hemen bitirir; 8 saniye rahat bir ust sinir.
+IKINCI_SANS_ESIK_SN = 8
+
+HUCUM_RIBAUNDU = ("Hücum Ribaundu", "Takım Hücum Ribaundu")
+
+
+def ikinci_sans_dokumu(events: list, bizim_ev: bool) -> dict:
+    """Ikinci sans — kendi iskamizi toplayip tekrar attigimiz sut.
+
+    TBF'de "2 Sayı Tip-In" ayri bir olay adi; yani sicrayarak dogrudan
+    tamamlanan putback'ler isaretli geliyor. Onun disindaki ikinci sans
+    sutlari hucum ribaundu -> sut zincirinden cikiyor.
+
+    Doner:
+      deneme / isabet / sayi   ikinci sans sutlari
+      tipin                    dogrudan tip-in sayisi
+      ribaund                  toplam hucum ribaundu
+      sutaCevrilen             ribaundlarin kacinin sutle bittigi
+      oyuncu                   {"30": {"deneme","isabet"}}
+    """
+    olaylar = events or []
+    deneme = isabet = sayi = tipin = ribaund = 0
+    oyuncu: dict[str, dict] = {}
+
+    for i, e in enumerate(olaylar):
+        if str(e.get("action") or "") not in HUCUM_RIBAUNDU:
+            continue
+        if bool(e.get("isHome")) != bool(bizim_ev):
+            continue
+        ribaund += 1
+        t0 = sure_saniye(e.get("quarterNumber"), e.get("time"))
+
+        for j in range(i + 1, min(len(olaylar), i + 10)):
+            x = olaylar[j]
+            xa = str(x.get("action") or "")
+            bizde = bool(x.get("isHome")) == bool(bizim_ev)
+
+            if bizde and xa.startswith("Top Kaybı"):
+                break
+            if not bizde and (_sut_denemesi(xa) or "Ribaundu" in xa):
+                break
+
+            if bizde and _sut_denemesi(xa):
+                gecen = sure_saniye(x.get("quarterNumber"), x.get("time")) - t0
+                if gecen < 0 or gecen > IKINCI_SANS_ESIK_SN:
+                    break
+                deneme += 1
+                if "Tip-In" in xa:
+                    tipin += 1
+                if "Başarılı" in xa:
+                    isabet += 1
+                    sayi += 3 if "3 Sayı" in xa else 2
+                no = str(x.get("jerseyNumber") or "").strip()
+                if no:
+                    k = oyuncu.setdefault(no, {"deneme": 0, "isabet": 0})
+                    k["deneme"] += 1
+                    if "Başarılı" in xa:
+                        k["isabet"] += 1
+                break
+
+    return {"deneme": deneme, "isabet": isabet, "sayi": sayi, "tipin": tipin,
+            "ribaund": ribaund,
+            "sutaCevrilen": round(100 * deneme / ribaund) if ribaund else 0,
+            "oyuncu": oyuncu}

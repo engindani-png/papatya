@@ -75,6 +75,10 @@
       besli: (a.besli || {})[b] || null,
       faul: (a.faul || {})[b] || null,
       faulRakip: (a.faul || {})[r] || null,
+      gecis: (a.gecis || {})[b] || null,
+      gecisRakip: (a.gecis || {})[r] || null,
+      ikinciSans: (a.ikinciSans || {})[b] || null,
+      ikinciSansRakip: (a.ikinciSans || {})[r] || null,
       shotTypes: (a.shotTypes || {})[b] || {},
       players: (a.players || {})[b] || {},
       run: (a.run || {})[b] || [0, ""],
@@ -193,6 +197,8 @@
     };
   }
 
+  /** Karsilastirma tablosu. Onceki surumde deger-etiket-deger tek satirda
+   *  akiyordu ve sayilar metne karisiyordu; sutunlu tablo tek bakista okunuyor. */
   function karsilastirma(biz, rakip) {
     var satirlar = [
       ["Sayı", biz.sayi, rakip.sayi, null],
@@ -209,16 +215,24 @@
       ["Blok", biz.blok, rakip.blok, null],
       ["Faul", biz.faul, rakip.faul, null]
     ];
-    return '<div class="cmp">' + satirlar.map(function (r) {
-      var b = r[1] == null ? 0 : r[1], k = r[2] == null ? 0 : r[2];
-      var toplam = b + k || 1;
-      var bYazi = r[3] ? b + "/" + r[3][0] + " · %" + yuzde(b, r[3][0]) : String(b);
-      var kYazi = r[3] ? k + "/" + r[3][1] + " · %" + yuzde(k, r[3][1]) : String(k);
-      return '<div class="row"><div class="top"><b>' + esc(bYazi) + "</b>" +
-        '<span class="ad">' + esc(r[0]) + "</span><b>" + esc(kYazi) + "</b></div>" +
-        '<div class="bar"><i class="biz" style="width:' + (100 * b / toplam) + '%"></i>' +
-        '<i class="rak" style="width:' + (100 * k / toplam) + '%"></i></div></div>';
-    }).join("") + "</div>";
+    // Bazi kalemlerde kucuk olan iyidir; vurgu ona gore.
+    var TERS = { "Top kaybı": true, "Faul": true };
+
+    return '<table class="kt"><thead><tr><th>Kalem</th><th>Biz</th><th>Rakip</th>' +
+      "</tr></thead><tbody>" +
+      satirlar.map(function (r) {
+        var b = r[1] == null ? 0 : r[1], k = r[2] == null ? 0 : r[2];
+        var bizIyi = TERS[r[0]] ? b < k : b > k;
+        var esit = b === k;
+        function hucre(deger, denemeler, one) {
+          return "<td" + (one && !esit ? ' class="one"' : "") + "><b>" + deger + "</b>" +
+            (denemeler ? '<span class="dn">/' + denemeler + " · %" +
+              yuzde(deger, denemeler) + "</span>" : "") + "</td>";
+        }
+        return "<tr><td>" + esc(r[0]) + "</td>" +
+          hucre(b, r[3] ? r[3][0] : null, bizIyi) +
+          hucre(k, r[3] ? r[3][1] : null, !bizIyi) + "</tr>";
+      }).join("") + "</tbody></table>";
   }
 
   function dokum(baslik, nesne, ikili) {
@@ -284,6 +298,7 @@
 
       verimlilikBolumu(a) +
 
+      gecisBolumu(a) +
       faulBolumu(a) +
 
       dokum("Top kaybı nerede", a.turnovers, false) +
@@ -368,6 +383,25 @@
               kotu.lehte + "-" + kotu.aleyhte + ")."
             : ".")]);
       }
+    }
+
+    if (a.gecis && a.gecis.gecis.deneme >= 5) {
+      var gd = a.gecis.gecis, gy = a.gecis.yariSaha;
+      var gY = yuzde(gd.isabet, gd.deneme), yY = yuzde(gy.isabet, gy.deneme);
+      if (Math.abs(gY - yY) >= 12) {
+        satirlar.push([gY > yY ? "Sayı geçişten geldi" : "Geçişte verimsizdik",
+          "Geçişte %" + gY + " (" + gd.isabet + "/" + gd.deneme + ", " + gd.sayi +
+          " sayı), yarı sahada %" + yY + ". " +
+          (gY > yY ? "Topu kazanır kazanmaz koşmak bu maçta karşılığını verdi."
+                   : "Acele şut yerine hücumu kurmak daha verimliydi.")]);
+      }
+    }
+    if (a.ikinciSans && a.ikinciSans.ribaund >= 5) {
+      var isa = a.ikinciSans;
+      satirlar.push(["İkinci şans",
+        isa.ribaund + " hücum ribaundunun %" + isa.sutaCevrilen + "'i şuta çevrildi, " +
+        isa.sayi + " sayı getirdi" +
+        (a.ikinciSansRakip ? " (rakip " + a.ikinciSansRakip.sayi + ")" : "") + "."]);
     }
 
     var ceyrek = (a.quarters || []).map(function (q) { return (q.home || 0) - (q.away || 0); });
@@ -476,6 +510,60 @@
       '<p class="aciklama">Dört faktör, kazanmayı en çok açıklayan dört orandır. ' +
       "Pozisyon tahmini: şut denemesi − hücum ribaundu + top kaybı + 0,44 × serbest atış.</p>" +
       besliler + kullanim;
+  }
+
+  /** Geçiş hücumu ve ikinci şans.
+   *
+   *  TBF pozisyon başlangıcını işaretlemiyor; saat saniye hassasiyetinde
+   *  olduğu için "topu kazandıktan şuta geçen süre" ile yaklaşıyoruz:
+   *  7 saniyenin altı geçiş, üstü yarı saha. İkinci şans, kendi hücum
+   *  ribaundumuzdan 8 saniye içinde çıkan şut. */
+  function gecisBolumu(a) {
+    var g = a.gecis, i = a.ikinciSans;
+    if (!g && !i) return "";
+    var satirlar = "";
+
+    if (g) {
+      var gd = g.gecis, gy = g.yariSaha;
+      var toplam = gd.deneme + gy.deneme;
+      satirlar +=
+        '<div class="olcumler">' +
+          '<div class="olcum"><b>%' + yuzde(gd.isabet, gd.deneme) + "</b>" +
+            "<span>Geçişte isabet</span><small>" + gd.isabet + "/" + gd.deneme +
+            " · " + gd.sayi + " sayı</small></div>" +
+          '<div class="olcum"><b>%' + yuzde(gy.isabet, gy.deneme) + "</b>" +
+            "<span>Yarı sahada</span><small>" + gy.isabet + "/" + gy.deneme +
+            " · " + gy.sayi + " sayı</small></div>" +
+          '<div class="olcum"><b>%' + yuzde(gd.deneme, toplam) + "</b>" +
+            "<span>Şutun geçişten</span><small>" + g.kazanim + " kazanım · ortanca " +
+            (g.ortanca == null ? "–" : g.ortanca + " sn") + "</small></div>" +
+        "</div>";
+      var bitiren = Object.keys(g.oyuncu || {}).map(function (no) {
+        return { no: no, v: g.oyuncu[no] };
+      }).sort(function (x, y) { return y.v.deneme - x.v.deneme; }).slice(0, 4);
+      if (bitiren.length) {
+        satirlar += '<p class="aciklama"><b>Geçişi bitirenler:</b> ' +
+          bitiren.map(function (x) {
+            return x.no + " (" + x.v.isabet + "/" + x.v.deneme + ")";
+          }).join(" · ") + ". Koşu yükünü taşıyan oyuncular bunlar.</p>";
+      }
+    }
+
+    if (i && i.ribaund) {
+      satirlar +=
+        '<div class="olcumler">' +
+          '<div class="olcum"><b>' + i.sayi + "</b><span>İkinci şans sayısı</span>" +
+            "<small>" + i.isabet + "/" + i.deneme + " şut</small></div>" +
+          '<div class="olcum"><b>%' + i.sutaCevrilen + "</b><span>Ribaundu şuta çevirme</span>" +
+            "<small>" + i.deneme + "/" + i.ribaund + " ribaund</small></div>" +
+          '<div class="olcum"><b>' + (i.tipin || 0) + "</b><span>Tip-in</span>" +
+            "<small>doğrudan putback</small></div>" +
+        "</div>" +
+        '<p class="aciklama">Hücum ribaundundan sonraki 8 saniye içinde çıkan şutlar. ' +
+        "Ribaundu alıp şuta çevirememek, ribaundun kendisi kadar önemli bir kalem.</p>";
+    }
+
+    return "<h2>Geçiş ve ikinci şans</h2>" + satirlar;
   }
 
   /** Faul: kim yaptı, kim aldırdı, hangi çeyrekte. Boxscore yalnız toplamı

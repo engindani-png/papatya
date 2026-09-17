@@ -121,7 +121,9 @@
       karsiAtislar: (a.shots || {})[r] || [],
       asist: (a.asist || {})[b] || null,
       kayiptan: (a.kayiptan || {})[b] || null,
-      faul: (a.faul || {})[b] || null
+      faul: (a.faul || {})[b] || null,
+      gecis: (a.gecis || {})[b] || null,
+      ikinciSans: (a.ikinciSans || {})[b] || null
     };
   }
 
@@ -357,6 +359,40 @@
         "O oyuncunun üstüne gitmek erken faul yükü yaratır."]);
     }
 
+    // --- geçiş profili: koşan takım mı, yarı sahada mı oynuyor
+    var gd = { deneme: 0, isabet: 0, sayi: 0 }, gy = { deneme: 0, isabet: 0 };
+    var isaRib = 0, isaDeneme = 0, isaSayi = 0, gMac = 0;
+    analizler.forEach(function (a) {
+      if (a.gecis) {
+        gMac++;
+        gd.deneme += a.gecis.gecis.deneme; gd.isabet += a.gecis.gecis.isabet;
+        gd.sayi += a.gecis.gecis.sayi;
+        gy.deneme += a.gecis.yariSaha.deneme; gy.isabet += a.gecis.yariSaha.isabet;
+      }
+      if (a.ikinciSans) {
+        isaRib += a.ikinciSans.ribaund; isaDeneme += a.ikinciSans.deneme;
+        isaSayi += a.ikinciSans.sayi;
+      }
+    });
+    if (gMac && (gd.deneme + gy.deneme) >= 10) {
+      var pay = yuzde(gd.deneme, gd.deneme + gy.deneme);
+      var gY = yuzde(gd.isabet, gd.deneme);
+      satirlar.push([pay >= 45 ? "Koşan takım" : "Yarı sahada oynuyor",
+        "Şutlarının %" + pay + "'i geçişten (maç başına " + bir(gd.sayi / gMac) +
+        " sayı, %" + gY + " isabet). " +
+        (pay >= 45
+          ? "Şut sonrası geri dönüş ve top kaybından sonra denge şart."
+          : "Hücumu kurup oynuyorlar; yarı saha savunması belirleyici olacak.")]);
+    }
+    if (isaRib >= 8) {
+      satirlar.push(["İkinci şans",
+        "Hücum ribaundlarının %" + yuzde(isaDeneme, isaRib) + "'ini şuta çeviriyor, " +
+        "maç başına " + bir(isaSayi / Math.max(1, gMac)) + " ikinci şans sayısı. " +
+        (yuzde(isaDeneme, isaRib) >= 60
+          ? "Şut sonrası blok-out ihmal edilirse pahalıya patlar."
+          : "Ribaundu alıyor ama şuta çevirmekte zorlanıyor.")]);
+    }
+
     // --- neyi veriyor: rakiplerinin ona karşı en verimli olduğu bölge
     var verdigi = { "Boya içi": [0, 0], "Orta mesafe": [0, 0], "Üçlük": [0, 0] };
     analizler.forEach(function (a) {
@@ -456,6 +492,7 @@
       '<p class="aciklama">' + n + " maçın toplamı üzerinden. Pozisyon tahmini: " +
       "şut denemesi − hücum ribaundu + top kaybı + 0,44 × serbest atış.</p>" +
 
+      gecisProfili(analizler) +
       faulProfili(analizler) +
 
       (verdigiToplam
@@ -472,6 +509,49 @@
           '<p class="aciklama">Bu takıma karşı oynayanların attığı şutlar. Yüksek ' +
           "isabet verdiği bölge, bizim arayacağımız bölgedir.</p>"
         : "");
+  }
+
+  /** Rakibin geçiş ve ikinci şans profili: koşan takım mı, ribaundu
+   *  şuta çeviriyor mu. */
+  function gecisProfili(analizler) {
+    var gd = { deneme: 0, isabet: 0, sayi: 0 };
+    var gy = { deneme: 0, isabet: 0, sayi: 0 };
+    var isa = { deneme: 0, isabet: 0, sayi: 0, ribaund: 0, tipin: 0 };
+    var mac = 0;
+    analizler.forEach(function (a) {
+      if (a.gecis) {
+        mac++;
+        ["deneme", "isabet", "sayi"].forEach(function (k) {
+          gd[k] += a.gecis.gecis[k];
+          gy[k] += a.gecis.yariSaha[k];
+        });
+      }
+      if (a.ikinciSans) {
+        ["deneme", "isabet", "sayi", "ribaund", "tipin"].forEach(function (k) {
+          isa[k] += (a.ikinciSans[k] || 0);
+        });
+      }
+    });
+    if (!mac) return "";
+    var toplam = gd.deneme + gy.deneme;
+
+    return "<h2>Geçiş ve ikinci şans</h2>" +
+      '<div class="kutular">' +
+        '<div class="kutu"><b>%' + yuzde(gd.deneme, toplam) +
+          "</b><span>Şutu geçişten</span></div>" +
+        '<div class="kutu"><b>%' + yuzde(gd.isabet, gd.deneme) +
+          "</b><span>Geçişte isabet</span></div>" +
+        '<div class="kutu"><b>' + bir(gd.sayi / mac) +
+          "</b><span>Geçişten sayı</span></div>" +
+        '<div class="kutu"><b>%' + yuzde(gy.isabet, gy.deneme) +
+          "</b><span>Yarı sahada</span></div>" +
+        '<div class="kutu"><b>%' + yuzde(isa.deneme, isa.ribaund) +
+          "</b><span>Ribaundu şuta</span></div>" +
+        '<div class="kutu"><b>' + bir(isa.sayi / mac) +
+          "</b><span>İkinci şans sayı</span></div>" +
+      "</div>" +
+      '<p class="aciklama">Geçiş: topu kazandıktan sonra 7 saniye içinde atılan şut. ' +
+      "İkinci şans: kendi hücum ribaundundan 8 saniye içinde çıkan şut.</p>";
   }
 
   /** Rakibin faul profili: kim faule giriyor, kim faul aldırıyor. */

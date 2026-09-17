@@ -256,5 +256,84 @@ class DerinTest(unittest.TestCase):
         self.assertEqual(u.get("2", {}).get("fga", 0), 0)
 
 
+class GecisTest(unittest.TestCase):
+    """Gecis hucumu: topu kazandiktan sonra <=7 sn icinde atilan sut."""
+
+    def test_hizli_sut_gecis_sayilir(self):
+        ev = [olay(1, "09:00", "0-0", True, "5", "Savunma Ribaundu"),
+              olay(1, "08:55", "2-0", True, "2", "2 Sayı Turnike Başarılı")]
+        g = A.gecis_dokumu(ev, bizim_ev=True)
+        self.assertEqual(g["gecis"], {"deneme": 1, "isabet": 1, "sayi": 2})
+        self.assertEqual(g["yariSaha"]["deneme"], 0)
+        self.assertEqual(g["oyuncu"]["2"], {"deneme": 1, "isabet": 1})
+
+    def test_yavas_sut_yari_saha_sayilir(self):
+        ev = [olay(1, "09:00", "0-0", True, "5", "Savunma Ribaundu"),
+              olay(1, "08:45", "0-0", True, "2", "2 Sayı Turnike Başarısız")]
+        g = A.gecis_dokumu(ev, bizim_ev=True)
+        self.assertEqual(g["gecis"]["deneme"], 0)
+        self.assertEqual(g["yariSaha"]["deneme"], 1)
+
+    def test_ucluk_uc_sayi_yazilir(self):
+        ev = [olay(1, "09:00", "0-0", True, "5", "Top Çalma"),
+              olay(1, "08:57", "3-0", True, "2", "3 Sayı Sıçrayarak Atış Başarılı")]
+        self.assertEqual(A.gecis_dokumu(ev, bizim_ev=True)["gecis"]["sayi"], 3)
+
+    def test_arada_top_kaybi_varsa_sayilmaz(self):
+        ev = [olay(1, "09:00", "0-0", True, "5", "Savunma Ribaundu"),
+              olay(1, "08:58", "0-0", True, "2", "Top Kaybı - Kötü Pas"),
+              olay(1, "08:50", "0-2", False, "9", "2 Sayı Turnike Başarılı")]
+        g = A.gecis_dokumu(ev, bizim_ev=True)
+        self.assertEqual(g["kazanim"], 1)
+        self.assertEqual(g["gecis"]["deneme"], 0)
+
+    def test_rakibin_kazanimi_bize_yazilmaz(self):
+        ev = [olay(1, "09:00", "0-0", False, "9", "Savunma Ribaundu"),
+              olay(1, "08:55", "0-2", False, "9", "2 Sayı Turnike Başarılı")]
+        self.assertEqual(A.gecis_dokumu(ev, bizim_ev=True)["kazanim"], 0)
+        self.assertEqual(A.gecis_dokumu(ev, bizim_ev=False)["gecis"]["deneme"], 1)
+
+    def test_ceyrek_gecisinde_negatif_sure_atilir(self):
+        ev = [olay(2, "01:00", "0-0", True, "5", "Savunma Ribaundu"),
+              olay(1, "05:00", "0-0", True, "2", "2 Sayı Turnike Başarılı")]
+        self.assertEqual(A.gecis_dokumu(ev, bizim_ev=True)["gecis"]["deneme"], 0)
+
+
+class IkinciSansTest(unittest.TestCase):
+    """Ikinci sans: kendi iskasini toplayip tekrar atmak."""
+
+    def test_ribaund_sonrasi_sut_sayilir(self):
+        ev = [olay(1, "09:00", "0-0", True, "30", "Hücum Ribaundu"),
+              olay(1, "08:57", "2-0", True, "30", "2 Sayı Tip-In Başarılı")]
+        i = A.ikinci_sans_dokumu(ev, bizim_ev=True)
+        self.assertEqual(i["deneme"], 1)
+        self.assertEqual(i["isabet"], 1)
+        self.assertEqual(i["sayi"], 2)
+        self.assertEqual(i["tipin"], 1)
+        self.assertEqual(i["sutaCevrilen"], 100)
+
+    def test_sutsuz_kapanan_ribaund_orani_dusurur(self):
+        ev = [olay(1, "09:00", "0-0", True, "30", "Hücum Ribaundu"),
+              olay(1, "08:55", "0-0", True, "2", "Top Kaybı - Kötü Pas"),
+              olay(1, "08:00", "0-0", True, "30", "Hücum Ribaundu"),
+              olay(1, "07:57", "2-0", True, "30", "2 Sayı Turnike Başarılı")]
+        i = A.ikinci_sans_dokumu(ev, bizim_ev=True)
+        self.assertEqual(i["ribaund"], 2)
+        self.assertEqual(i["deneme"], 1)
+        self.assertEqual(i["sutaCevrilen"], 50)
+
+    def test_gec_kalan_sut_ikinci_sans_degil(self):
+        # 8 saniyeden sonrasi artik yeniden kurulmus hucum.
+        ev = [olay(1, "09:00", "0-0", True, "30", "Hücum Ribaundu"),
+              olay(1, "08:45", "2-0", True, "2", "2 Sayı Turnike Başarılı")]
+        self.assertEqual(A.ikinci_sans_dokumu(ev, bizim_ev=True)["deneme"], 0)
+
+    def test_rakip_ribaundu_bize_yazilmaz(self):
+        ev = [olay(1, "09:00", "0-0", False, "9", "Hücum Ribaundu"),
+              olay(1, "08:57", "0-2", False, "9", "2 Sayı Tip-In Başarılı")]
+        self.assertEqual(A.ikinci_sans_dokumu(ev, bizim_ev=True)["ribaund"], 0)
+        self.assertEqual(A.ikinci_sans_dokumu(ev, bizim_ev=False)["deneme"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
