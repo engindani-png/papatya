@@ -90,6 +90,17 @@
 <div class="overlay" id="playerSheet" hidden></div>
 <div class="overlay" id="ageSheet" hidden></div>
 
+<!-- Antrenor paneli: uygulamanin icinde tam ekran. Icerik ayri bir sayfadan
+     (yonetim.html) gelir; sifre kontrolu orada, sunucu tarafinda yapilir. -->
+<div class="cpanel" id="coachPanel" hidden>
+  <header class="ch">
+    <strong id="coachTitle">Antrenör paneli</strong>
+    <div class="ctabs" id="coachTabs"></div>
+    <button class="pclose" id="coachClose" aria-label="Kapat">✕</button>
+  </header>
+  <iframe id="coachFrame" title="Antrenör paneli" src="about:blank"></iframe>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <nav class="tabbar" role="tablist" aria-label="Bölümler">

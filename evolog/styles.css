@@ -710,3 +710,24 @@ table.mlog td.mo span.l { background: var(--loss); }
 
 .fx-when.tbd { display: grid; place-items: center; padding-top: 6px; }
 .fx-when.tbd .dd { font-size: 26px; color: var(--chalk-faint); }
+
+
+/* --- antrenor paneli ------------------------------------------------ */
+/* Uygulamanin icinde tam ekran acilir; icerigi ayri bir sayfa doldurur,
+   boylece antrenman editoru tek yerde durur (iki kopya bakim demek). */
+.cpanel { position: fixed; inset: 0; z-index: 70; background: var(--ink);
+  display: flex; flex-direction: column; }
+.cpanel[hidden] { display: none; }
+.cpanel .ch { display: flex; align-items: center; gap: 10px; padding: 10px var(--gutter);
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  background: var(--ink-2); border-bottom: 1px solid var(--line); }
+.cpanel .ch strong { font-family: var(--display); font-size: 15px; letter-spacing: .08em;
+  text-transform: uppercase; }
+.cpanel .ctabs { display: flex; gap: 6px; margin-left: auto; }
+.cpanel .ctabs button { background: none; border: 1px solid var(--line); color: var(--chalk-dim);
+  border-radius: 999px; padding: 6px 14px; font-family: var(--display); font-size: 12px;
+  letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+.cpanel .ctabs button[aria-pressed="true"] { background: var(--amber); color: #14110b;
+  border-color: var(--amber); }
+.cpanel .pclose { margin-left: 4px; }
+.cpanel iframe { flex: 1; width: 100%; border: 0; background: var(--ink); }

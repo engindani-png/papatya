@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Evolog · Antrenman programı yönetimi</title>
+<title>Evolog · Antrenör paneli</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
@@ -20,6 +20,8 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--ink);color:var(--chalk);font-family:var(--body);font-size:15px;line-height:1.5}
+body.gomulu>header{display:none}
+body.gomulu .wrap{padding-top:.6rem}
 .wrap{max-width:52rem;margin:0 auto;padding:var(--gutter) var(--gutter) 5rem}
 header{border-bottom:1px solid var(--line);padding:1rem var(--gutter) .9rem;background:var(--ink-2)}
 header .in{max-width:52rem;margin:0 auto;display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap}
@@ -137,9 +139,13 @@ button:disabled{opacity:.45;cursor:not-allowed}
 </style>
 </head>
 <body>
+<script>
+  /* Uygulamanin icindeki cerceveden acildiysa kendi basligimizi gizle. */
+  if (location.search.indexOf("gomulu=1") !== -1) document.body.className = "gomulu";
+</script>
 
 <header><div class="in">
-  <h1>Antrenman programı</h1>
+  <h1>Antrenör paneli</h1>
   <a href="./">← Uygulamaya dön</a>
 </div></header>
 
@@ -147,9 +153,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
   <section id="loginBox">
     <h2>Giriş</h2>
-    <p class="hint">Bu ekran yalnızca antrenör ve takım sorumlusu içindir.</p>
+    <p class="hint">Antrenör paneli. Şifre antrenör ve takım sorumlusundadır.</p>
     <div class="row">
-      <input type="password" id="pass" placeholder="Yönetim şifresi" autocomplete="current-password" style="max-width:18rem">
+      <input type="password" id="pass" placeholder="Antrenör şifresi" autocomplete="current-password" style="max-width:18rem">
       <button id="loginBtn">Gir</button>
     </div>
     <div id="loginMsg"></div>

@@ -1147,8 +1147,9 @@
           '<div class="slist">' +
             '<div class="srow flat"><span>Son veri</span><span class="dim">' +
               esc(stamp || "—") + "</span></div>" +
-            '<a class="srow link" href="yonetim.html"><span>Antrenman programını düzenle</span>' +
-              '<span class="dim">›</span></a>' +
+            '<button type="button" class="srow link" data-coach="antrenman">' +
+              "<span>Antrenör paneli</span>" +
+              '<span class="dim">Şifreli ›</span></button>' +
           "</div>" +
         "</div>" +
       "</div>";
@@ -1172,6 +1173,52 @@
     document.body.classList.remove("locked");
     var tab = el("tab-takim");
     if (tab) tab.setAttribute("aria-expanded", "false");
+  }
+
+  // ------------------------------------------------------- antrenor paneli
+  // Panel icerigi ayri sayfalarda durur (tek kaynak, iki kopya bakim demek);
+  // uygulama onlari tam ekran bir cerceve icinde acar. Sifre kontrolu o
+  // sayfanin kendi giris kutusunda ve sunucuda yapilir.
+  var COACH_TABS = [
+    { key: "antrenman", label: "Antrenman", title: "Antrenman programı", src: "yonetim.html?gomulu=1" }
+  ];
+
+  function coachTab(key) {
+    for (var i = 0; i < COACH_TABS.length; i++) if (COACH_TABS[i].key === key) return COACH_TABS[i];
+    return COACH_TABS[0];
+  }
+
+  function openCoach(key) {
+    var panel = el("coachPanel");
+    if (!panel) return;
+    var tab = coachTab(key);
+    el("coachTitle").textContent = COACH_TABS.length > 1 ? "Antrenör paneli" : tab.title;
+    var tabs = el("coachTabs");
+    tabs.innerHTML = COACH_TABS.length < 2 ? "" :
+      COACH_TABS.map(function (c) {
+        return '<button type="button" data-ctab="' + c.key + '" aria-pressed="' +
+          (c.key === tab.key ? "true" : "false") + '">' + esc(c.label) + "</button>";
+      }).join("");
+    var frame = el("coachFrame");
+    if (frame.dataset.tab !== tab.key) {
+      frame.dataset.tab = tab.key;
+      frame.src = tab.src;
+    }
+    panel.hidden = false;
+    document.body.classList.add("locked");
+    closeSheet();
+  }
+
+  function closeCoach() {
+    var panel = el("coachPanel");
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    var frame = el("coachFrame");
+    frame.src = "about:blank";
+    frame.dataset.tab = "";
+    document.body.classList.remove("locked");
+    // Antrenor programi degistirmis olabilir; veriyi tazele.
+    refresh();
   }
 
   // ------------------------------------------------------------- sekmeler
@@ -1219,8 +1266,28 @@
     var pick = t.closest("[data-age]");
     if (pick) { setAge(pick.dataset.age); return; }
 
+    var coach = t.closest("[data-coach]");
+    if (coach) { openCoach(coach.dataset.coach); return; }
+
     var tgl = t.closest("[data-push]");
     if (tgl && !tgl.disabled) { togglePushAge(tgl.dataset.push, tgl.dataset.want === "1"); }
+  });
+
+  // Panel: sekme degistirme ve kapatma (katmanin kendi olaylari).
+  document.addEventListener("click", function (ev) {
+    var t = ev.target;
+    if (!t.closest) return;
+    var panel = el("coachPanel");
+    if (!panel || panel.hidden) return;
+    if (t.closest("#coachClose")) { closeCoach(); return; }
+    var ctab = t.closest("[data-ctab]");
+    if (ctab) openCoach(ctab.dataset.ctab);
+  });
+
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "Escape") return;
+    var panel = el("coachPanel");
+    if (panel && !panel.hidden) closeCoach();
   });
 
   document.addEventListener("click", function (ev) {

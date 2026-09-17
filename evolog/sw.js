@@ -1,6 +1,9 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-v18";
-var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./logo.png", "./icon-192.png", "./manifest.webmanifest"];
+var CACHE = "evolog-v19";
+var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./logo.png",
+  "./icon-192.png", "./manifest.webmanifest",
+  // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
+  "./yonetim.html", "./yonetim.js", "./parser.js"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () {
@@ -17,6 +20,9 @@ self.addEventListener("activate", function (e) {
 
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  // API'ye hic karisma: oturum cerezi, kaydetme ve taze veri gerektiriyor.
+  // (Onbellege alinirsa antrenor kaydettigi programi eski haliyle gorur.)
+  if (e.request.url.indexOf("/api/") !== -1) return;
   var isData = e.request.url.indexOf("/data/") !== -1;
 
   if (isData) {
@@ -34,7 +40,7 @@ self.addEventListener("fetch", function (e) {
   // Kabuk: internet varsa once agdan (eski surum ekranda kalmasin), 3 saniye
   // icinde yanit gelmezse onbellekten. Salonda sinyal zayifken uygulama yine
   // aninda aciliyor; evde ise her acilis guncel surumu gosteriyor.
-  e.respondWith(caches.match(e.request).then(function (hit) {
+  e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(function (hit) {
     var net = fetch(e.request).then(function (res) {
       if (res && res.ok) {
         var copy = res.clone();
