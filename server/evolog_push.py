@@ -195,23 +195,30 @@ def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
 
 
 # ---------------------------------------------------------------- gonderim
-def send_all(events: list[dict], dry: bool) -> int:
+def send_all(events: list[dict], dry: bool) -> tuple[int, set]:
+    """Bildirimleri gonderir. Doner: (gonderim sayisi, en az bir aboneye ulasan olay id'leri)"""
     subs = read_json(SUBS, [])
     if not subs:
         print("Abone yok, gonderilecek bir sey yok.")
-        return 0
+        # Kimseye gidemeyen olay birikmesin; sonradan abone olan veli eski
+        # maclarin bildirimlerini topluca almasin.
+        return 0, {e["id"] for e in events}
     if dry:
         for e in events:
             want = [s for s in subs if e.get("age", DEFAULT_AGE) in (s.get("ages") or [DEFAULT_AGE])]
             print(f"  [deneme] {e['title']} — {e['body']}  ({len(want)}/{len(subs)} abone)")
-        return 0
+        return 0, set()
 
     from pywebpush import WebPushException, webpush
 
     keys = ensure_keys()
     del keys
-    private_pem = VAPID_PEM.read_text()
+    # DIKKAT: anahtari METIN olarak vermeyin. py_vapid metni ham DER sanip
+    # "Could not deserialize key data" ile cokuyor; dosya yolu verilince
+    # PEM'i dogru okuyor. Bildirimlerin hic gitmemesinin sebebi buydu.
+    vapid_key = str(VAPID_PEM)
     alive, sent = [], 0
+    delivered: set = set()
 
     for sub in subs:
         drop = False
@@ -229,11 +236,12 @@ def send_all(events: list[dict], dry: bool) -> int:
                 webpush(
                     subscription_info={"endpoint": sub["endpoint"], "keys": sub.get("keys") or {}},
                     data=payload,
-                    vapid_private_key=private_pem,
+                    vapid_private_key=vapid_key,
                     vapid_claims={"sub": CONTACT},
                     timeout=20,
                 )
                 sent += 1
+                delivered.add(e["id"])
             except WebPushException as exc:
                 code = getattr(exc.response, "status_code", None)
                 if code in (404, 410):
@@ -248,7 +256,7 @@ def send_all(events: list[dict], dry: bool) -> int:
     if len(alive) != len(subs):
         write_json(SUBS, alive)
         print(f"  {len(subs) - len(alive)} gecersiz abonelik dusuruldu")
-    return sent
+    return sent, delivered
 
 
 def status() -> int:
@@ -335,12 +343,17 @@ def main() -> int:
         print("Yeni bildirim yok.")
         return 0
 
-    sent = send_all(events, args.dry_run)
+    sent, delivered = send_all(events, args.dry_run)
     if not args.dry_run:
         stamp = dt.datetime.now(TZ).isoformat(timespec="seconds")
         for e in events:
-            done[e["id"]] = stamp
+            # Gonderilemeyen olay isaretlenmez; sonraki calismada tekrar denenir.
+            if e["id"] in delivered:
+                done[e["id"]] = stamp
         write_json(NOTIFIED, done)
+        kalan = [e for e in events if e["id"] not in delivered]
+        if kalan:
+            print(f"  {len(kalan)} olay gonderilemedi, sonraki calismada tekrar denenecek")
     print(f"{len(events)} olay, {sent} gonderim.")
     return 0
 
