@@ -1231,8 +1231,24 @@
   if (PANELS.indexOf(initial) !== -1) showPanel(initial);
 
   if ("serviceWorker" in navigator && !INLINE) {
+    // Yeni surum devralinca sayfayi bir kez yenile: maç saati degistiginde
+    // velinin ikinci acilisi beklemeden guncel bilgiyi gormesi gerekiyor.
+    // Ilk kurulumda controller yoktur; o durumda yenilemeyiz.
+    var vardiKontrolcu = !!navigator.serviceWorker.controller;
+    var yenileniyor = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (!vardiKontrolcu || yenileniyor) return;
+      yenileniyor = true;
+      location.reload();
+    });
+
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").catch(function () {});
+      navigator.serviceWorker.register("sw.js").then(function (reg) {
+        // Uygulama one alindiginda yeni surum var mi diye bak.
+        document.addEventListener("visibilitychange", function () {
+          if (!document.hidden) reg.update().catch(function () {});
+        });
+      }).catch(function () {});
     });
   }
 
