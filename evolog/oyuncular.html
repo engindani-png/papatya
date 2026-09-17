@@ -7,13 +7,13 @@
 <title>Evolog · Oyuncu analizi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="panel.css">
 <style>
 /* --- oyuncu listesi -------------------------------------------------- */
 .olist2{display:flex;flex-direction:column;gap:.4rem;margin:.3rem 0 1rem}
 .orow{display:grid;grid-template-columns:2.2rem 1fr auto;gap:.6rem;align-items:center;
-  background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;
+  background:var(--ink-2);border:1px solid var(--line-soft);border-radius:0;
   padding:.6rem .65rem;width:100%;text-align:left;font-family:var(--body);
   font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--chalk);cursor:pointer}
 .orow .no{font-family:var(--display);font-size:1.05rem;color:var(--amber);text-align:center}
@@ -25,25 +25,25 @@
 
 /* --- oyuncu künyesi -------------------------------------------------- */
 .pkunye{display:flex;gap:.8rem;align-items:center;margin:.2rem 0 .9rem}
-.pkunye img{width:58px;height:58px;border-radius:12px;object-fit:cover;background:var(--ink-3)}
+.pkunye img{width:58px;height:58px;border-radius:0;object-fit:cover;background:var(--ink-3)}
 .pkunye h3{margin:0;font-family:var(--display);font-size:1.25rem;letter-spacing:.03em}
 .pkunye .alt{color:var(--chalk-dim);font-size:.85rem;margin-top:.15rem}
 
 .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:.2rem 0 1rem}
-.tile{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;padding:.55rem .5rem;
+.tile{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:0;padding:.55rem .5rem;
   text-align:center}
 .tile b{display:block;font-family:var(--display);font-size:1.4rem;line-height:1.1;color:var(--chalk)}
 .tile span{display:block;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
   color:var(--chalk-faint);margin-top:.2rem}
 
 /* --- grafik ---------------------------------------------------------- */
-.chart{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;
+.chart{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:0;
   padding:.65rem .7rem .5rem;margin-bottom:.55rem}
 .chart .ch-h{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.35rem}
 .chart .ch-h h4{margin:0;font-family:var(--display);font-size:.9rem;letter-spacing:.06em;
   text-transform:uppercase;color:var(--chalk)}
 .chart .ch-h .ort{color:var(--chalk-faint);font-size:.78rem;margin-left:auto}
-.egilim{font-family:var(--display);font-size:.72rem;letter-spacing:.06em;border-radius:999px;
+.egilim{font-family:var(--display);font-size:.72rem;letter-spacing:.06em;border-radius:0;
   padding:.12rem .5rem;border:1px solid var(--line);color:var(--chalk-dim)}
 .egilim.yukari{color:var(--win);border-color:rgb(79 212 138/.5)}
 .egilim.asagi{color:var(--loss);border-color:rgb(242 105 94/.5)}

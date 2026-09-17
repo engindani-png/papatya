@@ -2,13 +2,16 @@
    Uygulamanin styles.css'inden ayri durur: panel sayfalari cerceve icinde
    acilir, iki dosyanin kurallari birbirine karismasin. */
 :root{
-  --ink:#0f1e1c; --ink-2:#132825; --ink-3:#1b3733; --line:#24423d; --line-soft:#1c3531;
-  --chalk:#eff5f2; --chalk-dim:#8fa9a3; --chalk-faint:#5e7a75;
-  --amber:#f2a03d; --amber-dim:rgba(242,160,61,.13);
-  --win:#4fd48a; --loss:#f2695e;
-  --display:"Oswald","Arial Narrow",Arial,sans-serif;
-  --body:"Karla",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --gutter:18px;
+  --ink:#0d1714; --ink-2:#0f1a17; --ink-3:#0f1a17; --ink-bar:#0a1210;
+  --line:rgba(232,240,236,.16); --line-soft:rgba(232,240,236,.08);
+  --line-dash:rgba(232,240,236,.26);
+  --hatch:repeating-linear-gradient(135deg,transparent 0 7px,rgba(232,240,236,.028) 7px 14px);
+  --chalk:#e8f0ec; --chalk-dim:#a9c0b8; --chalk-faint:#7f9c92; --muted-deep:#6f8a81;
+  --amber:#f2a33c; --amber-dim:rgba(242,163,60,.14); --amber-line:rgba(242,163,60,.55);
+  --win:#7fb08a; --loss:#d9714f;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --gutter:16px; --row-h:44px;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--ink);color:var(--chalk);font-family:var(--body);font-size:15px;line-height:1.5}
@@ -25,28 +28,28 @@ h2{font-family:var(--display);font-weight:500;font-size:.82rem;letter-spacing:.1
 p.hint{color:var(--chalk-dim);font-size:.86rem;margin:.3rem 0 .9rem}
 textarea,input,select{
   width:100%;background:var(--ink-2);color:var(--chalk);border:1px solid var(--line);
-  border-radius:8px;padding:.6rem .7rem;font-family:var(--body);font-size:.93rem}
+  border-radius:0;padding:.6rem .7rem;font-family:var(--body);font-size:.93rem}
 textarea{min-height:11rem;resize:vertical;line-height:1.55}
 textarea:focus,input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent}
 button{
   font-family:var(--display);font-size:.88rem;letter-spacing:.09em;text-transform:uppercase;font-weight:500;
-  background:var(--amber);color:#14110b;border:0;border-radius:999px;padding:.62rem 1.3rem;cursor:pointer}
+  background:var(--amber);color:#14110b;border:0;border-radius:0;padding:.62rem 1.3rem;cursor:pointer}
 button.ghost{background:transparent;color:var(--chalk-dim);border:1px solid var(--line)}
 button.ghost:hover{color:var(--amber);border-color:var(--amber)}
 button:disabled{opacity:.45;cursor:not-allowed}
 .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.9rem 0}
-.card{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:10px;padding:.8rem;margin-bottom:.6rem}
+.card{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:0;padding:.8rem;margin-bottom:.6rem}
 .card.bad{border-color:var(--loss)}
 .grid{display:grid;grid-template-columns:7.5rem 5rem 5rem 1fr;gap:.5rem;align-items:center}
 .grid label{grid-column:1/-1;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint)}
 .grid .full{grid-column:1/-1}
 @media (max-width:560px){ .grid{grid-template-columns:1fr 1fr} .grid .full{grid-column:1/-1} }
-.note{background:var(--amber-dim);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;
+.note{background:var(--amber-dim);border-left:3px solid var(--amber);border-radius:0;
   padding:.65rem .8rem;margin:.6rem 0;font-size:.88rem}
 .note.bad{background:rgba(242,105,94,.12);border-left-color:var(--loss)}
 .note.ok{background:rgba(79,212,138,.12);border-left-color:var(--win)}
 .pill{display:inline-block;font-family:var(--display);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
-  padding:.16rem .55rem;border-radius:999px;background:var(--ink-3);color:var(--chalk-dim);margin-left:.4rem}
+  padding:.16rem .55rem;border-radius:0;background:var(--ink-3);color:var(--chalk-dim);margin-left:.4rem}
 .pill.guess{background:rgba(242,160,61,.2);color:var(--amber)}
 .src{color:var(--chalk-faint);font-size:.8rem;font-style:italic;margin-top:.45rem;word-break:break-word}
 .del{background:none;border:0;color:var(--chalk-faint);font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;line-height:1}
@@ -54,7 +57,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .head{display:flex;align-items:center;gap:.5rem;margin-bottom:.55rem}
 .head strong{font-family:var(--display);letter-spacing:.06em;font-size:.95rem}
 .head .del{margin-left:auto}
-.swatch{width:14px;height:14px;border-radius:4px;flex:0 0 auto;
+.swatch{width:14px;height:14px;border-radius:0;flex:0 0 auto;
   border:1px solid rgb(255 255 255 / .25);display:inline-block}
 .colorrow{display:flex;align-items:center;gap:.6rem}
 .colorrow span{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint)}
@@ -65,7 +68,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* --- takım seçici ------------------------------------------------- */
 .teamstrip{display:flex;gap:.4rem;flex-wrap:wrap;margin:.2rem 0 1rem}
 .teamstrip button{background:var(--ink-2);color:var(--chalk-dim);border:1px solid var(--line);
-  border-radius:999px;padding:.45rem 1rem;font-size:.82rem;letter-spacing:.08em}
+  border-radius:0;padding:.45rem 1rem;font-size:.82rem;letter-spacing:.08em}
 .teamstrip button[aria-pressed=true]{background:var(--amber);color:#14110b;border-color:var(--amber)}
 .weekstrip button{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;line-height:1.2}
 .weekstrip small{font-size:11px;opacity:.75}
@@ -73,14 +76,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* --- gün şeridi ---------------------------------------------------- */
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin:.1rem 0 .6rem}
 .days button{background:var(--ink-3);color:var(--chalk-dim);border:1px solid var(--line);
-  border-radius:10px;padding:.55rem .2rem;font-size:.78rem;letter-spacing:.04em;text-transform:none;
+  border-radius:0;padding:.55rem .2rem;font-size:.78rem;letter-spacing:.04em;text-transform:none;
   font-family:var(--display)}
 .days button[aria-pressed=true]{background:var(--amber);color:#14110b;border-color:var(--amber)}
 
 /* --- dokunmatik alanlar (saat / salon) ------------------------------ */
 .pickrow{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
 .pickbtn{width:100%;background:var(--ink-2);color:var(--chalk);border:1px solid var(--line);
-  border-radius:10px;padding:.7rem .8rem;text-align:left;font-family:var(--body);
+  border-radius:0;padding:.7rem .8rem;text-align:left;font-family:var(--body);
   font-size:.95rem;text-transform:none;letter-spacing:0;display:flex;justify-content:space-between;
   align-items:center;gap:.5rem}
 .pickbtn .lbl{color:var(--chalk-faint);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
@@ -92,10 +95,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 /* --- alttan açılan seçim penceresi ---------------------------------- */
 .osheet{position:fixed;inset:0;background:rgb(4 10 9/.72);z-index:60;display:flex;align-items:flex-end}
 .osheet[hidden]{display:none}
-.opanel{background:var(--ink);width:100%;border-radius:16px 16px 0 0;border-top:1px solid var(--line);
+.opanel{background:var(--ink);width:100%;border-radius:0;border-top:1px solid var(--line);
   padding-bottom:calc(.8rem + env(safe-area-inset-bottom,0px));max-height:86vh;overflow:hidden}
 @media(min-width:640px){.osheet{align-items:center;justify-content:center}
-  .opanel{max-width:26rem;border-radius:14px;border:1px solid var(--line)}}
+  .opanel{max-width:26rem;border-radius:0;border:1px solid var(--line)}}
 .opanel header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;
   padding:.7rem .9rem;border-bottom:1px solid var(--line);background:var(--ink-2)}
 .opanel header strong{font-family:var(--display);letter-spacing:.08em;text-transform:uppercase;font-size:.85rem}
@@ -111,7 +114,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .wheel .wi.on{color:var(--amber);font-size:1.6rem}
 .wheel .wpad{height:76px}
 .band{position:absolute;left:1.2rem;right:1.2rem;top:calc(.4rem + 76px);height:38px;pointer-events:none;
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:8px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0;
   background:rgb(242 160 61/.07)}
 
 /* Salon listesi */
@@ -121,7 +124,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
   padding:.85rem .1rem;font-family:var(--body);font-size:.95rem;text-transform:none;letter-spacing:0;
   text-align:left;border-radius:0}
 .olist button[aria-checked=true]{color:var(--amber)}
-.olist .dot2{width:12px;height:12px;border-radius:4px;flex:0 0 auto}
+.olist .dot2{width:12px;height:12px;border-radius:0;flex:0 0 auto}
 .olist .add{color:var(--amber)}
 .copy{background:none;border:0;color:var(--chalk-faint);font-size:1rem;cursor:pointer;padding:.2rem .4rem;
   line-height:1}
@@ -131,7 +134,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 
 /* Katlanir bolumler: telefonda asil isi (antrenmanlar) one alip
    nadir kullanilanlari kapali tutuyoruz. */
-.kat{border:1px solid var(--line);border-radius:12px;background:var(--ink-2);
+.kat{border:1px solid var(--line);border-radius:0;background:var(--ink-2);
   margin:.6rem 0;padding:0 .8rem}
 .kat>summary{cursor:pointer;list-style:none;padding:.85rem 0;font-family:var(--display);
   font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-dim);
@@ -141,3 +144,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .kat[open]>summary::after{content:"–"}
 .kat[open]{padding-bottom:.8rem}
 .kat[open]>summary{color:var(--amber);border-bottom:1px solid var(--line-soft);margin-bottom:.6rem}
+
+/* Tasarim yenilemesi: panel sayfalari da ayni dili konusur. */
+h2{font-family:var(--display);font-weight:600;font-size:.72rem;letter-spacing:.16em;
+   text-transform:uppercase;color:var(--chalk-faint);margin:1.5rem 0 .6rem;
+   padding-bottom:.35rem;border-bottom:1px solid var(--line-soft)}
+button{font-family:var(--display);font-weight:600;letter-spacing:.12em;border-radius:0}
+.card,.note,.kat,textarea,input,select{border-radius:0}
+.bar{background:var(--ink-bar)}
+.bar button{min-height:44px}

@@ -1,0 +1,91 @@
+/* Evolog · tasarım değişkenleri
+   Mevcut uygulamanın :root bloğundaki değerlerin yerine bire bir yazılabilir.
+   Kaynak: "Evolog Spec.dc.html" */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap');
+
+:root {
+  /* — zemin — */
+  --ink:          #0d1714;  /* ekran zemini */
+  --ink-raised:   #0f1a17;  /* yarım sayfa / panel */
+  --ink-bar:      #0a1210;  /* alt sekme çubuğu, kaydet çubuğu */
+
+  /* — metin — */
+  --paper:        #e8f0ec;  /* birincil */
+  --paper-2:      #a9c0b8;  /* ikincil, sayı sütunları */
+  --muted:        #7f9c92;  /* etiket, açıklama (min 12px) */
+  --muted-deep:   #6f8a81;  /* tablo başlığı, birim (10–11px) */
+
+  /* — vurgu — */
+  --amber:        #f2a33c;  /* aktif sekme, forma no, KESİN tarih, birincil buton */
+  --amber-wash:   rgba(242,163,60,.14);
+  --amber-line:   rgba(242,163,60,.55);
+
+  /* — durum — */
+  --win:          #7fb08a;  /* galibiyet, "geldi", yükselen trend */
+  --loss:         #d9714f;  /* mağlubiyet, "yok" */
+
+  /* — çizgi — */
+  --line:         rgba(232,240,236,.16); /* kart çerçevesi, ayırıcı */
+  --line-soft:    rgba(232,240,236,.08); /* liste satır çizgisi */
+  --line-dash:    rgba(232,240,236,.26); /* belirsiz nesne çerçevesi */
+  --hatch: repeating-linear-gradient(135deg,
+             transparent 0 7px, rgba(232,240,236,.028) 7px 14px);
+
+  /* — tipografi — */
+  --font-cond: "Barlow Condensed", system-ui, sans-serif; /* 600 */
+  --font-body: "Barlow", system-ui, sans-serif;           /* 400–500 */
+
+  --t-display:   600 34px/1.0  var(--font-cond);
+  --t-title:     600 19px/1.05 var(--font-cond);
+  --t-title-lg:  600 24px/1.05 var(--font-cond);
+  --t-stat:      600 22px/1.0  var(--font-cond);
+  --t-stat-lg:   600 26px/1.0  var(--font-cond);
+  --t-label:     600 11px/1.2  var(--font-cond);   /* + letter-spacing:.16em; uppercase */
+  --t-unit:      400 9px/1.2   var(--font-body);   /* + letter-spacing:.12em; uppercase */
+  --t-body:      400 14px/1.5  var(--font-body);
+  --t-body-sm:   400 13px/1.5  var(--font-body);
+  --t-caption:   400 11.5px/1.6 var(--font-body);
+
+  /* — ölçü — */
+  --pad-screen:  16px;   /* ekran sol/sağ kenarı, istisnasız */
+  --pad-card:    13px;   /* 12–14 arası */
+  --gap-row:     8px;    /* kartlar arası */
+  --gap-section: 18px;   /* bölüm başlığı öncesi */
+  --row-h:       44px;   /* dokunulabilir satır / yoklama butonu min yüksekliği */
+  --tabbar-h:    56px;
+  --radius:      0;      /* her yerde */
+  --border:      1px;
+  --rail:        3px;    /* kesin olayın sol amber şeridi */
+}
+
+/* — iki kart tipi — kuralın kendisi burada — */
+.event {                       /* KESİN: tarihi ve saati belli */
+  border: var(--border) solid var(--line);
+  border-left: var(--rail) solid var(--amber);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  background: none;
+}
+.event--changed { }            /* içine .event-note şeridi eklenir */
+.event-note {                  /* "DEĞİŞTİ · önce 3 Eki Cum 18:30 idi" */
+  border-left: var(--rail) solid var(--amber);
+  background: var(--amber-wash);
+  padding: 8px 10px;
+}
+.event--tbd {                  /* BELİRSİZ: TBF tarihi ilan etmedi */
+  border: var(--border) dashed var(--line-dash);
+  border-left-width: var(--border);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  background: var(--hatch);
+  color: var(--paper-2);
+}
+.event--tbd .amber, .event--tbd time { display: none; } /* amber ve saat asla basılmaz */
+
+/* — etiket / birim yardımcıları — */
+.label { font: var(--t-label); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.unit  { font: var(--t-unit);  letter-spacing: .12em; text-transform: uppercase; color: var(--muted-deep); }
+
+/* — odak: tarayıcı varsayılanı bırakılmaz — */
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }

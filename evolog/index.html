@@ -15,7 +15,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Karla:wght@400;500;700&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -46,13 +46,13 @@
     <div id="viewOurs">
       <div id="boardSlot"></div>
 
-      <h2 class="eyebrow" id="lastTitle" hidden>Son maç</h2>
+      <div class="sec" id="lastTitle" hidden></div>
       <div class="sheet" id="lastMatch"></div>
 
-      <h2 class="eyebrow" id="upcomingTitle">Yaklaşan maçlar</h2>
+      <div class="sec" id="upcomingTitle"></div>
       <div class="sheet" id="upcomingList"></div>
 
-      <h2 class="eyebrow" id="prevTitle" hidden>Önceki maçlar</h2>
+      <div class="sec" id="prevTitle" hidden></div>
       <div class="sheet" id="playedList"></div>
     </div>
 
@@ -63,30 +63,25 @@
 
   <section class="panel" id="panel-puan" role="tabpanel" aria-labelledby="tab-puan" hidden>
     <div id="standingsNotice"></div>
-    <h2 class="eyebrow" id="standingsTitle">Puan durumu</h2>
+    <h2 class="label" id="standingsTitle" style="display:block;margin:16px 0 4px">Puan durumu</h2>
     <div id="standingsSlot"></div>
   </section>
 
   <section class="panel" id="panel-kadro" role="tabpanel" aria-labelledby="tab-kadro" hidden>
-    <h2 class="eyebrow">Kadro</h2>
-    <div class="sheet" id="rosterSlot"></div>
-    <h2 class="eyebrow">Teknik kadro</h2>
-    <div class="sheet" id="staffSlot"></div>
+    <div id="rosterSlot"></div>
+    <div class="sec"><span class="label">Teknik kadro</span><i class="hair"></i></div>
+    <div id="staffSlot"></div>
   </section>
 
   <section class="panel" id="panel-antrenman" role="tabpanel" aria-labelledby="tab-antrenman" hidden>
+    <div class="weekdays" id="weekStrip"></div>
+    <div class="sec" id="weekTitle"></div>
+    <div id="sessionsSlot"></div>
     <div id="nextTrainingSlot"></div>
-    <h2 class="eyebrow">Haftalık program</h2>
-    <div class="sheet" id="sessionsSlot"></div>
-    <h2 class="eyebrow">Salonlar</h2>
-    <div class="sheet" id="venuesSlot"></div>
-    <p class="adminlink"><a href="yonetim.html">Antrenman programını düzenle</a></p>
+    <div class="sec"><span class="label">Salonlar</span><i class="hair"></i></div>
+    <div id="venuesSlot"></div>
   </section>
 
-  <footer>
-    Fikstür, skorlar ve puan durumu TBF sayfalarından otomatik çekilir.<br>
-    Kadro ve antrenman bilgileri <code>data/</code> klasöründen düzenlenir.
-  </footer>
 </main>
 
 <div class="overlay" id="playerSheet" hidden></div>

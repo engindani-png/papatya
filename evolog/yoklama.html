@@ -7,7 +7,7 @@
 <title>Evolog · Yoklama</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="panel.css">
 <style>
 /* --- seans şeridi ---------------------------------------------------- */
@@ -15,7 +15,7 @@
   -webkit-overflow-scrolling:touch;scrollbar-width:none}
 .seans::-webkit-scrollbar{display:none}
 .seans button{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;
-  background:var(--ink-2);color:var(--chalk-dim);border:1px solid var(--line);border-radius:12px;
+  background:var(--ink-2);color:var(--chalk-dim);border:1px solid var(--line);border-radius:0;
   padding:.5rem .8rem;font-family:var(--display);font-size:.82rem;letter-spacing:.04em;
   text-transform:none;line-height:1.25}
 .seans button small{font-size:11px;opacity:.8;font-family:var(--body);letter-spacing:0}
@@ -26,12 +26,12 @@
 /* --- oyuncu satırı --------------------------------------------------- */
 .plist{display:flex;flex-direction:column;gap:.4rem;margin:.2rem 0 1rem}
 .prow{display:grid;grid-template-columns:2.1rem 1fr;gap:.55rem;align-items:center;
-  background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;padding:.5rem .55rem}
+  background:var(--ink-2);border:1px solid var(--line-soft);border-radius:0;padding:.5rem .55rem}
 .prow .no{font-family:var(--display);font-size:1.05rem;color:var(--amber);text-align:center}
 .prow .nm{font-size:.95rem;line-height:1.2;margin-bottom:.4rem;word-break:break-word}
 .seg{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem}
 .seg button{background:var(--ink-3);color:var(--chalk-dim);border:1px solid var(--line);
-  border-radius:9px;padding:.55rem .2rem;font-family:var(--display);font-size:.76rem;
+  border-radius:0;padding:.55rem .2rem;font-family:var(--display);font-size:.76rem;
   letter-spacing:.04em;text-transform:none;min-height:2.6rem}
 .seg button[aria-pressed=true][data-s=geldi]{background:var(--win);color:#08160f;border-color:var(--win)}
 .seg button[aria-pressed=true][data-s=gec]{background:var(--amber);color:#14110b;border-color:var(--amber)}
@@ -42,7 +42,7 @@
 
 /* --- özet ------------------------------------------------------------ */
 .ozet{display:flex;gap:.4rem;flex-wrap:wrap;margin:.2rem 0 .8rem}
-.ozet span{background:var(--ink-3);border:1px solid var(--line);border-radius:999px;
+.ozet span{background:var(--ink-3);border:1px solid var(--line);border-radius:0;
   padding:.2rem .7rem;font-size:.8rem;color:var(--chalk-dim)}
 .ozet span b{color:var(--chalk)}
 .devam table{width:100%;border-collapse:collapse;font-size:.9rem}
@@ -51,7 +51,7 @@
   border-bottom:1px solid var(--line);padding:.4rem .3rem}
 .devam td{border-bottom:1px solid var(--line-soft);padding:.5rem .3rem}
 .devam td.o{font-family:var(--display);font-size:1rem;text-align:right}
-.devam .bar{height:5px;border-radius:3px;background:var(--ink-3);margin-top:.25rem;overflow:hidden}
+.devam .bar{height:5px;border-radius:0;background:var(--ink-3);margin-top:.25rem;overflow:hidden}
 .devam .bar i{display:block;height:100%;background:var(--win)}
 .devam .bar i.az{background:var(--loss)}
 .devam .bar i.orta{background:var(--amber)}
