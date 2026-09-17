@@ -1292,7 +1292,8 @@
     });
 
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("sw.js").then(function (reg) {
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (reg) {
+        reg.update().catch(function () {});
         // Uygulama one alindiginda yeni surum var mi diye bak.
         document.addEventListener("visibilitychange", function () {
           if (!document.hidden) reg.update().catch(function () {});
