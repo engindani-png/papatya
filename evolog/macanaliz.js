@@ -49,7 +49,32 @@
 
   function analizYukle(mac) {
     return fetch("/data/" + AGE + "/analiz/" + mac.matchId + ".json", { cache: "no-store" })
-      .then(function (r) { return r.json(); });
+      .then(function (r) { return r.json(); })
+      .then(function (a) { return yonlendir(a, !!mac.isHome); });
+  }
+
+  /** Analiz dosyalari notr (ev/deplasman); ekran "biz/rakip" diliyle calisiyor.
+   *  Ayni dosyayi rakip analizi ekrani da okuyor, orada taraf rakip oluyor. */
+  function yonlendir(a, bizEv) {
+    var b = bizEv ? "home" : "away", r = bizEv ? "away" : "home";
+    return {
+      matchId: a.matchId, date: a.date, isHome: bizEv,
+      opp: bizEv ? a.away : a.home,
+      score: [a.score[bizEv ? 0 : 1], a.score[bizEv ? 1 : 0]],
+      quarters: (a.quarters || []).map(function (q) {
+        return bizEv ? q : { home: q.away, away: q.home };
+      }),
+      shots: (a.shots || {})[b] || [],
+      flow: (a.flow || []).map(function (f) {
+        return [f[0], bizEv ? f[1] : f[2], bizEv ? f[2] : f[1]];
+      }),
+      turnovers: (a.turnovers || {})[b] || {},
+      shotTypes: (a.shotTypes || {})[b] || {},
+      players: (a.players || {})[b] || {},
+      run: (a.run || {})[b] || [0, ""],
+      team: { biz: (a.team || {})[b] || {}, rakip: (a.team || {})[r] || {} },
+      box: { biz: (a.box || {})[b] || [], rakip: (a.box || {})[r] || [] }
+    };
   }
 
   // -------------------------------------------------------------- çizim

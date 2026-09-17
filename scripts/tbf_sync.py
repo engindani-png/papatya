@@ -40,6 +40,10 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONFIG_PATH = ROOT / "scripts" / "tbf_config.json"
 DATA_DIR = ROOT / "data"
 
+# Saat basi senkronun uzamamasi icin bir calismada cekilecek yeni mac analizi
+# sayisi. Lig 132 mac; sezon boyunca birikerek tamamlanir.
+ANALIZ_LIMIT = int(os.environ.get("EVOLOG_ANALIZ_LIMIT", "10"))
+
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import local_edits  # noqa: E402  (scripts/ sys.path'e eklendikten sonra)
@@ -547,42 +551,56 @@ def build(cfg: dict, want_details: bool) -> dict:
             except Exception as exc:
                 errors.append(f"Mac {f['matchId']} detayi alinamadi: {exc}")
 
-    # --- ayrintili mac analizi (atis haritasi + oyun akisi + takim yuzdeleri)
-    # Ham veri mac basina ~250 KB; burada isleyip ~3 KB'lik dosyaya indiriyoruz.
-    # Bir kez uretilen analiz korunur: skor degismedikce tekrar cekilmez.
-    if want_details and detail_cfg.get("enabled", True):
-        hedef = analiz_dir(cfg["key"])
-        for f in fixtures:
-            if not f.get("played") or not f.get("isOurs") or not f.get("matchId"):
-                continue
-            dosya = hedef / f"{f['matchId']}.json"
-            if dosya.exists():
-                try:
-                    onceki_analiz = json.loads(dosya.read_text(encoding="utf-8"))
-                    if onceki_analiz.get("score") and onceki_analiz.get("shots"):
-                        continue
-                except ValueError:
-                    pass
-            try:
-                base = cfg["apiBaseUrl"]
-                mid = f["matchId"]
-                shots = (api_get(base, f"/api/Match/shot-chart?matchId={mid}") or {}).get("shotInfos") or []
-                events = (api_get(base, f"/api/Match/game-flow?matchId={mid}") or {}).get("events") or []
-                report = api_get(base, f"/api/Match/get-match-report-with-players?matchId={mid}") or {}
-                analiz = tbf_analiz.mac_analizi(f, shots, events, report)
-                hedef.mkdir(parents=True, exist_ok=True)
-                dosya.write_text(json.dumps(analiz, ensure_ascii=False), encoding="utf-8")
-                print(f"  Analiz yazildi: {dosya.relative_to(ROOT)} "
-                      f"({len(analiz['shots'])} atis, {len(analiz['flow'])} skor noktasi)")
-            except Exception as exc:
-                errors.append(f"Mac {f.get('matchId')} analizi alinamadi: {exc}")
-
     league_fixtures = previous.get("leagueFixtures") or []
     try:
         league_fixtures, warn = fetch_league_fixtures(cfg, standings)
         errors += warn
     except Exception as exc:
         errors.append(f"Lig fiksturu alinamadi: {exc}")
+
+    # --- ayrintili mac analizi (atis haritasi + oyun akisi + takim yuzdeleri)
+    # Ligin TUM oynanmis maclari icin uretiliyor: kendi maclarimiz kadar
+    # rakiplerin maclari da lazim (rakip analizi ekrani bunlari okuyor).
+    # Ham veri mac basina ~250 KB, islenmis dosya ~5 KB. Bir kez uretilen
+    # analiz korunur; her calismada en fazla ANALIZ_LIMIT yeni mac cekilir ki
+    # saat basi senkron uzamasin.
+    if want_details and detail_cfg.get("enabled", True):
+        hedef = analiz_dir(cfg["key"])
+        base = cfg["apiBaseUrl"]
+        kendi = {f.get("matchId"): f for f in fixtures}
+        yeni_sayi = 0
+        for f in sorted([x for x in (league_fixtures or []) if x.get("played")],
+                        key=lambda x: x.get("date") or "", reverse=True):
+            mid = f.get("matchId")
+            if not mid:
+                continue
+            dosya = hedef / f"{mid}.json"
+            if dosya.exists():
+                continue
+            if yeni_sayi >= ANALIZ_LIMIT:
+                break
+            try:
+                shots = (api_get(base, f"/api/Match/shot-chart?matchId={mid}") or {}).get("shotInfos") or []
+                events = (api_get(base, f"/api/Match/game-flow?matchId={mid}") or {}).get("events") or []
+                report = api_get(base, f"/api/Match/get-match-report-with-players?matchId={mid}") or {}
+                # Kendi macimizsa boxscore zaten cekildi; degilse ayrica isteyelim.
+                kutu = (kendi.get(mid) or {}).get("boxscore") or {}
+                if not kutu:
+                    kutu = (fetch_detail(cfg, mid) or {}).get("boxscore") or {}
+                ceyrek = (kendi.get(mid) or {}).get("quarters") or []
+                zengin = dict(f, quarters=ceyrek or f.get("quarters") or [])
+                analiz = tbf_analiz.mac_analizi_notr(
+                    zengin, shots, events, report,
+                    box_home=kutu.get("home"), box_away=kutu.get("away"))
+                hedef.mkdir(parents=True, exist_ok=True)
+                dosya.write_text(json.dumps(analiz, ensure_ascii=False), encoding="utf-8")
+                yeni_sayi += 1
+                print(f"  Analiz: {f.get('home')} - {f.get('away')} "
+                      f"({len(analiz['shots']['home']) + len(analiz['shots']['away'])} atis)")
+            except Exception as exc:
+                errors.append(f"Mac {mid} analizi alinamadi: {exc}")
+        if yeni_sayi:
+            print(f"  {yeni_sayi} mac analizi uretildi.")
 
     played = [f for f in fixtures if f.get("played")]
     analizli = sorted(int(x.stem) for x in analiz_dir(cfg["key"]).glob("*.json")

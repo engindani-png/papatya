@@ -1,9 +1,15 @@
 {
  "isPlaceholder": false,
  "analiz": [
-  346856
+  346851,
+  346853,
+  346855,
+  346856,
+  346882,
+  346892,
+  346893
  ],
- "updatedAt": "2026-09-18T00:29:28+03:00",
+ "updatedAt": "2026-09-18T00:47:00+03:00",
  "source": "https://miniappapi.tbf.org.tr/webapi-service",
  "key": "u14",
  "label": "U14",

@@ -1,5 +1,5 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-v22";
+var CACHE = "evolog-v23";
 var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./logo.png",
   "./icon-192.png", "./manifest.webmanifest",
   // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
@@ -8,7 +8,8 @@ var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./
   "./yoklama.html", "./yoklama.js",
   "./oyuncular.html", "./oyuncular.js",
   "./macanaliz.html", "./macanaliz.js",
-  "./duyuru.html", "./duyuru.js"];
+  "./duyuru.html", "./duyuru.js",
+  "./rakip.html", "./rakip.js"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () {

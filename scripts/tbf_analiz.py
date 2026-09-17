@@ -74,7 +74,12 @@ def atislari_topla(shot_infos: list, bizim_ev: bool) -> list:
         except (TypeError, ValueError):
             continue
         ceyrek = int(a.get("period") or 1)
-        if ceyrek >= 3:                      # devre arasi saha degisimi
+        # Saha yarisini normalize et: potaya x=0 tarafindan bakiyoruz.
+        # Ev sahibi 1-2. ceyrekte x~10, 3-4'te x~88 atiyor; deplasman tersi.
+        # "x > 50 ise aynala" kurali iki takim icin de dogru sonucu veriyor;
+        # ceyrege bakan eski kural deplasman atislarini yanlis yariya koyuyordu
+        # (hepsi ucluk gorunuyor, saha disina dusuyordu).
+        if x > 50:
             x = 100 - x
         out.append([x, y, ceyrek, 1 if a.get("isSucceed") else 0,
                     str(a.get("jerseyNumber") or "").strip()])
@@ -233,4 +238,40 @@ def mac_analizi(fixture: dict, shot_infos: list, events: list, report: dict) -> 
         "players": coz["players"],
         "run": coz["run"],
         "team": takim_ozeti(report, bizim_ev),
+    }
+
+
+
+def mac_analizi_notr(fixture: dict, shot_infos: list, events: list, report: dict,
+                     box_home: list | None = None, box_away: list | None = None) -> dict:
+    """Iki takimi da kapsayan analiz (rakip analizi bunu okur).
+
+    Ev sahibi ve deplasman ayri ayri cikarilir; hangi tarafin "biz" oldugunu
+    okuyan taraf secer. Boylece ligdeki her mac ayni dosya biciminde durur ve
+    rakiplerin gecmis maclarini da inceleyebiliyoruz.
+    """
+    ev = akisi_coz(events, True)
+    dep = akisi_coz(events, False)
+    takim = takim_ozeti(report, True)
+    return {
+        "matchId": fixture.get("matchId"),
+        "date": fixture.get("date"),
+        "time": fixture.get("time"),
+        "week": fixture.get("week"),
+        "home": fixture.get("home"),
+        "away": fixture.get("away"),
+        "homeId": fixture.get("homeId"),
+        "awayId": fixture.get("awayId"),
+        "venue": fixture.get("venue"),
+        "score": [fixture.get("homeScore"), fixture.get("awayScore")],
+        "quarters": fixture.get("quarters") or [],
+        "shots": {"home": atislari_topla(shot_infos, True),
+                  "away": atislari_topla(shot_infos, False)},
+        "flow": ev["flow"],                       # [saniye, ev, deplasman]
+        "turnovers": {"home": ev["turnovers"], "away": dep["turnovers"]},
+        "shotTypes": {"home": ev["shotTypes"], "away": dep["shotTypes"]},
+        "players": {"home": ev["players"], "away": dep["players"]},
+        "run": {"home": ev["run"], "away": dep["run"]},
+        "team": {"home": takim["biz"], "away": takim["rakip"]},
+        "box": {"home": box_home or [], "away": box_away or []},
     }

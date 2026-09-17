@@ -27,7 +27,7 @@ class SureTest(unittest.TestCase):
 
 
 class AtisTest(unittest.TestCase):
-    def test_ikinci_yari_aynalanir(self):
+    def test_ev_sahibinin_ikinci_yarisi_aynalanir(self):
         atislar = [
             {"x": 10, "y": 50, "period": 1, "isSucceed": True, "isHome": True, "jerseyNumber": "2"},
             {"x": 88, "y": 50, "period": 3, "isSucceed": False, "isHome": True, "jerseyNumber": "5"},
@@ -35,6 +35,23 @@ class AtisTest(unittest.TestCase):
         out = A.atislari_topla(atislar, bizim_ev=True)
         self.assertEqual(out[0], [10, 50, 1, 1, "2"])
         self.assertEqual(out[1], [12, 50, 3, 0, "5"])     # 100 - 88
+
+    def test_deplasmanin_ilk_yarisi_aynalanir(self):
+        # Deplasman 1-2. ceyrekte karsi potaya (x~90) atiyor; ayni yari sahaya
+        # katlanmali. Ceyrege bakan eski kural bunu kaciriyordu.
+        atislar = [
+            {"x": 90, "y": 50, "period": 1, "isSucceed": True, "isHome": False, "jerseyNumber": "9"},
+            {"x": 12, "y": 50, "period": 4, "isSucceed": False, "isHome": False, "jerseyNumber": "9"},
+        ]
+        out = A.atislari_topla(atislar, bizim_ev=False)
+        self.assertEqual(out[0][0], 10)
+        self.assertEqual(out[1][0], 12)
+
+    def test_normalize_edilen_x_her_zaman_yari_sahada(self):
+        atislar = [{"x": v, "y": 50, "period": 1, "isSucceed": True, "isHome": True,
+                    "jerseyNumber": "2"} for v in (1, 30, 51, 98)]
+        for satir in A.atislari_topla(atislar, bizim_ev=True):
+            self.assertLessEqual(satir[0], 50)
 
     def test_rakip_atislari_alinmaz(self):
         atislar = [{"x": 10, "y": 50, "period": 1, "isSucceed": True, "isHome": False,
@@ -44,7 +61,8 @@ class AtisTest(unittest.TestCase):
     def test_deplasmanda_kendi_atislarimiz(self):
         atislar = [{"x": 90, "y": 40, "period": 1, "isSucceed": True, "isHome": False,
                     "jerseyNumber": "7"}]
-        self.assertEqual(A.atislari_topla(atislar, bizim_ev=False), [[90, 40, 1, 1, "7"]])
+        # x=90 aynalanir: her iki takimin atisi da ayni yari sahaya oturur.
+        self.assertEqual(A.atislari_topla(atislar, bizim_ev=False), [[10, 40, 1, 1, "7"]])
 
 
 class AkisTest(unittest.TestCase):
@@ -130,6 +148,43 @@ class TakimTest(unittest.TestCase):
         o = A.takim_ozeti({"sY_A": "67"}, bizim_ev=True)
         self.assertEqual(o["biz"]["sayi"], 67)
         self.assertIsNone(o["biz"]["asist"])
+
+
+class NotrTest(unittest.TestCase):
+    """Notr bicim: ligdeki her mac ayni dosyada, taraf secimi okuyanda."""
+
+    FIX = {"matchId": 1, "date": "2026-09-14", "home": "EVOLOG", "away": "GALATASARAY",
+           "homeScore": 67, "awayScore": 38, "quarters": [{"home": 12, "away": 9}]}
+    ATIS = [{"x": 10, "y": 50, "period": 1, "isSucceed": True, "isHome": True, "jerseyNumber": "2"},
+            {"x": 90, "y": 50, "period": 1, "isSucceed": False, "isHome": False, "jerseyNumber": "9"}]
+    OLAY = [olay(1, "10:00", "0-0", None),
+            olay(1, "09:00", "2-0", True, "2", "2 Sayı Turnike Başarılı"),
+            olay(1, "08:00", "2-3", False, "9", "3 Sayı Sıçrayarak Atış Başarılı"),
+            olay(1, "07:00", "2-3", False, "9", "Top Kaybı - Kötü Pas")]
+
+    def test_iki_takimin_atislari_ayri_durur(self):
+        a = A.mac_analizi_notr(self.FIX, self.ATIS, self.OLAY, TakimTest.RAPOR)
+        self.assertEqual(len(a["shots"]["home"]), 1)
+        self.assertEqual(len(a["shots"]["away"]), 1)
+
+    def test_akis_ev_deplasman_sirasinda(self):
+        a = A.mac_analizi_notr(self.FIX, self.ATIS, self.OLAY, TakimTest.RAPOR)
+        self.assertEqual(a["flow"][-1], [120, 2, 3])
+
+    def test_rakibin_top_kaybi_kendi_tarafinda(self):
+        a = A.mac_analizi_notr(self.FIX, self.ATIS, self.OLAY, TakimTest.RAPOR)
+        self.assertEqual(a["turnovers"]["away"], {"Kötü Pas": 1})
+        self.assertEqual(a["turnovers"]["home"], {})
+
+    def test_takim_ozeti_ev_deplasman_ayrilir(self):
+        a = A.mac_analizi_notr(self.FIX, self.ATIS, self.OLAY, TakimTest.RAPOR)
+        self.assertEqual(a["team"]["home"]["sayi"], 67)
+        self.assertEqual(a["team"]["away"]["sayi"], 38)
+
+    def test_boxscore_satirlari_tasinir(self):
+        a = A.mac_analizi_notr(self.FIX, self.ATIS, self.OLAY, TakimTest.RAPOR,
+                               box_home=[{"no": 2, "name": "X", "points": 14}], box_away=[])
+        self.assertEqual(a["box"]["home"][0]["points"], 14)
 
 
 if __name__ == "__main__":

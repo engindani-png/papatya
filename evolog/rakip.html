@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evolog · Rakip analizi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css">
+<style>
+.takimsec{display:flex;gap:.4rem;overflow-x:auto;padding:.15rem .15rem .6rem;scrollbar-width:none}
+.takimsec::-webkit-scrollbar{display:none}
+.takimsec button{flex:0 0 auto;background:none;color:var(--chalk-dim);border:1px solid var(--line);
+  padding:.5rem .8rem;font-family:var(--display);font-weight:600;font-size:.8rem;
+  letter-spacing:.04em;text-transform:none;min-height:44px;white-space:nowrap}
+.takimsec button[aria-pressed=true]{background:var(--amber);color:var(--ink);border-color:var(--amber)}
+.takimsec button.siradaki{border-color:var(--amber-line);color:var(--amber)}
+/* Secili + siradaki ayni anda olabiliyor; amber zeminde amber yazi kaybolmasin. */
+.takimsec button[aria-pressed=true].siradaki{color:var(--ink)}
+
+.kunye{border:1px solid var(--line);border-left:3px solid var(--amber);padding:.8rem;margin-bottom:.7rem}
+.kunye h3{margin:0;font-family:var(--display);font-weight:600;font-size:1.25rem;
+  letter-spacing:.02em;text-transform:uppercase}
+.kunye .alt{color:var(--chalk-dim);font-size:.85rem;margin-top:.2rem}
+
+.kutular{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin:.2rem 0 1rem}
+.kutu{border:1px solid var(--line);padding:.55rem .5rem;text-align:center}
+.kutu b{display:block;font-family:var(--display);font-weight:600;font-size:1.35rem;line-height:1.1}
+.kutu span{display:block;font-size:.64rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--chalk-faint);margin-top:.25rem}
+
+.maclist button{display:grid;grid-template-columns:3.2rem 1fr auto;gap:.6rem;align-items:center;
+  width:100%;background:none;border:0;border-bottom:1px solid var(--line-soft);
+  padding:.6rem 0;text-align:left;color:var(--chalk);font-family:var(--body);
+  font-size:.9rem;text-transform:none;letter-spacing:0;min-height:44px}
+.maclist .t{font-family:var(--display);font-weight:600;color:var(--chalk-faint);font-size:.8rem}
+.maclist .s{font-family:var(--display);font-weight:600;font-size:1rem}
+.maclist .g{color:var(--win)}
+.maclist .m{color:var(--loss)}
+
+.okuma{border:1px solid var(--line);background:var(--ink-2);padding:.75rem .8rem;margin:.3rem 0 1rem}
+.okuma div{display:flex;gap:.55rem;padding:.35rem 0;font-size:.9rem;line-height:1.5;
+  color:var(--chalk-dim);border-bottom:1px solid var(--line-soft)}
+.okuma div:last-child{border-bottom:0}
+.okuma b{color:var(--chalk);font-family:var(--display);font-weight:600;white-space:nowrap}
+.okuma .im{color:var(--amber);flex:0 0 auto}
+
+.bolge{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:.6rem}
+.bolge th{text-align:right;font-family:var(--display);font-weight:600;font-size:.66rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint);
+  border-bottom:1px solid var(--line);padding:.4rem .3rem}
+.bolge th:first-child,.bolge td:first-child{text-align:left}
+.bolge td{border-bottom:1px solid var(--line-soft);padding:.5rem .3rem;text-align:right;
+  color:var(--chalk-dim)}
+.bolge td b{font-family:var(--display);font-weight:600;color:var(--chalk)}
+.bolge tr.vurgu td{color:var(--amber)}
+
+.saha{border:1px solid var(--line);padding:.5rem;margin-bottom:.4rem}
+.saha svg{width:100%;height:auto;display:block}
+.aciklama{font-size:.78rem;color:var(--chalk-faint);margin:.1rem 0 1rem;line-height:1.6}
+.ptab{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem}
+.ptab th{text-align:right;font-family:var(--display);font-weight:600;font-size:.66rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint);
+  border-bottom:1px solid var(--line);padding:.4rem .3rem}
+.ptab th:first-child,.ptab td:first-child{text-align:left}
+.ptab td{border-bottom:1px solid var(--line-soft);padding:.5rem .3rem;text-align:right;
+  color:var(--chalk-dim)}
+.ptab td b{font-family:var(--display);font-weight:600;color:var(--chalk)}
+.ptab .no{color:var(--amber);font-family:var(--display);font-weight:600}
+</style>
+</head>
+<body>
+<script>
+  if (location.search.indexOf("gomulu=1") !== -1) document.body.className = "gomulu";
+</script>
+
+<header><div class="in">
+  <h1>Rakip analizi</h1>
+  <a href="./">← Uygulamaya dön</a>
+</div></header>
+
+<div class="wrap">
+  <section id="loginBox">
+    <h2>Giriş</h2>
+    <p class="hint">Rakip analizi antrenöre özeldir.</p>
+    <div class="row">
+      <input type="password" id="pass" placeholder="Antrenör şifresi" autocomplete="current-password" style="max-width:18rem">
+      <button id="loginBtn">Gir</button>
+    </div>
+    <div id="loginMsg"></div>
+  </section>
+
+  <main id="adminBox" hidden>
+    <h2>Takım</h2>
+    <div class="takimsec" id="takimSerit"></div>
+    <div id="icerik"></div>
+  </main>
+</div>
+
+<script src="panel-auth.js"></script>
+<script src="rakip.js"></script>
+</body>
+</html>

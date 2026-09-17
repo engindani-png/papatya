@@ -1288,6 +1288,7 @@
     { key: "antrenman", label: "Program", title: "Antrenman programı", src: "yonetim.html?gomulu=1" },
     { key: "oyuncular", label: "Oyuncular", title: "Oyuncu analizi", src: "oyuncular.html?gomulu=1" },
     { key: "mac", label: "Maç", title: "Maç analizi", src: "macanaliz.html?gomulu=1" },
+    { key: "rakip", label: "Rakip", title: "Rakip analizi", src: "rakip.html?gomulu=1" },
     { key: "duyuru", label: "Duyuru", title: "Duyuru", src: "duyuru.html?gomulu=1" }
   ];
 
