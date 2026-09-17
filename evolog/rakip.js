@@ -182,12 +182,96 @@
       .sort(function (x, y) { return (y.sayi / y.mac) - (x.sayi / x.mac); });
   }
 
-  /** Sayılardan çıkan, sayıyla birlikte yazılan taktik okuması. */
+  /** Bir takımın maçlarındaki sayıları toplar (dört faktör hesabı için). */
+  function toplaTaraf(analizler, secici) {
+    var t = { iki: [0, 0], uc: [0, 0], sa: [0, 0], hucumRib: 0, savunmaRib: 0,
+              topKaybi: 0, rib: 0, asist: 0, sayi: 0 };
+    analizler.forEach(function (a) {
+      var k = secici(a);
+      ["iki", "uc", "sa"].forEach(function (alan) {
+        t[alan][0] += ((k[alan] || [])[0] || 0);
+        t[alan][1] += ((k[alan] || [])[1] || 0);
+      });
+      ["hucumRib", "savunmaRib", "topKaybi", "rib", "asist", "sayi"].forEach(function (alan) {
+        t[alan] += (k[alan] || 0);
+      });
+    });
+    return t;
+  }
+
+  /** Sayılardan çıkan, sayıyla birlikte yazılan taktik okuması.
+   *
+   *  Dayanaklar: şut bölgeleri ve kanat dağılımı (atış koordinatları),
+   *  pozisyon bazlı verimlilik ve tempo, Dört Faktör, top kaybından yenen
+   *  sayı, asistli basket oranı, faul profili, çeyrek profili ve kimin şut
+   *  kullandığı. Hepsi maç analizi dosyalarından; her cümlenin yanında
+   *  dayandığı sayı yazılır. */
   function okuma(analizler, kutular, oyuncular) {
+    var A2 = window.EvologAnaliz;
     var satirlar = [];
     var macSayisi = analizler.length;
     var toplamSut = Object.keys(kutular).reduce(function (t, k) { return t + kutular[k].deneme; }, 0);
     if (!toplamSut) return satirlar;
+
+    // --- pozisyon bazlı verimlilik ve tempo
+    var kendi = toplaTaraf(analizler, function (a) { return a.team; });
+    var karsi = toplaTaraf(analizler, function (a) { return a.karsi; });
+    var poz = A2.pozisyon(kendi), pozR = A2.pozisyon(karsi);
+    var atilan = analizler.reduce(function (t, a) { return t + (a.score[0] || 0); }, 0);
+    var yenilen = analizler.reduce(function (t, a) { return t + (a.score[1] || 0); }, 0);
+    if (poz && pozR) {
+      var hucum = Math.round(A2.rating(atilan, poz));
+      var savunma = Math.round(A2.rating(yenilen, pozR));
+      var tempo = Math.round((poz + pozR) / (2 * macSayisi));
+      satirlar.push(["Verimlilik",
+        "100 pozisyonda " + hucum + " sayı üretiyor, " + savunma + " yiyor. " +
+        "Tempo maç başına " + tempo + " pozisyon — " +
+        (tempo >= 95 ? "hızlı oynuyor, geri dönüş disiplini belirleyici."
+                     : "kontrollü oynuyor, yarı saha savunması öne çıkacak.")]);
+
+      var ff = A2.dortFaktor(kendi, karsi);
+      if (ff.tov >= 0.22) {
+        satirlar.push(["Topu kaybediyor",
+          "Pozisyonlarının %" + Math.round(ff.tov * 100) + "'inde top kaybı (" +
+          kendi.topKaybi + " kayıp / " + macSayisi + " maç). Baskı karşılık verir."]);
+      }
+      if (ff.efg <= 0.30) {
+        satirlar.push(["Şut isabeti düşük",
+          "eFG %" + Math.round(ff.efg * 100) + ". Boyayı kapatıp dış şuta zorlamak " +
+          "sayılarını kurutur."]);
+      } else if (ff.efg >= 0.42) {
+        satirlar.push(["İsabetli takım",
+          "eFG %" + Math.round(ff.efg * 100) + ". Açık şut vermemek kritik."]);
+      }
+      if (ff.ftr >= 0.25) {
+        satirlar.push(["Faul aldırıyor",
+          "Her 100 şuta " + Math.round(ff.ftr * 100) + " serbest atış. Temassız savunma şart."]);
+      }
+    }
+
+    // --- top kaybından yenen sayı (bizim için fırsat)
+    var kayip = 0, kayiptanYenilen = 0;
+    analizler.forEach(function (a) {
+      if (a.kayiptan) { kayip += a.kayiptan.kayip; kayiptanYenilen += a.kayiptan.yenilen; }
+    });
+    if (kayip && kayiptanYenilen) {
+      satirlar.push(["Kayıptan sayı yiyor",
+        "Maç başına " + bir(kayip / macSayisi) + " top kaybı, bunlardan " +
+        bir(kayiptanYenilen / macSayisi) + " sayı yiyor. Hızlı hücum fırsatı burada."]);
+    }
+
+    // --- asistli basket oranı: top çeviriyor mu, bireysel mi?
+    var asistli = 0, basket = 0;
+    analizler.forEach(function (a) {
+      if (a.asist) { asistli += a.asist.asistli; basket += a.asist.basket; }
+    });
+    if (basket >= 10) {
+      var oran = yuzde(asistli, basket);
+      satirlar.push([oran >= 50 ? "Top çeviriyor" : "Bireysel hücum",
+        "Basketlerinin %" + oran + "'i asistli (" + asistli + "/" + basket + "). " +
+        (oran >= 50 ? "Pas hatlarını kesmek ve yardımı erken vermek gerekiyor."
+                    : "Topu taşıyan oyuncuyu kuşatmak hücumu durdurur.")]);
+    }
 
     var boya = kutular["Boya içi"] || { deneme: 0, isabet: 0 };
     var uc = kutular["Üçlük"] || { deneme: 0, isabet: 0 };
@@ -253,6 +337,57 @@
         (enIyi >= 2 ? "Maçın ikinci yarısında açılıyor." : "Maça hızlı başlıyor.")]);
     }
 
+    // --- faul yükü: kimin üstüne gidilir
+    var faulYapan = {}, faulToplam = 0, faulMac = 0;
+    analizler.forEach(function (a) {
+      if (!a.faul) return;
+      faulMac++;
+      Object.keys(a.faul.yapan || {}).forEach(function (no) {
+        faulYapan[no] = (faulYapan[no] || 0) + a.faul.yapan[no];
+        faulToplam += a.faul.yapan[no];
+      });
+    });
+    if (faulMac && faulToplam) {
+      var enCok = Object.keys(faulYapan).sort(function (x, y) {
+        return faulYapan[y] - faulYapan[x];
+      })[0];
+      satirlar.push(["Faul yükü",
+        "Maç başına " + bir(faulToplam / faulMac) + " faul; en çok " + enCok +
+        " numara (" + bir(faulYapan[enCok] / faulMac) + "/maç). " +
+        "O oyuncunun üstüne gitmek erken faul yükü yaratır."]);
+    }
+
+    // --- neyi veriyor: rakiplerinin ona karşı en verimli olduğu bölge
+    var verdigi = { "Boya içi": [0, 0], "Orta mesafe": [0, 0], "Üçlük": [0, 0] };
+    analizler.forEach(function (a) {
+      (a.karsiAtislar || []).forEach(function (s2) {
+        var b = bolge(s2);
+        if (!verdigi[b.alan]) return;
+        verdigi[b.alan][1]++;
+        if (s2[3]) verdigi[b.alan][0]++;
+      });
+    });
+    var acikBolge = Object.keys(verdigi).filter(function (k) {
+      return verdigi[k][1] >= 8;
+    }).sort(function (x, y) {
+      return (verdigi[y][0] / verdigi[y][1]) - (verdigi[x][0] / verdigi[x][1]);
+    })[0];
+    if (acikBolge && yuzde(verdigi[acikBolge][0], verdigi[acikBolge][1]) >= 33) {
+      satirlar.push(["Neyi veriyor",
+        "Rakipleri " + acikBolge.toLowerCase() + " bölgesinden %" +
+        yuzde(verdigi[acikBolge][0], verdigi[acikBolge][1]) + " atmış (" +
+        verdigi[acikBolge][0] + "/" + verdigi[acikBolge][1] +
+        "). Hücumu oraya taşımak mantıklı."]);
+    }
+
+    // --- örneklem uyarısı: az maçta oran okumak yanıltır
+    if (macSayisi < 3) {
+      satirlar.push(["Dikkat · örneklem",
+        macSayisi + " maç üzerinden çıkarıldı. Oranlar doğru ama " +
+        "eğilim demek için en az 3 maç gerekiyor; TBF yeni maç raporu " +
+        "yayımladıkça bu okuma kendiliğinden güncellenir."]);
+    }
+
     var sutcu = oyuncular.filter(function (o) { return o.sut; })
       .sort(function (a, b) { return b.sut - a.sut; }).slice(0, 2);
     if (sutcu.length) {
@@ -277,24 +412,9 @@
     });
     if (!n) return "";
 
-    // Dört faktörü maçlar boyunca toplayıp tek takım özeti gibi hesaplıyoruz.
-    function topla(secici) {
-      var t = { iki: [0, 0], uc: [0, 0], sa: [0, 0], hucumRib: 0, savunmaRib: 0,
-                topKaybi: 0, rib: 0, asist: 0 };
-      analizler.forEach(function (a) {
-        var k = secici(a);
-        ["iki", "uc", "sa"].forEach(function (alan) {
-          t[alan][0] += ((k[alan] || [])[0] || 0);
-          t[alan][1] += ((k[alan] || [])[1] || 0);
-        });
-        ["hucumRib", "savunmaRib", "topKaybi", "rib", "asist"].forEach(function (alan) {
-          t[alan] += (k[alan] || 0);
-        });
-      });
-      return t;
-    }
-    var kendi = topla(function (a) { return a.team; });
-    var karsi = topla(function (a) { return a.karsi; });
+    // Dört faktör için maç toplamları (okuma() ile aynı fonksiyon).
+    var kendi = toplaTaraf(analizler, function (a) { return a.team; });
+    var karsi = toplaTaraf(analizler, function (a) { return a.karsi; });
 
     // Savunma profili: rakiplerinin ONA KARŞI attığı şutların bölge dağılımı.
     var verdigi = { "Boya içi": { d: 0, i: 0 }, "Orta mesafe": { d: 0, i: 0 },

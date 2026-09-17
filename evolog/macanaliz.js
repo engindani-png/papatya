@@ -263,6 +263,8 @@
           esc(a.run[1]) + ")" : "") + "</div>" +
       "</div>" +
 
+      macOkumasi(a) +
+
       '<div class="grafik"><div class="bas"><h4>Skor farkı</h4>' +
         "<span>sıfır çizgisinin üstü önde</span></div>" + farkGrafigi(a.flow) + "</div>" +
 
@@ -296,6 +298,107 @@
       }).join("") + "</tbody></table>" +
       '<p class="aciklama">Süre ve +/– oyun akışındaki değişikliklerden hesaplandı; ' +
         "TBF'nin kendi değerleriyle karşılaştırılıp doğrulandı.</p>";
+  }
+
+  /** Maç okuması: bu maçta ne oldu — hepsi dayandığı sayıyla birlikte.
+   *  Dayanaklar: Dört Faktör, top kaybından yenen/bulunan sayı, şut bölgesi
+   *  dağılımı, beşli farkları, faul dengesi, çeyrek profili. */
+  function macOkumasi(a) {
+    var A2 = window.EvologAnaliz;
+    var biz = a.team.biz, rakip = a.team.rakip;
+    var poz = A2.pozisyon(biz), pozR = A2.pozisyon(rakip);
+    if (!poz || !pozR) return "";
+    var satirlar = [];
+
+    var ff = A2.dortFaktor(biz, rakip), ffR = A2.dortFaktor(rakip, biz);
+    var fark = a.score[0] - a.score[1];
+
+    // Hangi faktör maçı belirledi? Dördünün farkını büyüklüğe göre sırala.
+    var faktorler = [
+      { ad: "şut isabeti", biz: ff.efg, rakip: ffR.efg, yaz: "eFG %" +
+        Math.round(ff.efg * 100) + " · rakip %" + Math.round(ffR.efg * 100) },
+      { ad: "top kaybı", biz: -ff.tov, rakip: -ffR.tov, yaz: "pozisyonlarımızın %" +
+        Math.round(ff.tov * 100) + "'inde kayıp · rakip %" + Math.round(ffR.tov * 100) },
+      { ad: "hücum ribaundu", biz: ff.oreb, rakip: ffR.oreb, yaz: "%" +
+        Math.round(ff.oreb * 100) + " · rakip %" + Math.round(ffR.oreb * 100) },
+      { ad: "faul aldırma", biz: ff.ftr, rakip: ffR.ftr, yaz: "her 100 şuta " +
+        Math.round(ff.ftr * 100) + " serbest atış · rakip " + Math.round(ffR.ftr * 100) }
+    ];
+    // Dört faktörün ağırlıkları eşit değil (Oliver): şut isabeti 0.40,
+    // top kaybı 0.25, hücum ribaundu 0.20, faul aldırma 0.15. Ham farkı
+    // kıyaslamak farklı ölçekleri kıyaslamak olurdu.
+    var AGIRLIK = { "şut isabeti": 0.40, "top kaybı": 0.25,
+                    "hücum ribaundu": 0.20, "faul aldırma": 0.15 };
+    faktorler.sort(function (x, y) {
+      return Math.abs(y.biz - y.rakip) * AGIRLIK[y.ad] -
+             Math.abs(x.biz - x.rakip) * AGIRLIK[x.ad];
+    });
+    var belirleyen = faktorler[0];
+    satirlar.push([(belirleyen.biz > belirleyen.rakip ? "Maçı kazandıran: " : "Maçta geride kaldığımız: ") +
+      belirleyen.ad, belirleyen.yaz + ". Dört faktör ağırlıklandırıldığında en " +
+      "belirleyici kalem buydu."]);
+
+    if (a.kayiptan && a.kayiptanBiz) {
+      var netKayip = a.kayiptanBiz.yenilen - a.kayiptan.yenilen;
+      satirlar.push(["Top kaybı hesabı",
+        "Rakibin " + a.kayiptanBiz.kayip + " kaybından " + a.kayiptanBiz.yenilen +
+        " sayı bulduk; bizim " + a.kayiptan.kayip + " kaybımızdan " + a.kayiptan.yenilen +
+        " sayı yedik. Net " + (netKayip > 0 ? "+" : "") + netKayip + " sayı — " +
+        (Math.abs(netKayip) >= 8 ? "maçın belirleyici kalemlerinden." : "dengeye yakın.")]);
+    }
+
+    if (a.asist && a.asist.basket >= 8) {
+      var oran = yuzde(a.asist.asistli, a.asist.basket);
+      satirlar.push([oran >= 50 ? "Top döndü" : "Bireysel çözdük",
+        "Basketlerimizin %" + oran + "'i asistli (" + a.asist.asistli + "/" +
+        a.asist.basket + ")."]);
+    }
+
+    if (a.besli && a.besli.lineups && a.besli.lineups.length >= 2) {
+      var sirali = a.besli.lineups.slice().sort(function (x, y) {
+        return (y.lehte - y.aleyhte) - (x.lehte - x.aleyhte);
+      });
+      var iyi = sirali[0], kotu = sirali[sirali.length - 1];
+      if ((iyi.lehte - iyi.aleyhte) >= 4) {
+        satirlar.push(["En iyi beşli",
+          iyi.p.join("·") + " → " + (iyi.sec / 60).toFixed(1) + " dakikada " +
+          iyi.lehte + "-" + iyi.aleyhte +
+          ((kotu.lehte - kotu.aleyhte) <= -4
+            ? ". En zorlandığımız beşli " + kotu.p.join("·") + " (" +
+              kotu.lehte + "-" + kotu.aleyhte + ")."
+            : ".")]);
+      }
+    }
+
+    var ceyrek = (a.quarters || []).map(function (q) { return (q.home || 0) - (q.away || 0); });
+    if (ceyrek.length === 4) {
+      var enIyi = ceyrek.indexOf(Math.max.apply(null, ceyrek));
+      var enKotu = ceyrek.indexOf(Math.min.apply(null, ceyrek));
+      satirlar.push(["Çeyrek profili",
+        (enIyi + 1) + ". çeyrekte " + (ceyrek[enIyi] > 0 ? "+" : "") + ceyrek[enIyi] +
+        ", " + (enKotu + 1) + ". çeyrekte " + (ceyrek[enKotu] > 0 ? "+" : "") +
+        ceyrek[enKotu] + " fark ürettik."]);
+    }
+
+    if (a.faul && a.faulRakip) {
+      var bizF = Object.keys(a.faul.yapan || {}).reduce(function (t, k) {
+        return t + a.faul.yapan[k];
+      }, 0);
+      var rakipF = Object.keys(a.faulRakip.yapan || {}).reduce(function (t, k) {
+        return t + a.faulRakip.yapan[k];
+      }, 0);
+      if (Math.abs(bizF - rakipF) >= 5) {
+        satirlar.push(["Faul dengesi",
+          bizF + " faul yaptık, rakip " + rakipF + ". " +
+          (bizF < rakipF ? "Savunmada temassız kalabildik; serbest atış hattında avantaj bizde."
+                         : "Faul yükü bizdeydi; rotasyon buna göre kuruldu.")]);
+      }
+    }
+
+    return "<h2>Maç okuması</h2><div class=\"okuma\">" + satirlar.map(function (r) {
+      return '<div><span class="im">▸</span><span><b>' + esc(r[0]) + "</b> — " +
+        esc(r[1]) + "</span></div>";
+    }).join("") + "</div>";
   }
 
   /** Pozisyon bazlı verimlilik, dört faktör, kayıptan sayı, asist, beşliler. */

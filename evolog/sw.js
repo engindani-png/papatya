@@ -1,5 +1,5 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-v25";
+var CACHE = "evolog-v26";
 var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./logo.png",
   "./icon-192.png", "./manifest.webmanifest",
   // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
