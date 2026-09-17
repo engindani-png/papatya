@@ -22,11 +22,13 @@
 
 <header class="topbar">
   <div class="wrap">
-    <img class="crest" src="logo.png" alt="Evolog Şerifali Spor Kulübü" width="44" height="44">
-    <div>
-      <h1 id="teamName">Evolog U14 Kız Siyah</h1>
-      <div class="sub" id="leagueLabel">TBF İstanbul U14 Kız</div>
-    </div>
+    <button type="button" class="home" id="homeBtn" aria-label="Başa dön">
+      <img class="crest" src="logo.png" alt="Evolog Şerifali Spor Kulübü" width="44" height="44">
+      <span>
+        <span class="h1" id="teamName">Evolog U14 Kız Siyah</span>
+        <span class="sub" id="leagueLabel">TBF İstanbul U14 Kız</span>
+      </span>
+    </button>
     <div class="sync" id="syncBox"><span class="dot off"></span>yükleniyor</div>
   </div>
 </header>
@@ -95,9 +97,9 @@
 <div class="cpanel" id="coachPanel" hidden>
   <header class="ch">
     <strong id="coachTitle">Antrenör paneli</strong>
-    <div class="ctabs" id="coachTabs"></div>
     <button class="pclose" id="coachClose" aria-label="Kapat">✕</button>
   </header>
+  <div class="ctabs" id="coachTabs"></div>
   <iframe id="coachFrame" title="Antrenör paneli" src="about:blank"></iframe>
 </div>
 

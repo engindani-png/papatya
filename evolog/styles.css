@@ -722,8 +722,14 @@ table.mlog td.mo span.l { background: var(--loss); }
   padding-top: calc(10px + env(safe-area-inset-top, 0px));
   background: var(--ink-2); border-bottom: 1px solid var(--line); }
 .cpanel .ch strong { font-family: var(--display); font-size: 15px; letter-spacing: .08em;
-  text-transform: uppercase; }
-.cpanel .ctabs { display: flex; gap: 6px; margin-left: auto; }
+  text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cpanel .ch .pclose { margin-left: auto; }
+.cpanel .ctabs { display: flex; gap: 6px; padding: 8px var(--gutter);
+  background: var(--ink-2); border-bottom: 1px solid var(--line);
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.cpanel .ctabs::-webkit-scrollbar { display: none; }
+.cpanel .ctabs:empty { display: none; }
+.cpanel .ctabs button { flex: 0 0 auto; }
 .cpanel .ctabs button { background: none; border: 1px solid var(--line); color: var(--chalk-dim);
   border-radius: 999px; padding: 6px 14px; font-family: var(--display); font-size: 12px;
   letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
@@ -731,3 +737,23 @@ table.mlog td.mo span.l { background: var(--loss); }
   border-color: var(--amber); }
 .cpanel .pclose { margin-left: 4px; }
 .cpanel iframe { flex: 1; width: 100%; border: 0; background: var(--ink); }
+
+
+/* Basliktaki logo+ad artik bir dugme: her ekrandan basa donmenin en kisa yolu
+   (telefonda geri tusu uygulamadan cikariyor). */
+.topbar .home { display: flex; align-items: center; gap: 12px; background: none; border: 0;
+  padding: 0; margin: 0; color: inherit; text-align: left; cursor: pointer; flex: 1; min-width: 0; }
+.topbar .home > span { min-width: 0; }
+.topbar .home .h1 { display: block; font-family: var(--display); font-size: 19px; font-weight: 600;
+  letter-spacing: .02em; color: var(--chalk); line-height: 1.15; }
+.topbar .home:active { opacity: .7; }
+
+/* Ayar satirlarinin altindaki aciklama: durum tek bakista okunsun. */
+.srow .sdesc { display: block; color: var(--chalk-faint); font-size: 12.5px; margin-top: 3px; }
+.srow.tgl.on .sdesc { color: var(--amber); }
+
+/* Antrenore ozel not (oyuncu profilinde devam durumu). */
+.kocnot { background: var(--amber-dim); border-left: 3px solid var(--amber);
+  border-radius: 0 8px 8px 0; padding: 10px 12px; margin: 0 0 14px; font-size: 14px; }
+.kocnot b { font-family: var(--display); font-size: 15px; letter-spacing: .02em; }
+.kocnot span { display: block; color: var(--chalk-faint); font-size: 12px; margin-top: 3px; }

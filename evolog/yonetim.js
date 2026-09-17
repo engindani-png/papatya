@@ -582,8 +582,12 @@
       })
     }).then(function (res) {
       mark(false);
-      el("saveMsg").textContent = res.sessions + " antrenman kaydedildi (" +
-        (knownAge(res.age) || age).toUpperCase() + "). Uygulama birkaç saniyede güncellenir.";
+      el("saveMsg").textContent = res.sessions + " antrenman kaydedildi.";
+      // Kaydettikten sonra basa don: sonuc mesaji ve hafta secimi ustte,
+      // antrenor bir sonraki ise oradan devam ediyor.
+      note("parseMsg", "ok", "<b>Kaydedildi.</b> " + res.sessions +
+        " antrenman yayında. Velilere değişiklik bildirimi kendiliğinden gidecek.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }).catch(function (err) {
       el("saveMsg").textContent = "Kaydedilemedi: " + err.message;
     }).then(function () { el("saveBtn").disabled = false; });

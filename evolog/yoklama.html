@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evolog · Yoklama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css">
+<style>
+/* --- seans şeridi ---------------------------------------------------- */
+.seans{display:flex;gap:.45rem;overflow-x:auto;padding:.15rem .15rem .5rem;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none}
+.seans::-webkit-scrollbar{display:none}
+.seans button{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;
+  background:var(--ink-2);color:var(--chalk-dim);border:1px solid var(--line);border-radius:12px;
+  padding:.5rem .8rem;font-family:var(--display);font-size:.82rem;letter-spacing:.04em;
+  text-transform:none;line-height:1.25}
+.seans button small{font-size:11px;opacity:.8;font-family:var(--body);letter-spacing:0}
+.seans button[aria-pressed=true]{background:var(--amber);color:#14110b;border-color:var(--amber)}
+.seans button[aria-pressed=true] small{opacity:.85}
+.seans .alindi{position:absolute}
+
+/* --- oyuncu satırı --------------------------------------------------- */
+.plist{display:flex;flex-direction:column;gap:.4rem;margin:.2rem 0 1rem}
+.prow{display:grid;grid-template-columns:2.1rem 1fr;gap:.55rem;align-items:center;
+  background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;padding:.5rem .55rem}
+.prow .no{font-family:var(--display);font-size:1.05rem;color:var(--amber);text-align:center}
+.prow .nm{font-size:.95rem;line-height:1.2;margin-bottom:.4rem;word-break:break-word}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:.3rem}
+.seg button{background:var(--ink-3);color:var(--chalk-dim);border:1px solid var(--line);
+  border-radius:9px;padding:.55rem .2rem;font-family:var(--display);font-size:.76rem;
+  letter-spacing:.04em;text-transform:none;min-height:2.6rem}
+.seg button[aria-pressed=true][data-s=geldi]{background:var(--win);color:#08160f;border-color:var(--win)}
+.seg button[aria-pressed=true][data-s=gec]{background:var(--amber);color:#14110b;border-color:var(--amber)}
+.seg button[aria-pressed=true][data-s=gelmedi]{background:var(--loss);color:#1a0b09;border-color:var(--loss)}
+.seg button[aria-pressed=true][data-s=izinli]{background:var(--chalk-dim);color:#0f1e1c;border-color:var(--chalk-dim)}
+.prow.bos{border-style:dashed}
+.prow .nm{font-weight:600}
+
+/* --- özet ------------------------------------------------------------ */
+.ozet{display:flex;gap:.4rem;flex-wrap:wrap;margin:.2rem 0 .8rem}
+.ozet span{background:var(--ink-3);border:1px solid var(--line);border-radius:999px;
+  padding:.2rem .7rem;font-size:.8rem;color:var(--chalk-dim)}
+.ozet span b{color:var(--chalk)}
+.devam table{width:100%;border-collapse:collapse;font-size:.9rem}
+.devam th{text-align:left;font-family:var(--display);font-weight:500;font-size:.72rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint);
+  border-bottom:1px solid var(--line);padding:.4rem .3rem}
+.devam td{border-bottom:1px solid var(--line-soft);padding:.5rem .3rem}
+.devam td.o{font-family:var(--display);font-size:1rem;text-align:right}
+.devam .bar{height:5px;border-radius:3px;background:var(--ink-3);margin-top:.25rem;overflow:hidden}
+.devam .bar i{display:block;height:100%;background:var(--win)}
+.devam .bar i.az{background:var(--loss)}
+.devam .bar i.orta{background:var(--amber)}
+</style>
+</head>
+<body>
+<script>
+  if (location.search.indexOf("gomulu=1") !== -1) document.body.className = "gomulu";
+</script>
+
+<header><div class="in">
+  <h1>Yoklama</h1>
+  <a href="./">← Uygulamaya dön</a>
+</div></header>
+
+<div class="wrap">
+
+  <section id="loginBox">
+    <h2>Giriş</h2>
+    <p class="hint">Yoklama antrenöre özeldir.</p>
+    <div class="row">
+      <input type="password" id="pass" placeholder="Antrenör şifresi" autocomplete="current-password" style="max-width:18rem">
+      <button id="loginBtn">Gir</button>
+    </div>
+    <div id="loginMsg"></div>
+  </section>
+
+  <main id="adminBox" hidden>
+    <h2>Antrenman</h2>
+    <div class="seans" id="seansStrip"></div>
+    <div class="row" style="margin-top:0">
+      <input type="date" id="elleTarih" style="max-width:10.5rem">
+      <input type="time" id="elleSaat" step="300" style="max-width:7rem">
+      <button class="ghost" id="elleBtn">Başka gün</button>
+    </div>
+    <div id="seansMsg"></div>
+
+    <h2>Kadro</h2>
+    <div class="row" style="margin-top:.2rem">
+      <button class="ghost" id="hepsiBtn">Hepsi geldi</button>
+      <button class="ghost" id="temizleBtn">Temizle</button>
+    </div>
+    <div class="ozet" id="ozet"></div>
+    <div class="plist" id="plist"></div>
+
+    <h2>Devam durumu</h2>
+    <p class="hint">Son antrenmanlara göre. İzinli günler oranı düşürmez.</p>
+    <div class="devam" id="devam"></div>
+  </main>
+</div>
+
+<div class="bar" id="bar" hidden><div class="in">
+  <div class="msg" id="saveMsg">Yoklama alınmadı.</div>
+  <button id="saveBtn">Kaydet</button>
+</div></div>
+
+<script src="panel-auth.js"></script>
+<script src="yoklama.js"></script>
+</body>
+</html>

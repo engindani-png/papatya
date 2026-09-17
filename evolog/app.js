@@ -734,6 +734,36 @@
       "</div>";
     ov.hidden = false;
     document.body.classList.add("locked");
+    devamGoster(roster, name);
+  }
+
+  /** Antrenman devamı kişisel veridir: yalnız antrenör şifresiyle girilmişse
+   *  gösterilir (uygulama herkese açık). Şifre yoksa istek bile atılmaz. */
+  function kocSifresi() {
+    try { return sessionStorage.getItem("evolog_admin_pass") || ""; } catch (e) { return ""; }
+  }
+
+  function devamGoster(roster, name) {
+    var sifre = kocSifresi();
+    if (!sifre) return;
+    var anahtar = roster && roster.tbfPlayerId ? String(roster.tbfPlayerId) : norm(name || "");
+    fetch("/api/attendance/summary?age=" + age + "&limit=20", {
+      headers: { Authorization: "Bearer " + sifre }
+    }).then(function (r) { return r.ok ? r.json() : null; }).then(function (ozet) {
+      if (!ozet) return;
+      var satir = (ozet.players || []).filter(function (x) { return String(x.key) === anahtar; })[0];
+      if (!satir || satir.oran === null) return;
+      var ov = el("playerSheet");
+      var body = ov && ov.querySelector(".pbody");
+      if (!body) return;
+      var kutu = document.createElement("div");
+      kutu.className = "kocnot";
+      kutu.innerHTML = "<b>Antrenman devamı %" + satir.oran + "</b> · " +
+        (satir.geldi + satir.gec) + " katılım, " + satir.gelmedi + " gelmedi" +
+        (satir.izinli ? ", " + satir.izinli + " izinli" : "") +
+        "<span>Son " + (ozet.sessions || []).length + " antrenman · yalnız antrenör görür</span>";
+      body.insertBefore(kutu, body.firstChild);
+    }).catch(function () { /* şifre eskimiş olabilir; sessizce geç */ });
   }
 
   function closePlayer() {
@@ -1106,10 +1136,14 @@
         (push.busy ? " disabled" : "") +
         ' data-push="' + a.key + '" data-want="' + (isOn ? "0" : "1") + '"' +
         ' role="switch" aria-checked="' + (isOn ? "true" : "false") + '">' +
-        "<span>" + esc(a.title) + "</span>" +
+        "<span>Telefona bildirim" +
+        (AGES.length > 1 ? " · " + esc(a.label) : "") +
+        '<span class="sdesc">' + (push.busy ? "Değiştiriliyor…" : (isOn ? "Açık" : "Kapalı")) +
+        "</span></span>" +
         '<span class="sw" aria-hidden="true"></span></button>';
     }).join("") +
-      '<p class="shint">Maçtan 4 saat önce hatırlatma, maç bitince skor.</p>';
+      '<p class="shint">Maç günü/saati değişince, maçtan 4 saat önce, maç bitince skor ' +
+      "ve antrenman programı değişince haber veririz.</p>";
   }
 
   function renderSheet() {
@@ -1125,7 +1159,7 @@
     ov.innerHTML =
       '<div class="psheet" role="dialog" aria-modal="true" aria-label="Takım ve ayarlar">' +
         '<header class="ph sh">' +
-          "<div><h2>Takım</h2></div>" +
+          "<div><h2>Ayarlar</h2></div>" +
           '<button class="pclose" aria-label="Kapat">✕</button>' +
         "</header>" +
         '<div class="pbody">' +
@@ -1139,16 +1173,19 @@
                     '<span class="tick" aria-hidden="true">' + (on ? "✓" : "") + "</span></button>";
                 }).join("") +
               "</div>"
-            : '<div class="slist"><div class="srow flat"><span>' + esc(ageInfo().title) +
-              '</span><span class="dim">Evolog</span></div></div>') +
-          '<h3 class="eyebrow">Maç bildirimi</h3>' +
+            : "") +
+          '<h3 class="eyebrow">Bildirimler</h3>' +
           '<div class="slist">' + pushSection() + "</div>" +
           '<h3 class="eyebrow">Uygulama</h3>' +
           '<div class="slist">' +
-            '<div class="srow flat"><span>Son veri</span><span class="dim">' +
-              esc(stamp || "—") + "</span></div>" +
-            '<button type="button" class="srow link" data-coach="antrenman">' +
-              "<span>Antrenör paneli</span>" +
+            '<div class="srow flat"><span>Takım<span class="sdesc">' +
+              esc(ageInfo().title) + " · " + esc((state.league || {}).season || "2026-2027") +
+              "</span></span></div>" +
+            '<div class="srow flat"><span>Veri güncelliği<span class="sdesc">' +
+              esc(stamp ? stamp + " · TBF'den otomatik" : "—") + "</span></span></div>" +
+            '<button type="button" class="srow link" data-coach="yoklama">' +
+              '<span>Antrenör paneli<span class="sdesc">Yoklama · program · oyuncu analizi' +
+              "</span></span>" +
               '<span class="dim">Şifreli ›</span></button>' +
           "</div>" +
         "</div>" +
@@ -1180,7 +1217,9 @@
   // uygulama onlari tam ekran bir cerceve icinde acar. Sifre kontrolu o
   // sayfanin kendi giris kutusunda ve sunucuda yapilir.
   var COACH_TABS = [
-    { key: "antrenman", label: "Antrenman", title: "Antrenman programı", src: "yonetim.html?gomulu=1" }
+    { key: "yoklama", label: "Yoklama", title: "Yoklama", src: "yoklama.html?gomulu=1" },
+    { key: "antrenman", label: "Program", title: "Antrenman programı", src: "yonetim.html?gomulu=1" },
+    { key: "oyuncular", label: "Oyuncular", title: "Oyuncu analizi", src: "oyuncular.html?gomulu=1" }
   ];
 
   function coachTab(key) {
@@ -1243,6 +1282,20 @@
     renderTraining();
     renderSheet();
   }
+
+  // Basa don: acik katmanlari kapat, ilk sekmeye gec, yukari kaydir.
+  function basaDon() {
+    closeCoach();
+    closeSheet();
+    var ps = el("playerSheet");
+    if (ps && !ps.hidden) { ps.hidden = true; ps.innerHTML = ""; document.body.classList.remove("locked"); }
+    location.hash = PANELS[0];
+    showPanel(PANELS[0]);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  var homeBtn = el("homeBtn");
+  if (homeBtn) homeBtn.addEventListener("click", basaDon);
 
   document.querySelectorAll(".tabbar button").forEach(function (btn) {
     btn.addEventListener("click", function () {

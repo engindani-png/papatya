@@ -67,6 +67,31 @@ adresinde sunar. Yönetim ekranı istekleri `?age=<yaş>` ile gönderir.
 
 `height` bilinmiyorsa `null` bırakın; uygulama boş alanları gizler.
 
+### Antrenör paneli
+
+Uygulamada **Takım → Antrenör paneli** (şifreli, tam ekran). Üç sekme, her biri
+kendi sayfası; uygulama onları çerçeve içinde açar:
+
+| Sekme | Sayfa | Ne yapar |
+|---|---|---|
+| Yoklama | `yoklama.html` | Antrenman seçilir, kadro tek dokunuşla işaretlenir (Geldi / Geç / Yok / İzinli), devam durumu tablosu |
+| Program | `yonetim.html` | Haftalık antrenman programı (WhatsApp mesajından çözümleme dahil) |
+| Oyuncular | `oyuncular.html` | Maç maç istatistik, sezon ortalaması, gelişim grafikleri |
+
+Ortak parçalar: `panel.css` (görünüm) ve `panel-auth.js` (şifre + `/api` istekleri).
+Yeni sekme eklemek: sayfayı yaz, `app.js` içindeki `COACH_TABS` listesine bir
+satır ekle, `sw.js` içindeki `SHELL` listesine dosyaları koy.
+
+**Yoklama verisi:** `/var/lib/evolog/attendance-<yaş>.json`, uçlar
+`GET/POST /api/attendance` ve `GET /api/attendance/summary` — üçü de şifre ister,
+çünkü yoklama kişisel veridir ve uygulamanın kendisi herkese açıktır. Oyuncu
+anahtarı TBF numarası (`tbfPlayerId`). Devam oranında **izinli günler paydaya
+girmez**; "geç geldi" katılım sayılır. Testler: `python -m unittest server.test_attendance`.
+
+**Oyuncu analizi** ek bir uç kullanmaz: `league.json` içindeki maç boxscore'larını
+okuyup oyuncu bazına çevirir. Her ölçüt kendi grafiğinde (tek seri, ortalama
+kesikli çizgi); eğilim üç maçtan sonra ok+kelime ile yazılır.
+
 ### Antrenman (sunucuda `/var/lib/evolog/training-<yaş>.json`)
 
 > ⚠️ Antrenman programı **depoda durmaz**. nginx `/data/<yaş>/training.json`

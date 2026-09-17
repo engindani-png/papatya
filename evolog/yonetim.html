@@ -8,135 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-:root{
-  --ink:#0f1e1c; --ink-2:#132825; --ink-3:#1b3733; --line:#24423d; --line-soft:#1c3531;
-  --chalk:#eff5f2; --chalk-dim:#8fa9a3; --chalk-faint:#5e7a75;
-  --amber:#f2a03d; --amber-dim:rgba(242,160,61,.13);
-  --win:#4fd48a; --loss:#f2695e;
-  --display:"Oswald","Arial Narrow",Arial,sans-serif;
-  --body:"Karla",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --gutter:18px;
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--ink);color:var(--chalk);font-family:var(--body);font-size:15px;line-height:1.5}
-body.gomulu>header{display:none}
-body.gomulu .wrap{padding-top:.6rem}
-.wrap{max-width:52rem;margin:0 auto;padding:var(--gutter) var(--gutter) 5rem}
-header{border-bottom:1px solid var(--line);padding:1rem var(--gutter) .9rem;background:var(--ink-2)}
-header .in{max-width:52rem;margin:0 auto;display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap}
-h1{font-family:var(--display);font-weight:600;font-size:1.15rem;letter-spacing:.06em;text-transform:uppercase;margin:0}
-header a{color:var(--chalk-dim);font-size:.82rem;text-decoration:none;margin-left:auto}
-header a:hover{color:var(--amber)}
-h2{font-family:var(--display);font-weight:500;font-size:.82rem;letter-spacing:.16em;text-transform:uppercase;
-   color:var(--chalk-faint);margin:2rem 0 .7rem;padding-bottom:.4rem;border-bottom:1px solid var(--line-soft)}
-p.hint{color:var(--chalk-dim);font-size:.86rem;margin:.3rem 0 .9rem}
-textarea,input,select{
-  width:100%;background:var(--ink-2);color:var(--chalk);border:1px solid var(--line);
-  border-radius:8px;padding:.6rem .7rem;font-family:var(--body);font-size:.93rem}
-textarea{min-height:11rem;resize:vertical;line-height:1.55}
-textarea:focus,input:focus,select:focus{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent}
-button{
-  font-family:var(--display);font-size:.88rem;letter-spacing:.09em;text-transform:uppercase;font-weight:500;
-  background:var(--amber);color:#14110b;border:0;border-radius:999px;padding:.62rem 1.3rem;cursor:pointer}
-button.ghost{background:transparent;color:var(--chalk-dim);border:1px solid var(--line)}
-button.ghost:hover{color:var(--amber);border-color:var(--amber)}
-button:disabled{opacity:.45;cursor:not-allowed}
-.row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.9rem 0}
-.card{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:10px;padding:.8rem;margin-bottom:.6rem}
-.card.bad{border-color:var(--loss)}
-.grid{display:grid;grid-template-columns:7.5rem 5rem 5rem 1fr;gap:.5rem;align-items:center}
-.grid label{grid-column:1/-1;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint)}
-.grid .full{grid-column:1/-1}
-@media (max-width:560px){ .grid{grid-template-columns:1fr 1fr} .grid .full{grid-column:1/-1} }
-.note{background:var(--amber-dim);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;
-  padding:.65rem .8rem;margin:.6rem 0;font-size:.88rem}
-.note.bad{background:rgba(242,105,94,.12);border-left-color:var(--loss)}
-.note.ok{background:rgba(79,212,138,.12);border-left-color:var(--win)}
-.pill{display:inline-block;font-family:var(--display);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;
-  padding:.16rem .55rem;border-radius:999px;background:var(--ink-3);color:var(--chalk-dim);margin-left:.4rem}
-.pill.guess{background:rgba(242,160,61,.2);color:var(--amber)}
-.src{color:var(--chalk-faint);font-size:.8rem;font-style:italic;margin-top:.45rem;word-break:break-word}
-.del{background:none;border:0;color:var(--chalk-faint);font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;line-height:1}
-.del:hover{color:var(--loss)}
-.head{display:flex;align-items:center;gap:.5rem;margin-bottom:.55rem}
-.head strong{font-family:var(--display);letter-spacing:.06em;font-size:.95rem}
-.head .del{margin-left:auto}
-.swatch{width:14px;height:14px;border-radius:4px;flex:0 0 auto;
-  border:1px solid rgb(255 255 255 / .25);display:inline-block}
-.colorrow{display:flex;align-items:center;gap:.6rem}
-.colorrow span{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint)}
-.colorrow input[type=color]{width:3.4rem;height:2.1rem;padding:2px;cursor:pointer}
-.bar{position:fixed;left:0;right:0;bottom:0;background:var(--ink-2);border-top:1px solid var(--line);
-  padding:.7rem var(--gutter) calc(.7rem + env(safe-area-inset-bottom,0px));z-index:10}
-.bar .in{max-width:52rem;margin:0 auto;display:flex;gap:.6rem;align-items:center}
-/* --- takım seçici ------------------------------------------------- */
-.teamstrip{display:flex;gap:.4rem;flex-wrap:wrap;margin:.2rem 0 1rem}
-.teamstrip button{background:var(--ink-2);color:var(--chalk-dim);border:1px solid var(--line);
-  border-radius:999px;padding:.45rem 1rem;font-size:.82rem;letter-spacing:.08em}
-.teamstrip button[aria-pressed=true]{background:var(--amber);color:#14110b;border-color:var(--amber)}
-.weekstrip button{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;line-height:1.2}
-.weekstrip small{font-size:11px;opacity:.75}
-
-/* --- gün şeridi ---------------------------------------------------- */
-.days{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin:.1rem 0 .6rem}
-.days button{background:var(--ink-3);color:var(--chalk-dim);border:1px solid var(--line);
-  border-radius:10px;padding:.55rem .2rem;font-size:.78rem;letter-spacing:.04em;text-transform:none;
-  font-family:var(--display)}
-.days button[aria-pressed=true]{background:var(--amber);color:#14110b;border-color:var(--amber)}
-
-/* --- dokunmatik alanlar (saat / salon) ------------------------------ */
-.pickrow{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-.pickbtn{width:100%;background:var(--ink-2);color:var(--chalk);border:1px solid var(--line);
-  border-radius:10px;padding:.7rem .8rem;text-align:left;font-family:var(--body);
-  font-size:.95rem;text-transform:none;letter-spacing:0;display:flex;justify-content:space-between;
-  align-items:center;gap:.5rem}
-.pickbtn .lbl{color:var(--chalk-faint);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
-  display:block;margin-bottom:.15rem}
-.pickbtn .val{font-family:var(--display);font-size:1.05rem;letter-spacing:.03em}
-.pickbtn .val.empty{color:var(--chalk-faint)}
-.pickbtn.full{grid-column:1/-1}
-
-/* --- alttan açılan seçim penceresi ---------------------------------- */
-.osheet{position:fixed;inset:0;background:rgb(4 10 9/.72);z-index:60;display:flex;align-items:flex-end}
-.osheet[hidden]{display:none}
-.opanel{background:var(--ink);width:100%;border-radius:16px 16px 0 0;border-top:1px solid var(--line);
-  padding-bottom:calc(.8rem + env(safe-area-inset-bottom,0px));max-height:86vh;overflow:hidden}
-@media(min-width:640px){.osheet{align-items:center;justify-content:center}
-  .opanel{max-width:26rem;border-radius:14px;border:1px solid var(--line)}}
-.opanel header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;
-  padding:.7rem .9rem;border-bottom:1px solid var(--line);background:var(--ink-2)}
-.opanel header strong{font-family:var(--display);letter-spacing:.08em;text-transform:uppercase;font-size:.85rem}
-.opanel header button{padding:.45rem 1rem;font-size:.8rem}
-
-/* Saat tekerleği: iOS'taki gibi ortada duran satır seçili olandır. */
-.wheels{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:0;padding:.4rem 1.2rem}
-.wheel{height:190px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;
-  text-align:center;-webkit-overflow-scrolling:touch}
-.wheel::-webkit-scrollbar{display:none}
-.wheel .wi{height:38px;line-height:38px;scroll-snap-align:center;font-family:var(--display);
-  font-size:1.35rem;color:var(--chalk-faint);transition:color .12s ease}
-.wheel .wi.on{color:var(--amber);font-size:1.6rem}
-.wheel .wpad{height:76px}
-.band{position:absolute;left:1.2rem;right:1.2rem;top:calc(.4rem + 76px);height:38px;pointer-events:none;
-  border-top:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:8px;
-  background:rgb(242 160 61/.07)}
-
-/* Salon listesi */
-.olist{max-height:60vh;overflow-y:auto;padding:.3rem .9rem .8rem}
-.olist button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:.6rem;
-  background:none;border:0;border-bottom:1px solid var(--line-soft);color:var(--chalk);
-  padding:.85rem .1rem;font-family:var(--body);font-size:.95rem;text-transform:none;letter-spacing:0;
-  text-align:left;border-radius:0}
-.olist button[aria-checked=true]{color:var(--amber)}
-.olist .dot2{width:12px;height:12px;border-radius:4px;flex:0 0 auto}
-.olist .add{color:var(--amber)}
-.copy{background:none;border:0;color:var(--chalk-faint);font-size:1rem;cursor:pointer;padding:.2rem .4rem;
-  line-height:1}
-.copy:hover{color:var(--amber)}
-
-.bar .msg{font-size:.85rem;color:var(--chalk-dim);flex:1;min-width:0}
-</style>
+<link rel="stylesheet" href="panel.css">
 </head>
 <body>
 <script>
@@ -164,35 +36,41 @@ button:disabled{opacity:.45;cursor:not-allowed}
   <main id="adminBox" hidden>
     <div class="teamstrip" id="teamStrip" hidden></div>
 
-    <h2>Program hangi hafta için?</h2>
-    <p class="hint">Hafta geçtiğinde uygulama velilere “önümüzdeki haftanın programı
-      henüz açıklanmadı” yazar — eski program bu haftanınmış gibi görünmez.</p>
+    <!-- Telefonda en cok yapilan is "bir antrenmanin saatini degistirmek";
+         o yuzden hafta secimi ve antrenmanlar en ustte, digerleri katlanmis. -->
+    <h2>Hangi hafta</h2>
     <div class="teamstrip weekstrip" id="weekStrip"></div>
-
-    <h2>WhatsApp mesajını yapıştırın</h2>
-    <p class="hint">Gruptan gelen mesajı olduğu gibi yapıştırın — tarih, saat, salon ve iptal
-      bilgileri ayıklanır. Anlaşılmayan satırlar aşağıda ayrıca gösterilir; hepsini
-      kaydetmeden önce düzeltebilirsiniz.</p>
-    <textarea id="raw" placeholder="Örnek:&#10;Merhabalar, bu haftanın programı:&#10;Salı 18:30-20:00 Şerifali Spor Salonu&#10;Perşembe 19:00 Ülker&#10;Cumartesi maç var, antrenman yok"></textarea>
-    <div class="row">
-      <button id="parseBtn">Çözümle</button>
-      <button class="ghost" id="addBtn">Elle satır ekle</button>
-      <button class="ghost" id="reloadBtn">Kayıtlıyı getir</button>
-    </div>
-
-    <div id="parseMsg"></div>
+    <p class="hint">Hafta geçtiğinde uygulama velilere “önümüzdeki haftanın programı
+      henüz açıklanmadı” yazar.</p>
 
     <h2>Antrenmanlar</h2>
     <div id="sessions"></div>
+    <div class="row">
+      <button class="ghost" id="addBtn">Antrenman ekle</button>
+      <button class="ghost" id="reloadBtn">Kayıtlıyı getir</button>
+    </div>
+    <div id="parseMsg"></div>
 
-    <h2>Program değişiklikleri</h2>
-    <p class="hint">İptal, tatil ya da saat değişikliği gibi tek seferlik durumlar.</p>
-    <div id="exceptions"></div>
-    <div class="row"><button class="ghost" id="addExcBtn">Değişiklik ekle</button></div>
+    <details class="kat">
+      <summary>WhatsApp mesajından doldur</summary>
+      <p class="hint">Gruptan gelen mesajı olduğu gibi yapıştırın — gün, saat, salon ve
+        iptal bilgileri ayıklanır. Anlaşılmayan satırlar ayrıca gösterilir.</p>
+      <textarea id="raw" placeholder="Örnek:&#10;Merhabalar, bu haftanın programı:&#10;Salı 18:30-20:00 Şerifali Spor Salonu&#10;Perşembe 19:00 Ülker&#10;Cumartesi maç var, antrenman yok"></textarea>
+      <div class="row"><button id="parseBtn">Çözümle</button></div>
+    </details>
 
-    <h2>Salonlar</h2>
-    <div id="venues"></div>
-    <div class="row"><button class="ghost" id="addVenueBtn">Salon ekle</button></div>
+    <details class="kat">
+      <summary>Salonlar</summary>
+      <div id="venues"></div>
+      <div class="row"><button class="ghost" id="addVenueBtn">Salon ekle</button></div>
+    </details>
+
+    <details class="kat">
+      <summary>Tek seferlik değişiklikler</summary>
+      <p class="hint">İptal, tatil ya da bir günlük saat değişikliği.</p>
+      <div id="exceptions"></div>
+      <div class="row"><button class="ghost" id="addExcBtn">Değişiklik ekle</button></div>
+    </details>
   </main>
 </div>
 

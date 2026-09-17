@@ -1,9 +1,12 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-v19";
+var CACHE = "evolog-v20";
 var SHELL = ["./", "./index.html", "./styles.css", "./app.js", "./icon.svg", "./logo.png",
   "./icon-192.png", "./manifest.webmanifest",
   // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
-  "./yonetim.html", "./yonetim.js", "./parser.js"];
+  "./panel.css", "./panel-auth.js",
+  "./yonetim.html", "./yonetim.js", "./parser.js",
+  "./yoklama.html", "./yoklama.js",
+  "./oyuncular.html", "./oyuncular.js"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () {

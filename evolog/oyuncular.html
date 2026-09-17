@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evolog · Oyuncu analizi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css">
+<style>
+/* --- oyuncu listesi -------------------------------------------------- */
+.olist2{display:flex;flex-direction:column;gap:.4rem;margin:.3rem 0 1rem}
+.orow{display:grid;grid-template-columns:2.2rem 1fr auto;gap:.6rem;align-items:center;
+  background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;
+  padding:.6rem .65rem;width:100%;text-align:left;font-family:var(--body);
+  font-size:.95rem;text-transform:none;letter-spacing:0;color:var(--chalk);cursor:pointer}
+.orow .no{font-family:var(--display);font-size:1.05rem;color:var(--amber);text-align:center}
+.orow .nm{display:block;font-weight:600;line-height:1.2}
+.orow .alt{display:block;color:var(--chalk-faint);font-size:.78rem;margin-top:.15rem}
+.orow .big{font-family:var(--display);font-size:1.25rem;line-height:1;text-align:right}
+.orow .big small{display:block;font-family:var(--body);font-size:.66rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--chalk-faint);margin-top:.2rem}
+
+/* --- oyuncu künyesi -------------------------------------------------- */
+.pkunye{display:flex;gap:.8rem;align-items:center;margin:.2rem 0 .9rem}
+.pkunye img{width:58px;height:58px;border-radius:12px;object-fit:cover;background:var(--ink-3)}
+.pkunye h3{margin:0;font-family:var(--display);font-size:1.25rem;letter-spacing:.03em}
+.pkunye .alt{color:var(--chalk-dim);font-size:.85rem;margin-top:.15rem}
+
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;margin:.2rem 0 1rem}
+.tile{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;padding:.55rem .5rem;
+  text-align:center}
+.tile b{display:block;font-family:var(--display);font-size:1.4rem;line-height:1.1;color:var(--chalk)}
+.tile span{display:block;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--chalk-faint);margin-top:.2rem}
+
+/* --- grafik ---------------------------------------------------------- */
+.chart{background:var(--ink-2);border:1px solid var(--line-soft);border-radius:12px;
+  padding:.65rem .7rem .5rem;margin-bottom:.55rem}
+.chart .ch-h{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.35rem}
+.chart .ch-h h4{margin:0;font-family:var(--display);font-size:.9rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--chalk)}
+.chart .ch-h .ort{color:var(--chalk-faint);font-size:.78rem;margin-left:auto}
+.egilim{font-family:var(--display);font-size:.72rem;letter-spacing:.06em;border-radius:999px;
+  padding:.12rem .5rem;border:1px solid var(--line);color:var(--chalk-dim)}
+.egilim.yukari{color:var(--win);border-color:rgb(79 212 138/.5)}
+.egilim.asagi{color:var(--loss);border-color:rgb(242 105 94/.5)}
+.chart svg{width:100%;height:auto;display:block;touch-action:manipulation}
+.chart .cap{color:var(--chalk-dim);font-size:.78rem;margin-top:.3rem;min-height:1.1rem}
+
+/* --- maç tablosu ----------------------------------------------------- */
+.mtable{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.mtable table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:33rem}
+.mtable th{font-family:var(--display);font-weight:500;font-size:.68rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--chalk-faint);border-bottom:1px solid var(--line);
+  padding:.4rem .35rem;text-align:right;white-space:nowrap}
+.mtable th:first-child,.mtable td:first-child{text-align:left;position:sticky;left:0;
+  background:var(--ink);white-space:nowrap}
+.mtable td{border-bottom:1px solid var(--line-soft);padding:.45rem .35rem;text-align:right}
+.mtable td b{font-family:var(--display);font-size:.95rem}
+</style>
+</head>
+<body>
+<script>
+  if (location.search.indexOf("gomulu=1") !== -1) document.body.className = "gomulu";
+</script>
+
+<header><div class="in">
+  <h1>Oyuncu analizi</h1>
+  <a href="./">← Uygulamaya dön</a>
+</div></header>
+
+<div class="wrap">
+
+  <section id="loginBox">
+    <h2>Giriş</h2>
+    <p class="hint">Oyuncu istatistikleri antrenöre özeldir.</p>
+    <div class="row">
+      <input type="password" id="pass" placeholder="Antrenör şifresi" autocomplete="current-password" style="max-width:18rem">
+      <button id="loginBtn">Gir</button>
+    </div>
+    <div id="loginMsg"></div>
+  </section>
+
+  <main id="adminBox" hidden>
+    <div id="listeGorunum">
+      <h2>Kadro · sezon ortalamaları</h2>
+      <p class="hint">Bir oyuncuya dokununca maç maç dökümü ve gelişim grafikleri açılır.</p>
+      <div class="row" id="siralama" style="margin-top:.2rem"></div>
+      <div class="olist2" id="olist"></div>
+      <div id="listeMsg"></div>
+    </div>
+
+    <div id="oyuncuGorunum" hidden>
+      <div class="row" style="margin:.2rem 0 .6rem">
+        <button class="ghost" id="geriBtn">← Kadroya dön</button>
+      </div>
+      <div id="oyuncuIcerik"></div>
+    </div>
+  </main>
+</div>
+
+<script src="panel-auth.js"></script>
+<script src="oyuncular.js"></script>
+</body>
+</html>

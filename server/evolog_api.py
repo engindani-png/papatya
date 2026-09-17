@@ -24,9 +24,13 @@ import json
 import os
 import pathlib
 import re
+import sys
 import threading
 import urllib.parse
 import time
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import attendance  # noqa: E402
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 STATE_DIR = pathlib.Path(os.environ.get("EVOLOG_STATE_DIR", "/var/lib/evolog"))
@@ -36,6 +40,9 @@ MAX_BODY = 512 * 1024
 
 SUBS = STATE_DIR / "subs.json"
 VAPID = STATE_DIR / "vapid.json"
+# Kadro, senkronizasyonun urettigi veri klasorunden okunur (yoklama ozetinde
+# oyuncu adi/numarasi icin).
+DATA_DIR = pathlib.Path(os.environ.get("EVOLOG_DATA_DIR", "/var/www/evolog/data"))
 
 # Yas gruplari: her birinin kendi antrenman programi var. Listeyi ortam
 # degiskeniyle genisletebilirsiniz (yeni yas acilinca tek satir).
@@ -52,6 +59,18 @@ def age_of(handler) -> str:
 
 def training_path(age: str) -> pathlib.Path:
     return STATE_DIR / f"training-{age}.json"
+
+
+def roster(age: str) -> list:
+    """data/<yas>/team.json icindeki oyuncu listesi; yoksa bos."""
+    team = read_json(DATA_DIR / age / "team.json", {}) or {}
+    players = team.get("players")
+    return players if isinstance(players, list) else []
+
+
+def query_of(handler, name: str) -> str:
+    query = urllib.parse.urlparse(handler.path).query
+    return (urllib.parse.parse_qs(query).get(name) or [""])[0].strip()
 
 
 def clean_ages(value) -> list:
@@ -217,6 +236,27 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, {"ok": True, "hasPass": bool(ADMIN_PASS)})
         if path == "/api/training":
             return self.send_json(200, read_json(training_path(age_of(self)), None) or {})
+        # Yoklama kisisel veridir: uygulama herkese acik oldugu icin bu uclar
+        # sifresiz okunamaz.
+        if path == "/api/attendance":
+            if not authorized(self):
+                return self.send_json(401, {"error": "Sifre hatali"})
+            age = age_of(self)
+            date, start = query_of(self, "date"), query_of(self, "start")
+            if date and start:
+                return self.send_json(200, attendance.get(STATE_DIR, age, date, start))
+            return self.send_json(200, attendance.load(STATE_DIR, age))
+
+        if path == "/api/attendance/summary":
+            if not authorized(self):
+                return self.send_json(401, {"error": "Sifre hatali"})
+            age = age_of(self)
+            try:
+                limit = max(0, min(60, int(query_of(self, "limit") or 0)))
+            except ValueError:
+                limit = 0
+            return self.send_json(200, attendance.summary(STATE_DIR, age, roster(age), limit))
+
         if path == "/api/push/key":
             keys = read_json(VAPID, {})
             return self.send_json(200, {"publicKey": keys.get("publicKey")})
@@ -241,6 +281,18 @@ class Handler(BaseHTTPRequestHandler):
                     write_json(training_path(age), data)
                 return self.send_json(200, {"ok": True, "age": age,
                                             "sessions": len(data["sessions"])})
+
+            if path == "/api/attendance":
+                if not authorized(self):
+                    return self.send_json(401, {"error": "Sifre hatali"})
+                age = age_of(self)
+                record = attendance.validate(self.body_json())
+                with _lock:
+                    attendance.save(STATE_DIR, age, record)
+                gelen = sum(1 for d in record["players"].values() if d in attendance.GELMIS)
+                return self.send_json(200, {"ok": True, "age": age,
+                                            "gelen": gelen,
+                                            "toplam": len(record["players"])})
 
             if path == "/api/push/subscribe":
                 sub = self.body_json()
