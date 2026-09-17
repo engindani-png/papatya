@@ -1,26 +1,22 @@
 {
-  "note": "Antrenman programı elle düzenlenir. 'day' 1=Pazartesi ... 7=Pazar.",
+  "note": "Antrenman programı elle düzenlenir. 'day' 1=Pazartesi ... 7=Pazar. Cumartesi antrenman yok.",
   "venues": [
     {
-      "id": "salon1",
-      "name": "Evolog Spor Salonu",
-      "address": "Salon adresi (ilçe / İstanbul)",
-      "maps": "https://www.google.com/maps/search/?api=1&query=Evolog+Spor+Salonu+Istanbul"
+      "id": "tev",
+      "name": "TEV",
+      "address": "",
+      "maps": "https://www.google.com/maps/search/?api=1&query=TEV+spor+salonu+%C4%B0stanbul"
     },
     {
-      "id": "salon2",
-      "name": "Okul Spor Salonu",
-      "address": "İkinci salon adresi",
-      "maps": "https://www.google.com/maps/search/?api=1&query=Istanbul+spor+salonu"
+      "id": "maltepe-toki",
+      "name": "Maltepe TOKİ",
+      "address": "",
+      "maps": "https://www.google.com/maps/search/?api=1&query=Maltepe+TOK%C4%B0+spor+salonu"
     }
   ],
   "sessions": [
-    { "day": 1, "start": "18:00", "end": "20:00", "venue": "salon1", "title": "Teknik + Kondisyon", "coach": "Baş Antrenör" },
-    { "day": 3, "start": "18:00", "end": "20:00", "venue": "salon1", "title": "Taktik Çalışma", "coach": "Baş Antrenör" },
-    { "day": 5, "start": "17:30", "end": "19:30", "venue": "salon2", "title": "Şut + Oyun", "coach": "Yardımcı Antrenör" },
-    { "day": 6, "start": "10:00", "end": "12:00", "venue": "salon1", "title": "Maç Hazırlık", "coach": "Baş Antrenör" }
+    { "day": 5, "start": "19:30", "venue": "tev", "title": "Basketbol" },
+    { "day": 7, "start": "11:00", "venue": "maltepe-toki", "title": "Basketbol ve Kuvvet" }
   ],
-  "exceptions": [
-    { "date": "2026-01-01", "type": "iptal", "reason": "Yılbaşı tatili" }
-  ]
+  "exceptions": []
 }
