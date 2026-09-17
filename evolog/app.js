@@ -11,10 +11,11 @@
   // Yas gruplari: her birinin kendi veri klasoru var (data/<key>/). Secim
   // localStorage'da durur, yani uygulama bir sonraki degisiklige kadar hep
   // secili takimla acilir.
+  // Su an tek takim var. Yeni yas grubu eklemek icin bu listeye bir satir
+  // eklemek ve data/<key>/ klasorunu olusturmak yeterli: secici kendiliginden
+  // geri gelir (tek grupta gizli durur).
   var AGES = [
-    { key: "u14", label: "U14", title: "U14 Kızlar" },
-    { key: "u16", label: "U16", title: "U16 Kızlar" },
-    { key: "u18", label: "U18", title: "U18 Kızlar" }
+    { key: "u14", label: "U14", title: "U14 Kızlar" }
   ];
   var AGE_STORE = "evolog.age";
   var PUSH_STORE = "evolog.pushAges";
@@ -35,7 +36,7 @@
     return null;
   }
 
-  // Bildirime dokunulunca gelen ?age=u16 baglantisi secimi de degistirir.
+  // Bildirime dokunulunca gelen ?age=u14 baglantisi secimi de degistirir.
   var age = knownAge(QUERY.get("age")) || knownAge(store(AGE_STORE)) || AGES[0].key;
 
   function ageInfo(key) {
@@ -817,6 +818,28 @@
       .filter(function (v) { return v.id === id; })[0] || null;
   }
 
+  /** Bugünün içinde bulunduğu haftanın pazartesisi. */
+  function thisMonday() {
+    var n = new Date();
+    var d = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+  }
+
+  /** Program hangi hafta için girildi? (weekStart = o haftanın pazartesisi) */
+  function programWeek(tr) {
+    var parts = String((tr && tr.weekStart) || "").split("-");
+    if (parts.length !== 3) return null;
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  /** Program geçen haftaya mı ait? Öyleyse veliye kesinmiş gibi gösterilmez. */
+  function programStale(tr) {
+    var w = programWeek(tr);
+    return !!w && thisMonday().getTime() > w.getTime();
+  }
+
   /** 1=Pazartesi … 7=Pazar için bir sonraki tarih. */
   function nextOccurrence(day, start) {
     var now = new Date();
@@ -838,13 +861,35 @@
     }
 
     var today = new Date().getDay();
+    var week = programWeek(tr);
+    var stale = programStale(tr);
     var sorted = tr.sessions.slice().sort(function (a, b) {
       return (a.day - b.day) || String(a.start).localeCompare(String(b.start));
     });
-    var next = sorted.map(function (s) { return { s: s, when: nextOccurrence(s.day, s.start) }; })
+
+    // Program bir haftaya aitse gün/saatler o haftadan okunur. Haftası
+    // girilmemiş eski kayıtlarda eski davranışa (tekrar eden program) düşer.
+    function sessionDate(s) {
+      if (!week) return nextOccurrence(s.day, s.start);
+      var d = new Date(week.getFullYear(), week.getMonth(), week.getDate() + (s.day - 1));
+      var hm = String(s.start || "00:00").split(":").map(Number);
+      d.setHours(hm[0] || 0, hm[1] || 0, 0, 0);
+      return d;
+    }
+
+    var now = new Date();
+    var next = sorted.map(function (s) { return { s: s, when: sessionDate(s) }; })
+      .filter(function (x) { return !week || x.when.getTime() >= now.getTime(); })
       .sort(function (a, b) { return a.when - b.when; })[0];
 
-    if (next) {
+    if (stale || !next) {
+      el("nextTrainingSlot").innerHTML =
+        '<div class="note"><div><b>' +
+        (stale ? "Önümüzdeki haftanın antrenman programı henüz açıklanmadı."
+               : "Bu haftanın antrenmanları tamamlandı; önümüzdeki haftanın programı henüz açıklanmadı.") +
+        "</b> Antrenörden gelir gelmez burada görünecek ve size bildirim " +
+        "göndereceğiz.</div></div>";
+    } else {
       var nv = venueOf(next.s.venue);
       el("nextTrainingSlot").innerHTML =
         '<section class="board"><div class="label">Sıradaki antrenman</div>' +
@@ -866,10 +911,11 @@
       else byDay.push({ day: s.day, items: [s] });
     });
 
-    slot.innerHTML = byDay.map(function (grp) {
+    slot.innerHTML = (stale ? '<h2 class="eyebrow">Geçen haftanın programı</h2>' : "") +
+      byDay.map(function (grp) {
       var jsDay = grp.day % 7;
-      var isToday = jsDay === today;
-      var when = nextOccurrence(grp.day, grp.items[0].start);
+      var isToday = !stale && jsDay === today;
+      var when = sessionDate(grp.items[0]);
       return '<section class="tday' + (isToday ? " today" : "") + '">' +
         '<header class="tday-h">' +
           '<span class="tday-n">' + esc(GUNLER[jsDay]) + "</span>" +
@@ -1083,15 +1129,18 @@
           '<button class="pclose" aria-label="Kapat">✕</button>' +
         "</header>" +
         '<div class="pbody">' +
-          '<div class="slist">' +
-            AGES.map(function (a) {
-              var on = a.key === age;
-              return '<button type="button" class="srow pick' + (on ? " on" : "") + '"' +
-                ' data-age="' + a.key + '" aria-current="' + (on ? "true" : "false") + '">' +
-                "<span>" + esc(a.title) + "</span>" +
-                '<span class="tick" aria-hidden="true">' + (on ? "✓" : "") + "</span></button>";
-            }).join("") +
-          "</div>" +
+          (AGES.length > 1
+            ? '<div class="slist">' +
+                AGES.map(function (a) {
+                  var on = a.key === age;
+                  return '<button type="button" class="srow pick' + (on ? " on" : "") + '"' +
+                    ' data-age="' + a.key + '" aria-current="' + (on ? "true" : "false") + '">' +
+                    "<span>" + esc(a.title) + "</span>" +
+                    '<span class="tick" aria-hidden="true">' + (on ? "✓" : "") + "</span></button>";
+                }).join("") +
+              "</div>"
+            : '<div class="slist"><div class="srow flat"><span>' + esc(ageInfo().title) +
+              '</span><span class="dim">Evolog</span></div></div>') +
           '<h3 class="eyebrow">Maç bildirimi</h3>' +
           '<div class="slist">' + pushSection() + "</div>" +
           '<h3 class="eyebrow">Uygulama</h3>' +

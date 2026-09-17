@@ -18,6 +18,7 @@ Ortam degiskenleri:
 
 from __future__ import annotations
 
+import datetime as dt
 import hmac
 import json
 import os
@@ -38,7 +39,7 @@ VAPID = STATE_DIR / "vapid.json"
 
 # Yas gruplari: her birinin kendi antrenman programi var. Listeyi ortam
 # degiskeniyle genisletebilirsiniz (yeni yas acilinca tek satir).
-AGES = tuple(a.strip() for a in os.environ.get("EVOLOG_AGES", "u14,u16,u18").split(",") if a.strip())
+AGES = tuple(a.strip() for a in os.environ.get("EVOLOG_AGES", "u14").split(",") if a.strip())
 DEFAULT_AGE = AGES[0] if AGES else "u14"
 
 
@@ -88,6 +89,12 @@ def clean_str(value, limit=120):
         return None
     text = str(value).strip()
     return text[:limit] or None
+
+
+def monday_of_week(when=None) -> str:
+    """Icinde bulunulan haftanin pazartesisi (YYYY-MM-DD)."""
+    day = when or dt.date.today()
+    return (day - dt.timedelta(days=day.weekday())).isoformat()
 
 
 def validate_training(payload):
@@ -145,9 +152,16 @@ def validate_training(payload):
                            "type": clean_str(e.get("type"), 40) or "iptal",
                            "reason": clean_str(e.get("reason"), 160)})
 
+    # Program hangi haftaya ait? Veli, gecen haftanin programini bu haftaninmis
+    # gibi gormemeli; hafta gecince uygulama "henuz aciklanmadi" gosterir.
+    week = clean_str(payload.get("weekStart"), 10)
+    if not week or not DATE_RE.match(week):
+        week = monday_of_week()
+
     return {
         "note": "Antrenman programi uygulamadaki yonetim ekranindan kaydedilir. day 1=Pazartesi ... 7=Pazar.",
         "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%S+03:00", time.localtime()),
+        "weekStart": week,
         "venues": venues,
         "sessions": sessions,
         "exceptions": exceptions,

@@ -12,9 +12,7 @@
   // Uygulamayla ayni secimi paylasiyoruz: yonetimde takim degistirilince
   // uygulama da o takimla aciliyor.
   var AGES = [
-    { key: "u14", title: "U14 Kızlar" },
-    { key: "u16", title: "U16 Kızlar" },
-    { key: "u18", title: "U18 Kızlar" }
+    { key: "u14", title: "U14 Kızlar" }
   ];
   var AGE_STORE = "evolog.age";
 
@@ -27,7 +25,29 @@
   try { age = knownAge(localStorage.getItem(AGE_STORE)); } catch (e) { /* depolama yok */ }
   age = age || AGES[0].key;
 
-  var state = { venues: [], sessions: [], exceptions: [], matches: [] };
+  var state = { venues: [], sessions: [], exceptions: [], matches: [], weekStart: null };
+
+  /** Verilen tarihin haftasinin pazartesisi (YYYY-MM-DD). */
+  function mondayOf(d) {
+    var x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    return x.getFullYear() + "-" + pad2(x.getMonth() + 1) + "-" + pad2(x.getDate());
+  }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function addDays(iso, n) {
+    var p = String(iso).split("-");
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]) + n);
+    return d;
+  }
+  /** "15 – 21 Eylül" gibi hafta araligi. */
+  function weekLabel(iso) {
+    var a = addDays(iso, 0), b = addDays(iso, 6);
+    var ay = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz",
+              "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+    return a.getMonth() === b.getMonth()
+      ? a.getDate() + " – " + b.getDate() + " " + ay[b.getMonth()]
+      : a.getDate() + " " + ay[a.getMonth()] + " – " + b.getDate() + " " + ay[b.getMonth()];
+  }
   var pass = "";
   var dirty = false;
 
@@ -82,12 +102,39 @@
   function renderTeamStrip() {
     var box = el("teamStrip");
     box.innerHTML = "";
+    box.hidden = AGES.length < 2;      // tek takim varken secilecek bir sey yok
+    if (box.hidden) return;
     AGES.forEach(function (a) {
       var b = document.createElement("button");
       b.type = "button";
       b.textContent = a.title;
       b.setAttribute("aria-pressed", a.key === age ? "true" : "false");
       b.addEventListener("click", function () { switchAge(a.key); });
+      box.appendChild(b);
+    });
+  }
+
+  // Program hangi haftaya ait? Veli gecen haftanin programini bu haftaninmis
+  // gibi gormesin diye kaydediliyor; hafta gecince uygulama "henuz aciklanmadi"
+  // gosteriyor.
+  function renderWeekStrip() {
+    var box = el("weekStrip");
+    if (!box) return;
+    var bu = mondayOf(new Date());
+    var gelecek = mondayOf(addDays(bu, 7));
+    if (state.weekStart !== bu && state.weekStart !== gelecek) state.weekStart = bu;
+    box.innerHTML = "";
+    [{ iso: bu, ad: "Bu hafta" }, { iso: gelecek, ad: "Gelecek hafta" }].forEach(function (w) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.innerHTML = esc(w.ad) + "<small>" + esc(weekLabel(w.iso)) + "</small>";
+      b.setAttribute("aria-pressed", state.weekStart === w.iso ? "true" : "false");
+      b.addEventListener("click", function () {
+        if (state.weekStart === w.iso) return;
+        state.weekStart = w.iso;
+        renderWeekStrip();
+        mark(true);
+      });
       box.appendChild(b);
     });
   }
@@ -119,6 +166,7 @@
         return Object.assign({}, s, { kind: s.kind || "basket" });
       });
       state.exceptions = data.exceptions || [];
+      state.weekStart = data.weekStart || null;
       renderAll();
       mark(false);
     }).catch(function () { /* henüz kayıt yok, boş başla */ });
@@ -503,6 +551,7 @@
   }
 
   function renderAll() {
+    renderWeekStrip();
     renderSessions();
     renderExceptions();
     renderVenues();
@@ -528,7 +577,8 @@
         sessions: state.sessions.map(function (s) {
           return { day: s.day, start: s.start, end: s.end, venue: s.venue, title: s.title, coach: s.coach };
         }),
-        exceptions: state.exceptions
+        exceptions: state.exceptions,
+        weekStart: state.weekStart
       })
     }).then(function (res) {
       mark(false);

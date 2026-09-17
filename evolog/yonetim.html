@@ -73,6 +73,8 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .teamstrip button{background:var(--ink-2);color:var(--chalk-dim);border:1px solid var(--line);
   border-radius:999px;padding:.45rem 1rem;font-size:.82rem;letter-spacing:.08em}
 .teamstrip button[aria-pressed=true]{background:var(--amber);color:#14110b;border-color:var(--amber)}
+.weekstrip button{display:flex;flex-direction:column;align-items:flex-start;gap:.1rem;line-height:1.2}
+.weekstrip small{font-size:11px;opacity:.75}
 
 /* --- gün şeridi ---------------------------------------------------- */
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin:.1rem 0 .6rem}
@@ -154,9 +156,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
   </section>
 
   <main id="adminBox" hidden>
-    <h2>Takım</h2>
-    <p class="hint">Her takımın kendi antrenman programı var. Önce takımı seçin.</p>
-    <div class="teamstrip" id="teamStrip"></div>
+    <div class="teamstrip" id="teamStrip" hidden></div>
+
+    <h2>Program hangi hafta için?</h2>
+    <p class="hint">Hafta geçtiğinde uygulama velilere “önümüzdeki haftanın programı
+      henüz açıklanmadı” yazar — eski program bu haftanınmış gibi görünmez.</p>
+    <div class="teamstrip weekstrip" id="weekStrip"></div>
 
     <h2>WhatsApp mesajını yapıştırın</h2>
     <p class="hint">Gruptan gelen mesajı olduğu gibi yapıştırın — tarih, saat, salon ve iptal

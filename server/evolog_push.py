@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Evolog — mac bildirimi gonderici (U14/U16/U18).
+"""Evolog — veli bildirimi gonderici (mac + antrenman).
 
 Senkronizasyondan hemen sonra calisir. Iki tur bildirim uretir:
 
   * hatirlatma — kendi macimizin baslamasina 4 saatten az kaldiysa
   * sonuc      — mac oynanmis olarak isaretlendiginde, skorla birlikte
+  * degisiklik — macin gun/saati degistiginde
+  * antrenman  — haftalik antrenman programi degistiginde
 
 Ayni olay icin bir kez gonderilir; gonderilenler notified.json'da tutulur.
 Artik gecerli olmayan abonelikler (404/410) listeden dusurulur.
@@ -21,6 +23,7 @@ from __future__ import annotations
 import argparse
 import base64
 import datetime as dt
+import hashlib
 import json
 import os
 import pathlib
@@ -28,7 +31,7 @@ import sys
 
 STATE_DIR = pathlib.Path(os.environ.get("EVOLOG_STATE_DIR", "/var/lib/evolog"))
 DATA_DIR = pathlib.Path(os.environ.get("EVOLOG_DATA_DIR", "/var/www/evolog/data"))
-AGES = tuple(a.strip() for a in os.environ.get("EVOLOG_AGES", "u14,u16,u18").split(",") if a.strip())
+AGES = tuple(a.strip() for a in os.environ.get("EVOLOG_AGES", "u14").split(",") if a.strip())
 DEFAULT_AGE = AGES[0] if AGES else "u14"
 SUBS = STATE_DIR / "subs.json"
 NOTIFIED = STATE_DIR / "notified.json"
@@ -116,6 +119,84 @@ def fmt_gun(date_str: str, time_str: str | None) -> str:
         return date_str or "?"
     out = f"{d.day} {AYLAR[d.month - 1]} {GUNLER[d.weekday()]}"
     return f"{out} {time_str}" if time_str else out
+
+
+# --------------------------------------------------------------- antrenman
+def training_path(age: str) -> pathlib.Path:
+    return STATE_DIR / f"training-{age}.json"
+
+
+def training_seen_path(age: str) -> pathlib.Path:
+    """En son bildirilen program; degisikligi bununla karsilastiriyoruz."""
+    return STATE_DIR / f"training-seen-{age}.json"
+
+
+def training_by_day(program: dict) -> dict:
+    """{gun: ["19:30 Basketbol (Tev)", ...]} — karsilastirma ve metin icin."""
+    isim = {v.get("id"): v.get("name") for v in (program.get("venues") or []) if isinstance(v, dict)}
+    gunler: dict = {}
+    for s_ in (program.get("sessions") or []):
+        if not isinstance(s_, dict):
+            continue
+        try:
+            day = int(s_.get("day"))
+        except (TypeError, ValueError):
+            continue
+        salon = isim.get(s_.get("venue")) or ""
+        satir = f"{s_.get('start') or ''} {s_.get('title') or 'Antrenman'}".strip()
+        if salon:
+            satir += f" ({salon})"
+        gunler.setdefault(day, []).append(satir)
+    for day in gunler:
+        gunler[day].sort()
+    return gunler
+
+
+def training_diff(eski: dict, yeni: dict) -> list[str]:
+    """Degisen gunleri veli diliyle yazar. Degisiklik yoksa bos liste."""
+    a, b = training_by_day(eski), training_by_day(yeni)
+    satirlar = []
+    for day in range(1, 8):
+        onceki, simdiki = a.get(day) or [], b.get(day) or []
+        if onceki == simdiki:
+            continue
+        ad = GUNLER[day - 1]
+        satirlar.append(f"{ad} antrenman yok" if not simdiki else f"{ad} {', '.join(simdiki)}")
+    return satirlar
+
+
+def build_training_events(age: str) -> tuple[list[dict], dict | None]:
+    """Antrenman programi degistiyse tek bir bildirim uretir.
+
+    Doner: (olaylar, yeni program). Program ilk kez goruluyorsa bildirim
+    uretilmez - yalnizca kaydedilir, yoksa ilk kurulumda gereksiz bildirim gider.
+    """
+    program = read_json(training_path(age), None)
+    if not program or not (program.get("sessions") or []):
+        return [], None
+
+    onceki = read_json(training_seen_path(age), None)
+    if not onceki:
+        return [], program
+
+    satirlar = training_diff(onceki, program)
+    if not satirlar:
+        return [], None
+
+    label = age.upper()
+    imza = hashlib.sha1(
+        json.dumps(training_by_day(program), sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()[:8]
+    govde = " · ".join(satirlar)
+    if len(govde) > 240:
+        govde = govde[:237] + "..."
+    return ([{
+        "id": f"training-{age}-{imza}",
+        "age": age,
+        "title": f"{label} · Antrenman programı değişti",
+        "body": govde,
+        "tag": f"antrenman-{age}",
+    }], program)
 
 
 def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
@@ -289,12 +370,16 @@ def status() -> int:
 
     done = read_json(NOTIFIED, {})
     bekleyen, gonderilmis = [], 0
+    olaylar = []
     for age, league in leagues:
-        for e in build_events(league, age):
-            if e["id"] in done:
-                gonderilmis += 1
-            else:
-                bekleyen.append(e)
+        olaylar += build_events(league, age)
+    for age in AGES:
+        olaylar += build_training_events(age)[0]
+    for e in olaylar:
+        if e["id"] in done:
+            gonderilmis += 1
+        else:
+            bekleyen.append(e)
 
     print(f"Gonderilmis  : {gonderilmis} olay")
     print(f"Bekleyen     : {len(bekleyen)} olay")
@@ -339,7 +424,20 @@ def main() -> int:
     events = []
     for age, league in leagues:
         events += [e for e in build_events(league, age) if e["id"] not in done]
+
+    # Antrenman programi degisikligi: gonderim basarili olunca program
+    # "bildirildi" diye kaydedilir, boylece ayni degisiklik ikinci kez gitmez.
+    programs = {}
+    for age in AGES:
+        tr_events, program = build_training_events(age)
+        if program is not None:
+            programs[age] = (program, [e["id"] for e in tr_events])
+        events += [e for e in tr_events if e["id"] not in done]
+
     if not events:
+        for age, (program, ids) in programs.items():
+            if not ids:                      # ilk kayit: sessizce sakla
+                write_json(training_seen_path(age), program)
         print("Yeni bildirim yok.")
         return 0
 
@@ -351,6 +449,9 @@ def main() -> int:
             if e["id"] in delivered:
                 done[e["id"]] = stamp
         write_json(NOTIFIED, done)
+        for age, (program, ids) in programs.items():
+            if all(i in delivered or i in done for i in ids):
+                write_json(training_seen_path(age), program)
         kalan = [e for e in events if e["id"] not in delivered]
         if kalan:
             print(f"  {len(kalan)} olay gonderilemedi, sonraki calismada tekrar denenecek")

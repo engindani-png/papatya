@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """TBF verisini resmi JSON API'sinden ceker ve data/<takim>/league.json uretir.
 
-Ayar dosyasindaki her takim (u14, u16, u18) ayri bir klasore yazilir; birinin
+Ayar dosyasindaki her takim (su an yalnizca u14) ayri bir klasore yazilir; birinin
 cekimi basarisiz olursa digerleri etkilenmez ve o takimin onceki verisi kalir.
 
 TBF sitesi (www.tbf.org.tr) bir Nuxt uygulamasi: sayfa HTML'inde tablo yok,
@@ -14,7 +14,7 @@ gerekmez; yalnizca Python standart kutuphanesi kullanilir.
 
 Kullanim:
     python3 scripts/tbf_sync.py                # tum takimlari cek, data/<key>/ altina yaz
-    python3 scripts/tbf_sync.py --team u16     # yalnizca U16'yi cek
+    python3 scripts/tbf_sync.py --team u14     # yalnizca o takimi cek
     python3 scripts/tbf_sync.py --dry-run      # cek, ekrana yaz, dosyaya dokunma
     python3 scripts/tbf_sync.py --probe        # endpoint'leri dene, ne donuyor goster
     python3 scripts/tbf_sync.py --roster       # kadroyu da guncelle
@@ -637,7 +637,7 @@ def main() -> int:
     ap.add_argument("--probe", action="store_true", help="endpoint'leri dene ve cik")
     ap.add_argument("--roster", action="store_true", help="kadroyu da guncelle")
     ap.add_argument("--no-details", action="store_true", help="ceyrek/oyuncu istatistigi cekme")
-    ap.add_argument("--team", metavar="KEY", help="yalnizca bu takimi cek (u14/u16/u18)")
+    ap.add_argument("--team", metavar="KEY", help="yalnizca bu takimi cek (tbf_config.json'daki key)")
     args = ap.parse_args()
 
     cfg = load_config()

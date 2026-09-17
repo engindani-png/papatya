@@ -39,42 +39,6 @@
         "evolog dacka serifali",
         "daçka şerifali"
       ]
-    },
-    {
-      "key": "u16",
-      "label": "U16",
-      "name": "Evolog U16 Kız",
-      "club": "EVOLOG",
-      "team": "U16 Kız",
-      "leagueId": "22861",
-      "teamProcessId": "270342",
-      "league": "TBF İstanbul U16 Kız",
-      "group": "KIZLAR U16A LİGİ",
-      "ourTeamKey": "daçka şerifali",
-      "teamAliases": [
-        "daçka şerifali sk",
-        "dacka serifali sk",
-        "daçka şerifali",
-        "evolog"
-      ]
-    },
-    {
-      "key": "u18",
-      "label": "U18",
-      "name": "Evolog U18 Kız",
-      "club": "EVOLOG",
-      "team": "U18 Kız",
-      "leagueId": "22863",
-      "teamProcessId": "269435",
-      "league": "TBF İstanbul U18 Kız",
-      "group": "KIZLAR U18A LİGİ",
-      "ourTeamKey": "evolog",
-      "teamAliases": [
-        "evolog",
-        "evolog daçka şerifali",
-        "evolog dacka serifali",
-        "daçka şerifali"
-      ]
     }
   ]
 }

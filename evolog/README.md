@@ -6,12 +6,14 @@ sayfalarından otomatik çekilir**.
 
 ## Yaş grupları
 
-Uygulama **U14, U16 ve U18 kız** takımlarını taşır. Alt çubuğun sağ ucundaki
+Uygulama şu an yalnızca **U14 Kız Siyah** takımını taşır (U16/U18 kaldırıldı;
+`scripts/tbf_config.json` + `evolog/app.js` içindeki `AGES` listesine satır
+eklenerek geri getirilebilir). Alt çubuğun sağ ucundaki
 takım sekmesinden geçiş yapılır; seçim tarayıcıda saklanır, yani uygulama bir
 sonraki değişikliğe kadar hep o takımla açılır. Aynı sayfada maç bildirimleri
 yaş yaş açılıp kapatılır (bir veli birden fazla takıma abone olabilir).
 
-Her takımın verisi kendi klasöründe: `data/u14/`, `data/u16/`, `data/u18/`.
+Her takımın verisi kendi klasöründe: `data/u14/`.
 Yeni bir yaş grubu açıldığında `scripts/tbf_config.json` içindeki `teams`
 listesine bir satır eklemek ve `evolog/app.js` içindeki `AGES` listesine aynı
 anahtarı yazmak yeterli.
@@ -73,12 +75,24 @@ bağlantı uygulamada **“Yol tarifi”** düğmesi olarak çıkar.
 
 Tatil/iptal günlerini `exceptions` listesine ekleyin.
 
+**`weekStart`** — programın ait olduğu haftanın pazartesisi (`2026-09-14`).
+Yönetim ekranındaki “Program hangi hafta için?” şeridi bunu yazar. Hafta
+geçtiğinde uygulama seansları kesin bilgi gibi göstermez; “önümüzdeki haftanın
+programı henüz açıklanmadı” der ve eski programı *Geçen haftanın programı*
+başlığı altına alır. Aynı ilke maç tarihlerinde de geçerli: kesinleşmemiş
+bilgi veliye kesinmiş gibi gösterilmez.
+
+Program değiştiğinde (`server/evolog_push.py`) velilere tek bir bildirim
+gider: yalnızca **değişen günler** yazılır — “Cumartesi antrenman yok ·
+Pazar 11:00 Basketbol ve Kuvvet (Maltepe Toki)”. En son bildirilen program
+`/var/lib/evolog/training-seen-<yaş>.json` içinde tutulur.
+
 ## TBF senkronizasyonu (önemli kısım)
 
 `scripts/tbf_sync.py` TBF API'sini okuyup her takım için
 `data/<yaş>/league.json` dosyasını üretir. Takımlar sırayla çekilir; birinin
 çekimi başarısız olursa **diğerleri etkilenmez** ve o takımın önceki verisi
-korunur. Tek takım denemek için `--team u16`. `.github/workflows/tbf-sync.yml` bunu günde 4 kez
+korunur. Tek takım denemek için `--team u14`. `.github/workflows/tbf-sync.yml` bunu günde 4 kez
 (TR saatiyle ~06:00, 12:00, 18:00, 22:00) çalıştırır ve değişiklik varsa
 otomatik commit'ler.
 
