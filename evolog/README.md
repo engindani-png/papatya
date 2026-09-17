@@ -67,7 +67,13 @@ adresinde sunar. Yönetim ekranı istekleri `?age=<yaş>` ile gönderir.
 
 `height` bilinmiyorsa `null` bırakın; uygulama boş alanları gizler.
 
-### Antrenman (`data/<yaş>/training.json`)
+### Antrenman (sunucuda `/var/lib/evolog/training-<yaş>.json`)
+
+> ⚠️ Antrenman programı **depoda durmaz**. nginx `/data/<yaş>/training.json`
+> adresini doğrudan `/var/lib/evolog/training-<yaş>.json` dosyasına bağlar;
+> depoya konan bir kopya hiçbir zaman yayına girmez (senkronizasyon zaten
+> `git reset --hard` yapıyor, düzenlemeyi silerdi). Programı **yönetim
+> ekranından** girin: `/yonetim.html`.
 
 `day`: 1 = Pazartesi … 7 = Pazar. Salonu `venues` listesine ekleyip
 seansta `venue` alanına salonun `id` değerini yazın. `maps` alanına konulan

@@ -152,16 +152,34 @@ def training_by_day(program: dict) -> dict:
     return gunler
 
 
-def training_diff(eski: dict, yeni: dict) -> list[str]:
-    """Degisen gunleri veli diliyle yazar. Degisiklik yoksa bos liste."""
-    a, b = training_by_day(eski), training_by_day(yeni)
+def training_summary(onceki: dict, yeni: dict) -> list[str]:
+    """Bildirim metni: programin KALAN gunleri, veli diliyle.
+
+    WhatsApp'tan gelen duyuru da boyle okunuyor ("Cuma 19:30 ... Cumartesi OFF"),
+    velinin kafasinda soru birakmiyor. Gecmis gunler yazilmaz; antrenmani
+    kaldirilan gun "antrenman yok" diye gorunur.
+    """
+    a, b = training_by_day(onceki), training_by_day(yeni)
+
+    # Program bu haftaya aitse bugunden itibaren yaz; gelecek haftaninsa tumu.
+    bugun = dt.datetime.now(TZ).date()
+    bu_pazartesi = (bugun - dt.timedelta(days=bugun.weekday())).isoformat()
+    ilk_gun = bugun.weekday() + 1 if (yeni.get("weekStart") or bu_pazartesi) == bu_pazartesi else 1
+
+    # Bugunun antrenmani baslamissa artik onu duyurmanin anlami yok.
+    if ilk_gun == bugun.weekday() + 1:
+        saatler = [x.split(" ")[0] for x in (a.get(ilk_gun) or []) + (b.get(ilk_gun) or [])]
+        if saatler and max(saatler) <= dt.datetime.now(TZ).strftime("%H:%M"):
+            ilk_gun += 1
+
     satirlar = []
-    for day in range(1, 8):
-        onceki, simdiki = a.get(day) or [], b.get(day) or []
-        if onceki == simdiki:
-            continue
+    for day in range(ilk_gun, 8):
+        simdiki, eskisi = b.get(day) or [], a.get(day) or []
         ad = GUNLER[day - 1]
-        satirlar.append(f"{ad} antrenman yok" if not simdiki else f"{ad} {', '.join(simdiki)}")
+        if simdiki:
+            satirlar.append(f"{ad} {', '.join(simdiki)}")
+        elif eskisi:
+            satirlar.append(f"{ad} antrenman yok")
     return satirlar
 
 
@@ -179,9 +197,11 @@ def build_training_events(age: str) -> tuple[list[dict], dict | None]:
     if not onceki:
         return [], program
 
-    satirlar = training_diff(onceki, program)
+    if training_by_day(onceki) == training_by_day(program):
+        return [], None                 # program ayni; salon adi/hafta degismis olabilir
+    satirlar = training_summary(onceki, program)
     if not satirlar:
-        return [], None
+        return [], program              # yalnizca gecmis gunler degismis: sessizce kaydet
 
     label = age.upper()
     imza = hashlib.sha1(
@@ -193,7 +213,7 @@ def build_training_events(age: str) -> tuple[list[dict], dict | None]:
     return ([{
         "id": f"training-{age}-{imza}",
         "age": age,
-        "title": f"{label} · Antrenman programı değişti",
+        "title": f"{label} · Antrenman programı güncellendi",
         "body": govde,
         "tag": f"antrenman-{age}",
     }], program)
