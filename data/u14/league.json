@@ -588,7 +588,8 @@
       "efficiency": 0
      }
     ]
-   }
+   },
+   "dateConfirmed": true
   },
   {
    "matchId": 346867,
@@ -607,12 +608,13 @@
    "awayLogo": "../evolog/logos/270176.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346858,
-   "date": "2026-10-03",
-   "time": "18:30",
+   "date": "2026-09-23",
+   "time": "20:00",
    "home": "EYÜPSULTAN BELEDİYESİ",
    "away": "EVOLOG DAÇKA ŞERİFALİ",
    "homeScore": null,
@@ -626,7 +628,12 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": true,
+   "confirmedBy": "Kulüpten gelen güncelleme (17.09.2026)",
+   "previousDate": "2026-10-03",
+   "previousTime": "18:30",
+   "changedAt": "2026-09-17T18:21:01+03:00"
   },
   {
    "matchId": 346872,
@@ -645,7 +652,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346878,
@@ -664,7 +672,8 @@
    "awayLogo": "../evolog/logos/270178.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346881,
@@ -683,7 +692,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346889,
@@ -702,7 +712,8 @@
    "awayLogo": "../evolog/logos/270175.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346895,
@@ -721,7 +732,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346900,
@@ -740,7 +752,8 @@
    "awayLogo": "../evolog/logos/269401.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346909,
@@ -759,7 +772,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346911,
@@ -778,7 +792,8 @@
    "awayLogo": "../evolog/logos/270003.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346922,
@@ -797,7 +812,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346924,
@@ -816,7 +832,8 @@
    "awayLogo": "../evolog/logos/269489.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346933,
@@ -835,7 +852,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346938,
@@ -854,7 +872,8 @@
    "awayLogo": "../evolog/logos/269310.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346944,
@@ -873,7 +892,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346947,
@@ -892,7 +912,8 @@
    "awayLogo": "../evolog/logos/268972.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346955,
@@ -911,7 +932,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346961,
@@ -930,7 +952,8 @@
    "awayLogo": "../evolog/logos/269233.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346966,
@@ -949,7 +972,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346975,
@@ -968,7 +992,8 @@
    "awayLogo": "../evolog/logos/269787.png",
    "isOurs": true,
    "isHome": true,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   },
   {
    "matchId": 346977,
@@ -987,7 +1012,8 @@
    "awayLogo": "../evolog/logos/269325.png",
    "isOurs": true,
    "isHome": false,
-   "played": false
+   "played": false,
+   "dateConfirmed": false
   }
  ],
  "leagueFixtures": [
@@ -1003,7 +1029,8 @@
    "week": 1,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": true
+   "played": true,
+   "dateConfirmed": true
   },
   {
    "matchId": 346856,
@@ -1017,7 +1044,8 @@
    "week": 1,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": true
+   "played": true,
+   "dateConfirmed": true
   },
   {
    "matchId": 346851,
@@ -1031,7 +1059,8 @@
    "week": 1,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346855,
@@ -1045,7 +1074,8 @@
    "week": 1,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346854,
@@ -1059,7 +1089,8 @@
    "week": 1,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346852,
@@ -1073,7 +1104,8 @@
    "week": 1,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346859,
@@ -1087,7 +1119,8 @@
    "week": 2,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346862,
@@ -1101,7 +1134,8 @@
    "week": 2,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346857,
@@ -1115,7 +1149,8 @@
    "week": 2,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346861,
@@ -1129,12 +1164,13 @@
    "week": 2,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346858,
-   "date": "2026-10-03",
-   "time": "18:30",
+   "date": "2026-09-23",
+   "time": "20:00",
    "home": "EYÜPSULTAN BELEDİYESİ",
    "away": "EVOLOG DAÇKA ŞERİFALİ",
    "homeScore": null,
@@ -1143,7 +1179,12 @@
    "week": 2,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true,
+   "confirmedBy": "Kulüpten gelen güncelleme (17.09.2026)",
+   "previousDate": "2026-10-03",
+   "previousTime": "18:30",
+   "changedAt": "2026-09-17T18:21:01+03:00"
   },
   {
    "matchId": 346860,
@@ -1157,7 +1198,8 @@
    "week": 2,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346866,
@@ -1171,7 +1213,8 @@
    "week": 3,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346867,
@@ -1185,7 +1228,8 @@
    "week": 3,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346868,
@@ -1199,7 +1243,8 @@
    "week": 3,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346864,
@@ -1213,7 +1258,8 @@
    "week": 3,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346863,
@@ -1227,7 +1273,8 @@
    "week": 3,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346865,
@@ -1241,7 +1288,8 @@
    "week": 3,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346872,
@@ -1255,7 +1303,8 @@
    "week": 4,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346874,
@@ -1269,7 +1318,8 @@
    "week": 4,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346869,
@@ -1283,7 +1333,8 @@
    "week": 4,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346873,
@@ -1297,7 +1348,8 @@
    "week": 4,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346870,
@@ -1311,7 +1363,8 @@
    "week": 4,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346871,
@@ -1325,7 +1378,8 @@
    "week": 4,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346879,
@@ -1339,7 +1393,8 @@
    "week": 5,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346878,
@@ -1353,7 +1408,8 @@
    "week": 5,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346880,
@@ -1367,7 +1423,8 @@
    "week": 5,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346877,
@@ -1381,7 +1438,8 @@
    "week": 5,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346875,
@@ -1395,7 +1453,8 @@
    "week": 5,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346876,
@@ -1409,7 +1468,8 @@
    "week": 5,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346882,
@@ -1423,7 +1483,8 @@
    "week": 6,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": true
+   "played": true,
+   "dateConfirmed": true
   },
   {
    "matchId": 346884,
@@ -1437,7 +1498,8 @@
    "week": 6,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346881,
@@ -1451,7 +1513,8 @@
    "week": 6,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346886,
@@ -1465,7 +1528,8 @@
    "week": 6,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346883,
@@ -1479,7 +1543,8 @@
    "week": 6,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346885,
@@ -1493,7 +1558,8 @@
    "week": 6,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346892,
@@ -1507,7 +1573,8 @@
    "week": 7,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": true
+   "played": true,
+   "dateConfirmed": true
   },
   {
    "matchId": 346889,
@@ -1521,7 +1588,8 @@
    "week": 7,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346890,
@@ -1535,7 +1603,8 @@
    "week": 7,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346888,
@@ -1549,7 +1618,8 @@
    "week": 7,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346887,
@@ -1563,7 +1633,8 @@
    "week": 7,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346891,
@@ -1577,7 +1648,8 @@
    "week": 7,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346893,
@@ -1591,7 +1663,8 @@
    "week": 8,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": true
+   "played": true,
+   "dateConfirmed": true
   },
   {
    "matchId": 346897,
@@ -1605,7 +1678,8 @@
    "week": 8,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346895,
@@ -1619,7 +1693,8 @@
    "week": 8,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346898,
@@ -1633,7 +1708,8 @@
    "week": 8,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346896,
@@ -1647,7 +1723,8 @@
    "week": 8,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346894,
@@ -1661,7 +1738,8 @@
    "week": 8,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346903,
@@ -1675,7 +1753,8 @@
    "week": 9,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346900,
@@ -1689,7 +1768,8 @@
    "week": 9,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346904,
@@ -1703,7 +1783,8 @@
    "week": 9,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346899,
@@ -1717,7 +1798,8 @@
    "week": 9,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346902,
@@ -1731,7 +1813,8 @@
    "week": 9,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346901,
@@ -1745,7 +1828,8 @@
    "week": 9,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346906,
@@ -1759,7 +1843,8 @@
    "week": 10,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346909,
@@ -1773,7 +1858,8 @@
    "week": 10,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346910,
@@ -1787,7 +1873,8 @@
    "week": 10,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346905,
@@ -1801,7 +1888,8 @@
    "week": 10,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346908,
@@ -1815,7 +1903,8 @@
    "week": 10,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346907,
@@ -1829,7 +1918,8 @@
    "week": 10,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346914,
@@ -1843,7 +1933,8 @@
    "week": 11,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346911,
@@ -1857,7 +1948,8 @@
    "week": 11,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346916,
@@ -1871,7 +1963,8 @@
    "week": 11,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346913,
@@ -1885,7 +1978,8 @@
    "week": 11,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346915,
@@ -1899,7 +1993,8 @@
    "week": 11,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346912,
@@ -1913,7 +2008,8 @@
    "week": 11,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346919,
@@ -1927,7 +2023,8 @@
    "week": 12,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346922,
@@ -1941,7 +2038,8 @@
    "week": 12,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346917,
@@ -1955,7 +2053,8 @@
    "week": 12,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346921,
@@ -1969,7 +2068,8 @@
    "week": 12,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346920,
@@ -1983,7 +2083,8 @@
    "week": 12,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346918,
@@ -1997,7 +2098,8 @@
    "week": 12,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346926,
@@ -2011,7 +2113,8 @@
    "week": 13,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346924,
@@ -2025,7 +2128,8 @@
    "week": 13,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346928,
@@ -2039,7 +2143,8 @@
    "week": 13,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346923,
@@ -2053,7 +2158,8 @@
    "week": 13,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346925,
@@ -2067,7 +2173,8 @@
    "week": 13,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346927,
@@ -2081,7 +2188,8 @@
    "week": 13,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346932,
@@ -2095,7 +2203,8 @@
    "week": 14,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346933,
@@ -2109,7 +2218,8 @@
    "week": 14,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346934,
@@ -2123,7 +2233,8 @@
    "week": 14,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346930,
@@ -2137,7 +2248,8 @@
    "week": 14,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346929,
@@ -2151,7 +2263,8 @@
    "week": 14,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346931,
@@ -2165,7 +2278,8 @@
    "week": 14,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346938,
@@ -2179,7 +2293,8 @@
    "week": 15,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346940,
@@ -2193,7 +2308,8 @@
    "week": 15,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346935,
@@ -2207,7 +2323,8 @@
    "week": 15,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346939,
@@ -2221,7 +2338,8 @@
    "week": 15,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346936,
@@ -2235,7 +2353,8 @@
    "week": 15,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346937,
@@ -2249,7 +2368,8 @@
    "week": 15,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346945,
@@ -2263,7 +2383,8 @@
    "week": 16,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346944,
@@ -2277,7 +2398,8 @@
    "week": 16,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346946,
@@ -2291,7 +2413,8 @@
    "week": 16,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346943,
@@ -2305,7 +2428,8 @@
    "week": 16,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346941,
@@ -2319,7 +2443,8 @@
    "week": 16,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346942,
@@ -2333,7 +2458,8 @@
    "week": 16,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346950,
@@ -2347,7 +2473,8 @@
    "week": 17,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346947,
@@ -2361,7 +2488,8 @@
    "week": 17,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346952,
@@ -2375,7 +2503,8 @@
    "week": 17,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346948,
@@ -2389,7 +2518,8 @@
    "week": 17,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346949,
@@ -2403,7 +2533,8 @@
    "week": 17,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346951,
@@ -2417,7 +2548,8 @@
    "week": 17,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346958,
@@ -2431,7 +2563,8 @@
    "week": 18,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346955,
@@ -2445,7 +2578,8 @@
    "week": 18,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346956,
@@ -2459,7 +2593,8 @@
    "week": 18,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346954,
@@ -2473,7 +2608,8 @@
    "week": 18,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346953,
@@ -2487,7 +2623,8 @@
    "week": 18,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346957,
@@ -2501,7 +2638,8 @@
    "week": 18,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346963,
@@ -2515,7 +2653,8 @@
    "week": 19,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346961,
@@ -2529,7 +2668,8 @@
    "week": 19,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346964,
@@ -2543,7 +2683,8 @@
    "week": 19,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346959,
@@ -2557,7 +2698,8 @@
    "week": 19,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346962,
@@ -2571,7 +2713,8 @@
    "week": 19,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346960,
@@ -2585,7 +2728,8 @@
    "week": 19,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346969,
@@ -2599,7 +2743,8 @@
    "week": 20,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346966,
@@ -2613,7 +2758,8 @@
    "week": 20,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346970,
@@ -2627,7 +2773,8 @@
    "week": 20,
    "homeLogo": "../evolog/logos/270177.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346965,
@@ -2641,7 +2788,8 @@
    "week": 20,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/270003.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346968,
@@ -2655,7 +2803,8 @@
    "week": 20,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346967,
@@ -2669,7 +2818,8 @@
    "week": 20,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346972,
@@ -2683,7 +2833,8 @@
    "week": 21,
    "homeLogo": "../evolog/logos/269310.png",
    "awayLogo": "../evolog/logos/270175.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346975,
@@ -2697,7 +2848,8 @@
    "week": 21,
    "homeLogo": "../evolog/logos/269325.png",
    "awayLogo": "../evolog/logos/269787.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346976,
@@ -2711,7 +2863,8 @@
    "week": 21,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346971,
@@ -2725,7 +2878,8 @@
    "week": 21,
    "homeLogo": "../evolog/logos/270178.png",
    "awayLogo": "../evolog/logos/268972.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346974,
@@ -2739,7 +2893,8 @@
    "week": 21,
    "homeLogo": "../evolog/logos/269489.png",
    "awayLogo": "../evolog/logos/269401.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346973,
@@ -2753,7 +2908,8 @@
    "week": 21,
    "homeLogo": "../evolog/logos/270176.png",
    "awayLogo": "../evolog/logos/269233.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346980,
@@ -2767,7 +2923,8 @@
    "week": 22,
    "homeLogo": "../evolog/logos/269233.png",
    "awayLogo": "../evolog/logos/269310.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346977,
@@ -2781,7 +2938,8 @@
    "week": 22,
    "homeLogo": "../evolog/logos/270003.png",
    "awayLogo": "../evolog/logos/269325.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346982,
@@ -2795,7 +2953,8 @@
    "week": 22,
    "homeLogo": "../evolog/logos/268972.png",
    "awayLogo": "../evolog/logos/270177.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346979,
@@ -2809,7 +2968,8 @@
    "week": 22,
    "homeLogo": "../evolog/logos/269401.png",
    "awayLogo": "../evolog/logos/270176.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346981,
@@ -2823,7 +2983,8 @@
    "week": 22,
    "homeLogo": "../evolog/logos/270175.png",
    "awayLogo": "../evolog/logos/270178.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   },
   {
    "matchId": 346978,
@@ -2837,8 +2998,10 @@
    "week": 22,
    "homeLogo": "../evolog/logos/269787.png",
    "awayLogo": "../evolog/logos/269489.png",
-   "played": false
+   "played": false,
+   "dateConfirmed": true
   }
  ],
- "errors": []
+ "errors": [],
+ "unconfirmedCount": 20
 }

@@ -103,6 +103,21 @@ def load_leagues() -> list[tuple[str, dict]]:
     return out
 
 
+GUNLER = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+         "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
+
+
+def fmt_gun(date_str: str, time_str: str | None) -> str:
+    """2026-09-23, 20:00 -> '23 Eylül Çarşamba 20:00'"""
+    try:
+        d = dt.date.fromisoformat(date_str)
+    except (TypeError, ValueError):
+        return date_str or "?"
+    out = f"{d.day} {AYLAR[d.month - 1]} {GUNLER[d.weekday()]}"
+    return f"{out} {time_str}" if time_str else out
+
+
 def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
     our_key = (league.get("ourTeamKey") or "evolog").lower()
     label = league.get("label") or age.upper()
@@ -138,9 +153,26 @@ def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
             })
             continue
 
-        # Oynanmamis mac: baslamasina REMINDER_HOURS'tan az kaldiysa hatirlat.
         if not f.get("date"):
             continue
+
+        # Gun/saat degisikligi: velilerin hemen ogrenmesi gereken tek sey bu.
+        # Olay kimligi yeni tarih+saati icerir, boylece her degisiklik bir kez
+        # gider; ayni degisiklik tekrar tekrar bildirilmez.
+        if f.get("changedAt") and f.get("previousDate"):
+            eski = fmt_gun(f.get("previousDate"), f.get("previousTime"))
+            yeni = fmt_gun(f.get("date"), f.get("time"))
+            if eski != yeni:
+                events.append({
+                    "id": f"change-{mid}-{f.get('date')}-{f.get('time')}",
+                    "age": age,
+                    "title": f"{label} · Maç saati değişti",
+                    "body": (f"{opp} maçı {yeni} oynanacak (önceki: {eski})"
+                             + (f" · {f.get('venue')}" if f.get("venue") else "")),
+                    "tag": f"mac-{mid}",
+                })
+
+        # Oynanmamis mac: baslamasina REMINDER_HOURS'tan az kaldiysa hatirlat.
         try:
             clock = f.get("time") or "00:00"
             start = dt.datetime.strptime(f"{f['date']} {clock}", "%Y-%m-%d %H:%M").replace(tzinfo=TZ)

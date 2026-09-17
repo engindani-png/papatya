@@ -108,6 +108,15 @@
       ", " + GUNLER[d.getDay()] : "";
   }
 
+  /** "2026-10-03","18:30" -> "3 Eki Cmt 18:30" */
+  function fmtShort(dateStr, timeStr) {
+    var p = String(dateStr || "").split("-").map(Number);
+    if (p.length < 3 || !p[0]) return dateStr || "";
+    var d = new Date(p[0], p[1] - 1, p[2]);
+    var out = d.getDate() + " " + AYLAR[d.getMonth()] + " " + GUNLER[d.getDay()].slice(0, 3);
+    return timeStr ? out + " " + timeStr : out;
+  }
+
   function isOurTeam(name) {
     var aliases = ["evolog"];
     if (state.team && state.team.club) aliases.push(norm(state.team.club));
@@ -314,6 +323,7 @@
     var slot = el("boardSlot");
     if (!next) { slot.innerHTML = ""; return; }
     var d = next._d;
+    var belli = next.dateConfirmed !== false;
     slot.innerHTML =
       '<section class="board">' +
         '<div class="label">Sıradaki maç' + (next.week ? " · " + esc(next.week) + ". hafta" : "") + "</div>" +
@@ -327,13 +337,18 @@
             '<div class="trole">Deplasman</div></div>' +
         "</div>" +
         '<div class="board-meta">' +
-          (d ? "<span>" + ico("cal") + esc(fmtDate(d)) + "</span>" : "") +
-          (next.time ? "<span>" + ico("clock") + esc(next.time) + "</span>" : "") +
+          (belli ? (d ? "<span>" + ico("cal") + esc(fmtDate(d)) + "</span>" : "") +
+                   (next.time ? "<span>" + ico("clock") + esc(next.time) + "</span>" : "")
+                 : '<span class="tbd">' + ico("cal") + "Gün ve saat henüz kesinleşmedi</span>") +
           (next.venue ? "<span>" + ico("pin") + esc(next.venue) + "</span>" : "") +
         "</div>" +
-        (d ? '<div class="clock" id="clock"></div>' : "") +
+        (next.changedAt && next.previousDate
+          ? '<div class="board-chg">Değişti · önceki: ' +
+            esc(fmtShort(next.previousDate, next.previousTime)) + "</div>"
+          : "") +
+        (belli && d ? '<div class="clock" id="clock"></div>' : "") +
       "</section>";
-    if (d) startClock(d);
+    if (belli && d) startClock(d);
   }
 
   function startClock(target) {
@@ -403,6 +418,7 @@
     var homeWin = played && f.homeScore > f.awayScore;
     var awayWin = played && f.awayScore > f.homeScore;
     var detail = hasDetail(f);
+    var belli = f.dateConfirmed !== false;
     var bodyId = "fb-" + idx;
 
     var sub = [f.venue, f.week ? f.week + ". hafta" : null].filter(Boolean).join(" · ");
@@ -410,9 +426,11 @@
     var head =
       '<button class="fx-head"' +
         (detail ? ' aria-expanded="false" aria-controls="' + bodyId + '"' : " disabled") + ">" +
-        '<time class="fx-when"><span class="dd">' + (d ? d.getDate() : "–") + "</span>" +
-          '<span class="mm">' + (d ? esc(AYLAR[d.getMonth()]) : "") + "</span>" +
-          (f.time ? '<span class="hh">' + esc(f.time) + "</span>" : "") + "</time>" +
+        (belli
+          ? '<time class="fx-when"><span class="dd">' + (d ? d.getDate() : "–") + "</span>" +
+            '<span class="mm">' + (d ? esc(AYLAR[d.getMonth()]) : "") + "</span>" +
+            (f.time ? '<span class="hh">' + esc(f.time) + "</span>" : "") + "</time>"
+          : '<time class="fx-when tbd"><span class="dd">?</span></time>') +
         "<div>" +
           '<div class="fx-team ' + (homeWin ? "won" : awayWin ? "lost" : "") + '">' +
             '<span class="nm">' + teamCell(f.home, f.homeLogo) + "</span>" +
@@ -421,6 +439,11 @@
             '<span class="nm">' + teamCell(f.away, f.awayLogo) + "</span>" +
             '<span class="sc">' + (played ? esc(f.awayScore) : "") + "</span></div>" +
           (sub ? '<div class="fx-sub">' + ico("pin") + "<span>" + esc(sub) + "</span></div>" : "") +
+          (belli ? "" : '<div class="fx-flag">TBF\'de kesinleşmedi</div>') +
+          (f.changedAt && f.previousDate
+            ? '<div class="fx-flag chg">Değişti · önceki: ' +
+              esc(fmtShort(f.previousDate, f.previousTime)) + "</div>"
+            : "") +
         "</div>" +
         "<div>" + tagFor(f) + (detail ? '<div class="caret">Detay ▾</div>' : "") + "</div>" +
       "</button>";
@@ -444,7 +467,11 @@
   function renderMatches() {
     el("matchNotice").innerHTML = notice(state.league);
     var sets = splitFixtures();
-    renderBoard(sets.upcoming.filter(function (f) { return f.isOurs !== false; })[0] || sets.upcoming[0]);
+    // Geri sayim yalnizca tarihi kesinlesmis maca yapilir; TBF'nin uretilmis
+    // dolgu tarihine saat saymak veliyi yanlis gune goturur.
+    var bizim = sets.upcoming.filter(function (f) { return f.isOurs !== false; });
+    var kesin = bizim.filter(function (f) { return f.dateConfirmed !== false; });
+    renderBoard(kesin[0] || bizim[0] || sets.upcoming[0]);
 
     // Sıralama: sıradaki maç → son oynanan maç → yaklaşan fikstür → önceki
     // maçlar. Taze sonuç en üstte dursun; geçmişe bakmak isteyen aşağı iner.

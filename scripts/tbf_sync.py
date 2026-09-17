@@ -41,12 +41,21 @@ CONFIG_PATH = ROOT / "scripts" / "tbf_config.json"
 DATA_DIR = ROOT / "data"
 
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import local_edits  # noqa: E402  (scripts/ sys.path'e eklendikten sonra)
+
+
 def league_path(key: str) -> pathlib.Path:
     return DATA_DIR / key / "league.json"
 
 
 def team_path(key: str) -> pathlib.Path:
     return DATA_DIR / key / "team.json"
+
+
+def overrides_path(key: str) -> pathlib.Path:
+    """Elle girilen kesin mac bilgileri; senkronizasyon bunlari ezmez."""
+    return DATA_DIR / key / "overrides.json"
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
@@ -592,11 +601,31 @@ def sync_team(cfg: dict, args) -> None:
         except Exception as exc:
             log(f"  uyari: Kadro cekilemedi: {exc}")
 
+    out_path = league_path(cfg["key"])
+    previous = {}
+    if out_path.exists():
+        try:
+            previous = json.loads(out_path.read_text(encoding="utf-8"))
+        except ValueError:
+            previous = {}
+
+    # TBF ilan edilmemis maclar icin duzenli araliklarla uretilmis dolgu tarih
+    # donuyor; bunlari kesin gunmus gibi gostermeyelim. Elle girilen bilgiler
+    # ise her zaman kazanir.
+    league = local_edits.apply(league, overrides_path(cfg["key"]), previous)
+    if league.get("unconfirmedCount"):
+        log(f"  {league['unconfirmedCount']} macin tarihi TBF'de kesinlesmemis "
+            f"(uretilmis dizi) - uygulamada 'tarih belli degil' gosterilecek")
+    changed = [f for f in league.get("fixtures") or [] if f.get("changedAt")]
+    for f in changed:
+        log(f"  DEGISIKLIK: {f.get('home')} - {f.get('away')} -> "
+            f"{f.get('date')} {f.get('time')} (eski: {f.get('previousDate')} "
+            f"{f.get('previousTime')})")
+
     if args.dry_run:
         log(json.dumps(league, ensure_ascii=False, indent=1)[:2000])
         return
 
-    out_path = league_path(cfg["key"])
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(league, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     log(f"Yazildi: {out_path.relative_to(ROOT)}")

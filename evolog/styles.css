@@ -681,3 +681,32 @@ table.mlog td.mo span.l { background: var(--loss); }
                  gap: 0 30px; align-items: start; }
   #panel-kadro > h2:first-child, #panel-kadro > #rosterSlot { grid-column: 1; }
 }
+
+/* ---------- Kesinleşmemiş tarih / değişiklik ---------- */
+/* TBF ilan edilmemiş maçlar için üretilmiş dolgu tarih dönüyor. Bunları
+   kesin günmüş gibi göstermek veliyi yanlış güne götürür; ayrı gösteriyoruz. */
+.fx-when.tbd .dd { color: var(--chalk-faint); }
+.fx-when.tbd .mm,
+.fx-when.tbd .hh { color: var(--chalk-faint); letter-spacing: .6px; }
+
+.fx-flag {
+  font-family: var(--display); font-size: 10.5px; letter-spacing: .7px;
+  text-transform: uppercase; color: var(--chalk-faint);
+  margin-top: 5px; display: flex; align-items: center; gap: 6px;
+}
+.fx-flag::before {
+  content: ""; width: 5px; height: 5px; flex: 0 0 5px;
+  background: var(--chalk-faint); border-radius: 50%;
+}
+.fx-flag.chg { color: var(--amber); }
+.fx-flag.chg::before { background: var(--amber); }
+
+.board-meta .tbd { color: var(--chalk-dim); }
+.board-chg {
+  margin-top: 10px; padding: 8px 10px;
+  border-left: 2px solid var(--amber); background: var(--amber-dim);
+  font-size: 12px; color: #f7ddb6;
+}
+
+.fx-when.tbd { display: grid; place-items: center; padding-top: 6px; }
+.fx-when.tbd .dd { font-size: 26px; color: var(--chalk-faint); }
