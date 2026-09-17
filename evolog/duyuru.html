@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evolog · Duyuru</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css">
+<style>
+.onizleme{border:1px solid var(--line);border-left:3px solid var(--amber);padding:.75rem .8rem;
+  margin:.6rem 0 1rem;background:var(--ink-2)}
+.onizleme .b{font-family:var(--display);font-weight:600;font-size:.95rem;letter-spacing:.02em}
+.onizleme .m{font-size:.88rem;color:var(--chalk-dim);margin-top:.3rem;line-height:1.5;
+  white-space:pre-wrap;word-break:break-word}
+.onizleme .u{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--chalk-faint);
+  margin-top:.5rem}
+.gecmis{font-size:.88rem}
+.gecmis .k{border-bottom:1px solid var(--line-soft);padding:.7rem 0}
+.gecmis .k .ust{display:flex;justify-content:space-between;gap:.6rem;align-items:baseline}
+.gecmis .k .ad{font-family:var(--display);font-weight:600;letter-spacing:.02em}
+.gecmis .k .z{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-faint)}
+.gecmis .k .m{color:var(--chalk-dim);margin-top:.25rem;line-height:1.5}
+.sayac{font-size:.75rem;color:var(--chalk-faint);text-align:right;margin-top:-.4rem}
+</style>
+</head>
+<body>
+<script>
+  if (location.search.indexOf("gomulu=1") !== -1) document.body.className = "gomulu";
+</script>
+
+<header><div class="in">
+  <h1>Duyuru</h1>
+  <a href="./">← Uygulamaya dön</a>
+</div></header>
+
+<div class="wrap">
+  <section id="loginBox">
+    <h2>Giriş</h2>
+    <p class="hint">Duyuru gönderimi antrenöre özeldir.</p>
+    <div class="row">
+      <input type="password" id="pass" placeholder="Antrenör şifresi" autocomplete="current-password" style="max-width:18rem">
+      <button id="loginBtn">Gir</button>
+    </div>
+    <div id="loginMsg"></div>
+  </section>
+
+  <main id="adminBox" hidden>
+    <h2>Velilere bildirim</h2>
+    <p class="hint">Bildirimi açık olan velilerin telefonuna anında düşer. Kısa ve net yazın;
+      uzun metin telefonda kırpılır.</p>
+
+    <input type="text" id="baslik" maxlength="60" placeholder="Başlık (örn. Antrenman değişikliği)">
+    <textarea id="metin" maxlength="280" rows="4"
+      placeholder="Örnek: Yarınki antrenman 20:00'de Maltepe TOKİ'de. Servis 19:30'da okuldan kalkacak."></textarea>
+    <div class="sayac" id="sayac">0 / 280</div>
+
+    <h2>Önizleme</h2>
+    <div class="onizleme" id="onizleme"></div>
+
+    <div class="row">
+      <button id="gonderBtn">Gönder</button>
+      <button class="ghost" id="temizleBtn">Temizle</button>
+    </div>
+    <div id="mesaj"></div>
+
+    <h2>Gönderilenler</h2>
+    <div class="gecmis" id="gecmis"></div>
+  </main>
+</div>
+
+<script src="panel-auth.js"></script>
+<script src="duyuru.js"></script>
+</body>
+</html>

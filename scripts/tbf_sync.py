@@ -43,6 +43,7 @@ DATA_DIR = ROOT / "data"
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import local_edits  # noqa: E402  (scripts/ sys.path'e eklendikten sonra)
+import tbf_analiz  # noqa: E402
 
 
 def league_path(key: str) -> pathlib.Path:
@@ -51,6 +52,11 @@ def league_path(key: str) -> pathlib.Path:
 
 def team_path(key: str) -> pathlib.Path:
     return DATA_DIR / key / "team.json"
+
+
+def analiz_dir(key: str) -> pathlib.Path:
+    """Mac basina ayrintili analiz (atis haritasi, skor akisi, sure/artı-eksi)."""
+    return DATA_DIR / key / "analiz"
 
 
 def overrides_path(key: str) -> pathlib.Path:
@@ -519,8 +525,8 @@ def build(cfg: dict, want_details: bool) -> dict:
         fixtures = previous.get("fixtures") or []
         errors.append(f"Fikstur cekilemedi: {exc}")
 
+    detail_cfg = cfg.get("matchDetail") or {}
     if want_details and fixtures:
-        detail_cfg = cfg.get("matchDetail") or {}
         only_ours = detail_cfg.get("onlyOurMatches", True)
         limit = int(detail_cfg.get("maxMatches", 30))
         done = 0
@@ -541,6 +547,36 @@ def build(cfg: dict, want_details: bool) -> dict:
             except Exception as exc:
                 errors.append(f"Mac {f['matchId']} detayi alinamadi: {exc}")
 
+    # --- ayrintili mac analizi (atis haritasi + oyun akisi + takim yuzdeleri)
+    # Ham veri mac basina ~250 KB; burada isleyip ~3 KB'lik dosyaya indiriyoruz.
+    # Bir kez uretilen analiz korunur: skor degismedikce tekrar cekilmez.
+    if want_details and detail_cfg.get("enabled", True):
+        hedef = analiz_dir(cfg["key"])
+        for f in fixtures:
+            if not f.get("played") or not f.get("isOurs") or not f.get("matchId"):
+                continue
+            dosya = hedef / f"{f['matchId']}.json"
+            if dosya.exists():
+                try:
+                    onceki_analiz = json.loads(dosya.read_text(encoding="utf-8"))
+                    if onceki_analiz.get("score") and onceki_analiz.get("shots"):
+                        continue
+                except ValueError:
+                    pass
+            try:
+                base = cfg["apiBaseUrl"]
+                mid = f["matchId"]
+                shots = (api_get(base, f"/api/Match/shot-chart?matchId={mid}") or {}).get("shotInfos") or []
+                events = (api_get(base, f"/api/Match/game-flow?matchId={mid}") or {}).get("events") or []
+                report = api_get(base, f"/api/Match/get-match-report-with-players?matchId={mid}") or {}
+                analiz = tbf_analiz.mac_analizi(f, shots, events, report)
+                hedef.mkdir(parents=True, exist_ok=True)
+                dosya.write_text(json.dumps(analiz, ensure_ascii=False), encoding="utf-8")
+                print(f"  Analiz yazildi: {dosya.relative_to(ROOT)} "
+                      f"({len(analiz['shots'])} atis, {len(analiz['flow'])} skor noktasi)")
+            except Exception as exc:
+                errors.append(f"Mac {f.get('matchId')} analizi alinamadi: {exc}")
+
     league_fixtures = previous.get("leagueFixtures") or []
     try:
         league_fixtures, warn = fetch_league_fixtures(cfg, standings)
@@ -549,8 +585,11 @@ def build(cfg: dict, want_details: bool) -> dict:
         errors.append(f"Lig fiksturu alinamadi: {exc}")
 
     played = [f for f in fixtures if f.get("played")]
+    analizli = sorted(int(x.stem) for x in analiz_dir(cfg["key"]).glob("*.json")
+                      if x.stem.isdigit()) if analiz_dir(cfg["key"]).exists() else []
     return {
         "isPlaceholder": not standings and not fixtures,
+        "analiz": analizli,
         "updatedAt": now_iso(),
         "source": cfg["apiBaseUrl"],
         "key": cfg["key"],

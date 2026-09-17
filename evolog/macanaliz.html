@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Evolog · Maç analizi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="panel.css">
+<style>
+/* maç şeridi */
+.macseridi{display:flex;gap:.45rem;overflow-x:auto;padding:.15rem .15rem .6rem;scrollbar-width:none}
+.macseridi::-webkit-scrollbar{display:none}
+.macseridi button{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:.15rem;
+  background:none;color:var(--chalk-dim);border:1px solid var(--line);padding:.5rem .8rem;
+  font-family:var(--display);font-weight:600;font-size:.82rem;letter-spacing:.04em;
+  text-transform:none;line-height:1.25;min-height:44px}
+.macseridi button small{font-size:11px;font-family:var(--body);letter-spacing:0;opacity:.85}
+.macseridi button[aria-pressed=true]{background:var(--amber);color:var(--ink);border-color:var(--amber)}
+
+/* skor başlığı */
+.skor{display:grid;grid-template-columns:1fr auto 1fr;gap:.6rem;align-items:center;
+  border:1px solid var(--line);border-left:3px solid var(--amber);padding:.8rem .75rem;margin-bottom:.6rem}
+.skor .tn{font-family:var(--display);font-weight:600;font-size:1rem;line-height:1.1;text-transform:uppercase}
+.skor .sc{font-family:var(--display);font-weight:600;font-size:2rem;line-height:1}
+.skor .r{text-align:right}
+.skor .cey{grid-column:1/-1;border-top:1px solid var(--line-soft);padding-top:.5rem;margin-top:.3rem;
+  font-size:.78rem;color:var(--chalk-faint);letter-spacing:.06em}
+
+/* karşılaştırma çubukları */
+.cmp{margin:.2rem 0 1rem}
+.cmp .row{margin-bottom:.7rem}
+.cmp .top{display:grid;grid-template-columns:1fr auto 1fr;gap:.6rem;align-items:baseline;
+  font-size:.8rem;color:var(--chalk-dim);margin-bottom:.3rem}
+.cmp .top b:last-child{text-align:right}
+.cmp .top .ad{text-align:center;white-space:nowrap}
+.cmp .top b{font-family:var(--display);font-weight:600;font-size:.95rem;color:var(--chalk)}
+.cmp .top .ad{font-family:var(--display);font-weight:600;font-size:.7rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--chalk-faint)}
+.cmp .bar{display:flex;height:6px;background:var(--ink-3);border:1px solid var(--line-soft)}
+.cmp .bar i{display:block;height:100%}
+.cmp .bar .biz{background:var(--amber)}
+.cmp .bar .rak{background:#40544e;margin-left:auto}
+
+/* liste (top kaybı, şut tipi) */
+.dokum{display:grid;grid-template-columns:1fr auto;gap:.3rem .8rem;font-size:.9rem;
+  color:var(--chalk-dim);margin-bottom:1rem}
+.dokum b{font-family:var(--display);font-weight:600;color:var(--chalk);text-align:right}
+.dokum span.s{color:var(--chalk-faint);font-size:.8rem}
+
+/* saha ve grafik */
+.saha{border:1px solid var(--line);padding:.5rem;margin-bottom:.4rem}
+.saha svg,.grafik svg{width:100%;height:auto;display:block}
+.grafik{border:1px solid var(--line);padding:.6rem .7rem;margin-bottom:.6rem}
+.grafik .bas{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.4rem}
+.grafik .bas h4{margin:0;font-family:var(--display);font-weight:600;font-size:.85rem;
+  letter-spacing:.14em;text-transform:uppercase}
+.grafik .bas span{margin-left:auto;font-size:.78rem;color:var(--chalk-faint)}
+.filtre{display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.5rem}
+.filtre button{background:none;border:1px solid var(--line);color:var(--chalk-dim);
+  padding:.3rem .6rem;font-family:var(--display);font-weight:600;font-size:.72rem;
+  letter-spacing:.08em;text-transform:none;min-height:34px}
+.filtre button[aria-pressed=true]{background:var(--amber);color:var(--ink);border-color:var(--amber)}
+.aciklama{font-size:.78rem;color:var(--chalk-faint);margin:.1rem 0 1rem;line-height:1.6}
+
+/* oyuncu tablosu */
+.ptab{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem}
+.ptab th{text-align:right;font-family:var(--display);font-weight:600;font-size:.68rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint);
+  border-bottom:1px solid var(--line);padding:.4rem .3rem}
+.ptab th:first-child,.ptab td:first-child{text-align:left}
+.ptab td{border-bottom:1px solid var(--line-soft);padding:.5rem .3rem;text-align:right;
+  color:var(--chalk-dim)}
+.ptab td b{font-family:var(--display);font-weight:600;color:var(--chalk)}
+.ptab td.pm.arti{color:var(--win)}
+.ptab td.pm.eksi{color:var(--loss)}
+</style>
+</head>
+<body>
+<script>
+  if (location.search.indexOf("gomulu=1") !== -1) document.body.className = "gomulu";
+</script>
+
+<header><div class="in">
+  <h1>Maç analizi</h1>
+  <a href="./">← Uygulamaya dön</a>
+</div></header>
+
+<div class="wrap">
+  <section id="loginBox">
+    <h2>Giriş</h2>
+    <p class="hint">Maç analizi antrenöre özeldir.</p>
+    <div class="row">
+      <input type="password" id="pass" placeholder="Antrenör şifresi" autocomplete="current-password" style="max-width:18rem">
+      <button id="loginBtn">Gir</button>
+    </div>
+    <div id="loginMsg"></div>
+  </section>
+
+  <main id="adminBox" hidden>
+    <h2>Maç</h2>
+    <div class="macseridi" id="macSerit"></div>
+    <div id="icerik"></div>
+  </main>
+</div>
+
+<script src="panel-auth.js"></script>
+<script src="macanaliz.js"></script>
+</body>
+</html>

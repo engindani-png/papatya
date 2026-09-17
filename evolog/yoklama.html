@@ -55,6 +55,27 @@
 .devam .bar i{display:block;height:100%;background:var(--win)}
 .devam .bar i.az{background:var(--loss)}
 .devam .bar i.orta{background:var(--amber)}
+
+/* --- devamsızlık dökümü --- */
+.devam tr.tikla{cursor:pointer}
+.devam tr.tikla:hover td{color:var(--amber)}
+.dokumkutu{border:1px solid var(--line);border-left:3px solid var(--amber);padding:.8rem;margin:.6rem 0 1rem}
+.dokumkutu .ust{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:.6rem}
+.dokumkutu .ad{font-family:var(--display);font-weight:600;font-size:1.05rem}
+.dokumkutu .ozet2{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem}
+.dokumkutu .ozet2 span{border:1px solid var(--line);padding:.2rem .6rem;font-size:.78rem;
+  color:var(--chalk-dim)}
+.dokumkutu .ozet2 b{font-family:var(--display);font-weight:600;color:var(--chalk)}
+.dokumkutu .seri{font-size:.9rem;color:var(--chalk-dim);margin:.2rem 0 .7rem;line-height:1.5}
+.dokumkutu .seri.uyari{color:var(--loss)}
+.dokumkutu .gunler div{display:flex;justify-content:space-between;gap:.6rem;
+  padding:.45rem 0;border-bottom:1px solid var(--line-soft);font-size:.85rem;color:var(--chalk-dim)}
+.dokumkutu .gunler div span:last-child{color:var(--chalk-faint);font-size:.78rem}
+.dokumkutu .gunler.tum .d-gelmedi span:last-child{color:var(--loss)}
+.dokumkutu .gunler.tum .d-geldi span:last-child{color:var(--win)}
+.dokumkutu .gunler.tum .d-gec span:last-child{color:var(--amber)}
+.eyebrow2{font-family:var(--display);font-weight:600;font-size:.7rem;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--chalk-faint);margin:.9rem 0 .3rem}
 </style>
 </head>
 <body>
@@ -100,6 +121,7 @@
     <h2>Devam durumu</h2>
     <p class="hint">Son antrenmanlara göre. İzinli günler oranı düşürmez.</p>
     <div class="devam" id="devam"></div>
+    <div id="dokum"></div>
   </main>
 </div>
 

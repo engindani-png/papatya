@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Yoklama kaydinin testleri.  Calistirma:  python -m unittest discover server"""
 
+import json
 import pathlib
 import sys
 import tempfile
@@ -46,29 +47,34 @@ class YoklamaTest(unittest.TestCase):
         kayit = attendance.validate({"date": "2026-09-18", "start": "19:30",
                                      "title": "Basketbol", "venue": "tev",
                                      "players": {"750529": "geldi", "750530": "gelmedi"}})
-        attendance.save(self.dizin, "u14", kayit)
+        attendance.kaydet(self.dizin, "u14", kayit)
         okunan = attendance.get(self.dizin, "u14", "2026-09-18", "19:30")
         self.assertEqual(okunan["players"]["750530"], "gelmedi")
         self.assertEqual(okunan["title"], "Basketbol")
 
     def test_ayni_seans_uzerine_yazilir(self):
         for durum in ("gelmedi", "geldi"):
-            attendance.save(self.dizin, "u14", attendance.validate(
+            attendance.kaydet(self.dizin, "u14", attendance.validate(
                 {"date": "2026-09-18", "start": "19:30", "players": {"750529": durum}}))
-        veri = attendance.load(self.dizin, "u14")
-        self.assertEqual(len(veri["sessions"]), 1)
-        self.assertEqual(veri["sessions"]["2026-09-18T19:30"]["players"]["750529"], "geldi")
+        self.assertEqual(len(attendance.seanslar(self.dizin, "u14")), 1)
+        self.assertEqual(attendance.get(self.dizin, "u14", "2026-09-18", "19:30")
+                         ["players"]["750529"], "geldi")
 
-    def test_bozuk_dosya_bos_kabul_edilir(self):
-        attendance.path(self.dizin, "u14").write_text("{bozuk", encoding="utf-8")
-        self.assertEqual(attendance.load(self.dizin, "u14"), {"sessions": {}})
+    def test_eski_json_veritabanina_tasinir(self):
+        eski = self.dizin / "attendance-u14.json"
+        eski.write_text(json.dumps({"sessions": {"2026-09-16T19:30": {
+            "date": "2026-09-16", "start": "19:30", "title": "Basketbol",
+            "players": {"750529": "geldi", "750530": "gelmedi"}}}}), encoding="utf-8")
+        okunan = attendance.get(self.dizin, "u14", "2026-09-16", "19:30")
+        self.assertEqual(okunan["players"]["750530"], "gelmedi")
+        self.assertFalse(eski.exists())          # bir kez tasinir, tekrar okunmaz
 
     # ---------------------------------------------------------------- ozet
     def test_ozet_izinliyi_payda_saymaz(self):
-        attendance.save(self.dizin, "u14", attendance.validate(
+        attendance.kaydet(self.dizin, "u14", attendance.validate(
             {"date": "2026-09-16", "start": "19:30",
              "players": {"750529": "geldi", "750530": "izinli"}}))
-        attendance.save(self.dizin, "u14", attendance.validate(
+        attendance.kaydet(self.dizin, "u14", attendance.validate(
             {"date": "2026-09-18", "start": "19:30",
              "players": {"750529": "gelmedi", "750530": "geldi"}}))
         ozet = attendance.summary(self.dizin, "u14", KADRO)
@@ -78,7 +84,7 @@ class YoklamaTest(unittest.TestCase):
         self.assertIsNone(satir["numarasiz oyuncu"]["oran"])
 
     def test_gec_gelen_gelmis_sayilir(self):
-        attendance.save(self.dizin, "u14", attendance.validate(
+        attendance.kaydet(self.dizin, "u14", attendance.validate(
             {"date": "2026-09-18", "start": "19:30", "players": {"750529": "gec"}}))
         ozet = attendance.summary(self.dizin, "u14", KADRO)
         satir = {r["key"]: r for r in ozet["players"]}
@@ -87,20 +93,74 @@ class YoklamaTest(unittest.TestCase):
 
     def test_ozet_son_n_seansla_sinirlanir(self):
         for gun in ("2026-09-10", "2026-09-12", "2026-09-18"):
-            attendance.save(self.dizin, "u14", attendance.validate(
+            attendance.kaydet(self.dizin, "u14", attendance.validate(
                 {"date": gun, "start": "19:30", "players": {"750529": "geldi"}}))
         ozet = attendance.summary(self.dizin, "u14", KADRO, limit=2)
         self.assertEqual(len(ozet["sessions"]), 2)
         self.assertEqual(ozet["sessions"][0]["date"], "2026-09-12")
 
     def test_kadrodan_ayrilan_oyuncu_ozeti_bozmaz(self):
-        attendance.save(self.dizin, "u14", attendance.validate(
+        attendance.kaydet(self.dizin, "u14", attendance.validate(
             {"date": "2026-09-18", "start": "19:30",
              "players": {"750529": "geldi", "999999": "geldi"}}))
         ozet = attendance.summary(self.dizin, "u14", KADRO)
         self.assertEqual(len(ozet["players"]), len(KADRO))
         self.assertEqual(ozet["sessions"][0]["gelen"], 1)   # kadrodaki tek oyuncu
 
+
+
+class DevamsizlikDokumuTest(unittest.TestCase):
+    """Antrenorun sordugu soru "kac gun" degil, "nasil": ust uste mi?"""
+
+    def setUp(self):
+        self.dizin = pathlib.Path(tempfile.mkdtemp())
+        # 6 antrenman: geldi, gelmedi, gelmedi, izinli, gelmedi, gelmedi
+        plan = [("2026-09-01", "geldi"), ("2026-09-03", "gelmedi"), ("2026-09-05", "gelmedi"),
+                ("2026-09-08", "izinli"), ("2026-09-10", "gelmedi"), ("2026-09-12", "gelmedi")]
+        for gun, durum in plan:
+            attendance.kaydet(self.dizin, "u14", attendance.validate(
+                {"date": gun, "start": "19:30", "title": "Basketbol",
+                 "players": {"750529": durum, "750530": "geldi"}}))
+
+    def test_ust_uste_gelmeme_sayisi(self):
+        d = attendance.oyuncu_dokumu(self.dizin, "u14", "750529", KADRO)
+        self.assertEqual(d["streak"], 2)          # son iki antrenman
+        self.assertEqual(d["enUzun"], 2)
+        self.assertEqual(d["counts"]["gelmedi"], 4)
+        self.assertEqual(d["counts"]["izinli"], 1)
+
+    def test_gelmedigi_tarihler_yeniden_eskiye(self):
+        d = attendance.oyuncu_dokumu(self.dizin, "u14", "750529", KADRO)
+        self.assertEqual([k["date"] for k in d["missed"]],
+                         ["2026-09-12", "2026-09-10", "2026-09-05", "2026-09-03"])
+
+    def test_izinli_seriyi_bozar(self):
+        # 08'deki izinli olmasaydi seri 4 olurdu; mazeretli gun seriyi keser.
+        d = attendance.oyuncu_dokumu(self.dizin, "u14", "750529", KADRO)
+        self.assertLess(d["streak"], 4)
+
+    def test_tam_katilan_oyuncuda_seri_sifir(self):
+        d = attendance.oyuncu_dokumu(self.dizin, "u14", "750530", KADRO)
+        self.assertEqual(d["streak"], 0)
+        self.assertEqual(d["oran"], 100)
+        self.assertEqual(d["toplam"], 6)
+
+    def test_isaretlenmemis_antrenman_sayilmaz(self):
+        attendance.kaydet(self.dizin, "u14", attendance.validate(
+            {"date": "2026-09-15", "start": "19:30", "players": {"750530": "geldi"}}))
+        d = attendance.oyuncu_dokumu(self.dizin, "u14", "750529", KADRO)
+        self.assertEqual(d["toplam"], 6)          # 15 Eylul onda isaretli degil
+
+
+class DuyuruTest(unittest.TestCase):
+    def setUp(self):
+        self.dizin = pathlib.Path(tempfile.mkdtemp())
+
+    def test_duyuru_kaydedilir_ve_okunur(self):
+        attendance.duyuru_kaydet(self.dizin, "u14", "Duyuru", "Yarın antrenman yok", 9)
+        kayit = attendance.duyurular(self.dizin, "u14")
+        self.assertEqual(len(kayit), 1)
+        self.assertEqual(kayit[0]["gonderim"], 9)
 
 if __name__ == "__main__":
     unittest.main()

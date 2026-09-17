@@ -24,6 +24,7 @@ import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import threading
 import urllib.parse
@@ -43,6 +44,11 @@ VAPID = STATE_DIR / "vapid.json"
 # Kadro, senkronizasyonun urettigi veri klasorunden okunur (yoklama ozetinde
 # oyuncu adi/numarasi icin).
 DATA_DIR = pathlib.Path(os.environ.get("EVOLOG_DATA_DIR", "/var/www/evolog/data"))
+# Bildirim gondericisi ayri bir sanal ortamda calisir (pywebpush'un istedigi
+# cryptography, sistemdeki certbot'u bozuyor — bkz. deploy/README.md).
+PUSH_PY = os.environ.get("EVOLOG_PUSH_PY", "/opt/evolog-venv/bin/python")
+PUSH_SCRIPT = os.environ.get("EVOLOG_PUSH_SCRIPT",
+                             str(pathlib.Path(__file__).resolve().parent / "evolog_push.py"))
 
 # Yas gruplari: her birinin kendi antrenman programi var. Listeyi ortam
 # degiskeniyle genisletebilirsiniz (yeni yas acilinca tek satir).
@@ -245,7 +251,23 @@ class Handler(BaseHTTPRequestHandler):
             date, start = query_of(self, "date"), query_of(self, "start")
             if date and start:
                 return self.send_json(200, attendance.get(STATE_DIR, age, date, start))
-            return self.send_json(200, attendance.load(STATE_DIR, age))
+            return self.send_json(200, {"sessions": attendance.seanslar(STATE_DIR, age)})
+
+        if path == "/api/attendance/player":
+            # Bir oyuncunun devamsizlik dokumu: hangi gunler, ust uste kac kez.
+            if not authorized(self):
+                return self.send_json(401, {"error": "Sifre hatali"})
+            age = age_of(self)
+            anahtar = query_of(self, "key")
+            if not anahtar:
+                return self.send_json(400, {"error": "Oyuncu anahtari gerekli"})
+            return self.send_json(200, attendance.oyuncu_dokumu(STATE_DIR, age, anahtar,
+                                                                roster(age)))
+
+        if path == "/api/duyuru":
+            if not authorized(self):
+                return self.send_json(401, {"error": "Sifre hatali"})
+            return self.send_json(200, {"duyurular": attendance.duyurular(STATE_DIR, age_of(self))})
 
         if path == "/api/attendance/summary":
             if not authorized(self):
@@ -282,13 +304,42 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send_json(200, {"ok": True, "age": age,
                                             "sessions": len(data["sessions"])})
 
+            if path == "/api/duyuru":
+                # Antrenor panelinden veliye serbest metin bildirimi.
+                if not authorized(self):
+                    return self.send_json(401, {"error": "Sifre hatali"})
+                govde = self.body_json() or {}
+                metin = clean_str(govde.get("body"), 300)
+                baslik = clean_str(govde.get("title"), 80) or "Antrenörden duyuru"
+                if not metin or len(metin) < 3:
+                    return self.send_json(400, {"error": "Duyuru metni cok kisa"})
+                try:
+                    sonuc = subprocess.run(
+                        [PUSH_PY, PUSH_SCRIPT, "--duyuru", metin, "--baslik", baslik],
+                        capture_output=True, text=True, timeout=90,
+                        env=dict(os.environ, EVOLOG_STATE_DIR=str(STATE_DIR),
+                                 EVOLOG_DATA_DIR=str(DATA_DIR)))
+                except Exception as exc:
+                    return self.send_json(500, {"error": f"Gonderilemedi: {exc}"})
+                cikti = (sonuc.stdout or "") + (sonuc.stderr or "")
+                if sonuc.returncode != 0:
+                    return self.send_json(500, {"error": "Gonderilemedi",
+                                                "detay": cikti[-400:]})
+                gonderim = 0
+                m = re.search(r"Duyuru: (\d+) gonderim", cikti)
+                if m:
+                    gonderim = int(m.group(1))
+                attendance.duyuru_kaydet(STATE_DIR, age_of(self), baslik, metin, gonderim)
+                return self.send_json(200, {"ok": True, "gonderim": gonderim,
+                                            "cikti": cikti[-400:]})
+
             if path == "/api/attendance":
                 if not authorized(self):
                     return self.send_json(401, {"error": "Sifre hatali"})
                 age = age_of(self)
                 record = attendance.validate(self.body_json())
                 with _lock:
-                    attendance.save(STATE_DIR, age, record)
+                    attendance.kaydet(STATE_DIR, age, record)
                 gelen = sum(1 for d in record["players"].values() if d in attendance.GELMIS)
                 return self.send_json(200, {"ok": True, "age": age,
                                             "gelen": gelen,

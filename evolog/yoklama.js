@@ -30,6 +30,7 @@
     secili: null,       // seçili seans
     isaret: {},         // key -> durum
     kayitli: {},        // sunucudan gelen hali (değişiklik var mı diye)
+    ozet: null,         // devam özeti
     salonlar: {}        // venue id -> ad
   };
 
@@ -150,6 +151,7 @@
   }
 
   function devamCiz(ozet) {
+    durum.ozet = ozet;
     var satirlar = (ozet.players || []).filter(function (r) { return r.oran !== null; });
     if (!satirlar.length) {
       el("devam").innerHTML = '<p class="hint">Henüz yeterli yoklama kaydı yok.</p>';
@@ -160,12 +162,57 @@
       '<th style="text-align:right">Oran</th></tr></thead><tbody>' +
       satirlar.map(function (r) {
         var sinif = r.oran >= 80 ? "" : (r.oran >= 60 ? " class=\"orta\"" : " class=\"az\"");
-        return "<tr><td>" + (r.no == null ? "" : "<b>" + esc(r.no) + "</b> ") + esc(r.name) +
+        return '<tr class="tikla" data-devam="' + esc(r.key) + '"><td>' +
+          (r.no == null ? "" : "<b>" + esc(r.no) + "</b> ") + esc(r.name) +
           '<div class="bar"><i' + sinif + ' style="width:' + r.oran + '%"></i></div></td>' +
           "<td>" + (r.geldi + r.gec) + "</td><td>" + r.gelmedi + "</td>" +
-          '<td class="o">%' + r.oran + "</td></tr>";
+          '<td class="o">%' + r.oran + " ›</td></tr>";
       }).join("") + "</tbody></table>" +
-      '<p class="hint">' + (ozet.sessions || []).length + " antrenman kaydı üzerinden.</p>";
+      '<p class="hint">' + (ozet.sessions || []).length +
+      " antrenman kaydı üzerinden. Bir oyuncuya dokununca hangi günlerde gelmediği açılır.</p>";
+  }
+
+  var DURUM_ADI = { geldi: "Geldi", gec: "Geç geldi", gelmedi: "Gelmedi", izinli: "İzinli" };
+
+  /** Devamsızlık dökümü: hangi günler, kaç antrenman üst üste. */
+  function dokumCiz(d) {
+    var seriYazi = d.streak
+      ? "<b>Son " + d.streak + " antrenmana üst üste gelmedi.</b>"
+      : "Şu an üst üste devamsızlığı yok.";
+    var enUzun = d.enUzun > 1 ? " En uzun devamsızlık serisi: " + d.enUzun + " antrenman." : "";
+    el("dokum").innerHTML =
+      '<div class="dokumkutu">' +
+        '<div class="ust"><span class="ad">' +
+          (d.no == null ? "" : "<b>" + esc(d.no) + "</b> ") + esc(d.name || d.key) + "</span>" +
+          '<button type="button" class="ghost" id="dokumKapat">Kapat</button></div>' +
+        '<div class="ozet2">' +
+          "<span><b>%" + (d.oran == null ? "–" : d.oran) + "</b> devam</span>" +
+          "<span><b>" + d.counts.gelmedi + "</b> gelmedi</span>" +
+          (d.counts.gec ? "<span><b>" + d.counts.gec + "</b> geç</span>" : "") +
+          (d.counts.izinli ? "<span><b>" + d.counts.izinli + "</b> izinli</span>" : "") +
+          "<span><b>" + d.toplam + "</b> antrenman</span>" +
+        "</div>" +
+        '<p class="seri' + (d.streak >= 2 ? " uyari" : "") + '">' + seriYazi + esc(enUzun) + "</p>" +
+        (d.missed.length
+          ? '<div class="gunler">' + d.missed.map(function (k) {
+              return "<div><span>" + esc(gunAdi(k.date)) + " · " + esc(k.start) + "</span>" +
+                "<span>" + esc(k.title) + "</span></div>";
+            }).join("") + "</div>"
+          : '<p class="hint">Hiçbir antrenmanı kaçırmamış.</p>') +
+        '<h3 class="eyebrow2">Tüm antrenmanlar</h3>' +
+        '<div class="gunler tum">' + d.sessions.map(function (k) {
+          return '<div class="d-' + esc(k.durum) + '"><span>' + esc(gunAdi(k.date)) + " · " +
+            esc(k.start) + "</span><span>" + esc(DURUM_ADI[k.durum] || k.durum) + "</span></div>";
+        }).join("") + "</div>" +
+      "</div>";
+    el("dokum").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function gunAdi(iso) {
+    var p = String(iso || "").split("-");
+    if (p.length !== 3) return iso || "";
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    return d.getDate() + " " + AYLAR[d.getMonth()] + " " + GUNLER[d.getDay()];
   }
 
   // --------------------------------------------------------------- veri
@@ -262,6 +309,15 @@
       return;
     }
     if (t.closest("#saveBtn")) kaydet();
+
+    var devam = t.closest("[data-devam]");
+    if (devam) {
+      P.api("/attendance/player?age=" + AGE + "&key=" + encodeURIComponent(devam.dataset.devam))
+        .then(dokumCiz)
+        .catch(function (err) { P.note("dokum", "bad", esc(err.message)); });
+      return;
+    }
+    if (t.closest("#dokumKapat")) { el("dokum").innerHTML = ""; }
   });
 
   // --------------------------------------------------------------- açılış

@@ -415,6 +415,10 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--keys", action="store_true", help="VAPID anahtarlarini uret/goster")
     ap.add_argument("--test", action="store_true", help="abonelere deneme bildirimi gonder")
+    ap.add_argument("--duyuru", metavar="METIN",
+                    help="antrenorden velilere serbest metin bildirimi gonder")
+    ap.add_argument("--baslik", metavar="METIN", default="Antrenörden duyuru",
+                    help="--duyuru ile gonderilecek bildirimin basligi")
     ap.add_argument("--status", action="store_true",
                     help="abone sayisi, bekleyen olaylar ve kurulum durumunu yaz")
     args = ap.parse_args()
@@ -425,6 +429,30 @@ def main() -> int:
     keys = ensure_keys()
     if args.keys:
         print("VAPID public key:", keys["publicKey"])
+        return 0
+
+    if args.duyuru:
+        # Antrenor panelinden gelen duyuru. Olay kimligi metnin ozetinden
+        # uretilir: ayni metin iki kez gonderilmez, farkli metin engellenmez.
+        metin = args.duyuru.strip()[:300]
+        if not metin:
+            print("Bos duyuru gonderilmedi.")
+            return 1
+        imza = hashlib.sha1(metin.encode("utf-8")).hexdigest()[:10]
+        olay = {
+            "id": "duyuru-" + imza,
+            "age": DEFAULT_AGE,
+            "title": (args.baslik or "Antrenörden duyuru").strip()[:80],
+            "body": metin,
+            "tag": "duyuru-" + imza,
+        }
+        done = read_json(NOTIFIED, {})
+        sent, delivered = send_all([olay], args.dry_run)
+        if not args.dry_run and olay["id"] in delivered:
+            done[olay["id"]] = dt.datetime.now(TZ).isoformat(timespec="seconds")
+            write_json(NOTIFIED, done)
+        # Abone yoksa bu bir hata degil, bilgi: panel "kimseye ulasmadi" yazar.
+        print(f"Duyuru: {sent} gonderim.")
         return 0
 
     if args.test:
