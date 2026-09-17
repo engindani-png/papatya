@@ -251,12 +251,63 @@ def send_all(events: list[dict], dry: bool) -> int:
     return sent
 
 
+def status() -> int:
+    """Kurulum dogru mu, kac abone var, hangi bildirimler bekliyor."""
+    print(f"Durum dizini : {STATE_DIR}  ({'var' if STATE_DIR.exists() else 'YOK'})")
+    print(f"Veri dizini  : {DATA_DIR}  ({'var' if DATA_DIR.exists() else 'YOK'})")
+
+    try:
+        import pywebpush  # noqa: F401
+        print("pywebpush    : kurulu")
+    except ImportError:
+        print("pywebpush    : KURULU DEGIL  ->  pip3 install pywebpush")
+
+    print(f"VAPID anahtar: {'var' if VAPID_PEM.exists() else 'YOK (ilk calismada uretilir)'}")
+
+    subs = read_json(SUBS, [])
+    print(f"Abone        : {len(subs)}")
+    yas = {}
+    for s_ in subs:
+        for a in (s_.get("ages") or [DEFAULT_AGE]):
+            yas[a] = yas.get(a, 0) + 1
+    if yas:
+        print("               " + ", ".join(f"{k}: {v}" for k, v in sorted(yas.items())))
+
+    leagues = load_leagues()
+    if not leagues:
+        print("Lig verisi   : OKUNAMADI")
+        return 1
+    print(f"Lig verisi   : {len(leagues)} yas grubu")
+
+    done = read_json(NOTIFIED, {})
+    bekleyen, gonderilmis = [], 0
+    for age, league in leagues:
+        for e in build_events(league, age):
+            if e["id"] in done:
+                gonderilmis += 1
+            else:
+                bekleyen.append(e)
+
+    print(f"Gonderilmis  : {gonderilmis} olay")
+    print(f"Bekleyen     : {len(bekleyen)} olay")
+    for e in bekleyen:
+        print(f"   - {e['title']} | {e['body']}")
+    if bekleyen and not subs:
+        print("\nUYARI: Gonderilecek bildirim var ama hic abone yok.")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Evolog mac bildirimleri")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--keys", action="store_true", help="VAPID anahtarlarini uret/goster")
     ap.add_argument("--test", action="store_true", help="abonelere deneme bildirimi gonder")
+    ap.add_argument("--status", action="store_true",
+                    help="abone sayisi, bekleyen olaylar ve kurulum durumunu yaz")
     args = ap.parse_args()
+
+    if args.status:
+        return status()
 
     keys = ensure_keys()
     if args.keys:

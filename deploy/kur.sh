@@ -78,6 +78,8 @@ PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 CRON
 chmod 644 /etc/cron.d/evolog
 
+echo "==> Mac bildirimleri zamanlaniyor"
+bash "$DIR/deploy/bildirim_kur.sh" || echo "!! Bildirim kurulumu atlandi; sonra elle calistirin: bash $DIR/deploy/bildirim_kur.sh"
 if [ -n "$DOMAIN" ]; then
   echo "==> HTTPS sertifikasi aliniyor ($DOMAIN)"
   apt-get install -y -qq certbot python3-certbot-nginx
