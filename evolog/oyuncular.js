@@ -24,8 +24,16 @@
     { k: "assists", ad: "Asist" },
     { k: "steals", ad: "Top çalma" },
     { k: "dk", ad: "Dakika" },
-    { k: "efficiency", ad: "Verimlilik" }
+    // Asagidaki ikisi mac analizinden (oyun akisi + atis haritasi) geliyor:
+    // boxscore'da olmayan iki sey, sahadayken skor farki ve sut isabeti.
+    { k: "pm", ad: "Sahadayken fark" },
+    { k: "isabetYuzde", ad: "Şut isabeti %" }
   ];
+
+  // Saha olculeri (atis haritasi) — mac analizi ekraniyla ayni.
+  var SAHA = { boy: 14, en: 15, potaX: 1.575, boyaBoy: 5.8, boyaEn: 2.45,
+               serbestR: 1.8, ucR: 6.75, ucKose: 6.6, ucKoseX: 2.99 };
+  var BIRIM_X = 0.28, BIRIM_Y = 0.15;
 
   var SIRALAMA = [
     { k: "points", ad: "Sayı" },
@@ -86,6 +94,7 @@
       fetch("/data/" + AGE + "/team.json", { cache: "no-store" }).then(function (r) { return r.json(); })
     ]).then(function (res) {
       var lig = res[0], takim = res[1];
+      durum.lig = lig;
       (takim.players || []).forEach(function (p) { durum.kadro[(p.name || "").toLowerCase()] = p; });
 
       var maclar = (lig.fixtures || []).filter(function (f) {
@@ -131,7 +140,79 @@
         return o;
       });
       durum.toplamMac = maclar.length;
+      return analizleriIsle(maclar);
     });
+  }
+
+  /** Mac analizi dosyalarindan oyuncuya: gercek sure, +/-, atislar. */
+  function analizleriIsle(maclar) {
+    var analizli = (durum.lig.analiz || []);
+    var istenen = maclar.filter(function (f) { return analizli.indexOf(f.matchId) !== -1; });
+    return Promise.all(istenen.map(function (f) {
+      return fetch("/data/" + AGE + "/analiz/" + f.matchId + ".json", { cache: "no-store" })
+        .then(function (r) { return r.json(); })
+        .then(function (a) { return { fix: f, analiz: a }; })
+        .catch(function () { return null; });
+    })).then(function (liste) {
+      liste.filter(Boolean).forEach(function (kayit) {
+        var taraf = kayit.fix.isHome ? "home" : "away";
+        var sureler = (kayit.analiz.players || {})[taraf] || {};
+        var atislar = (kayit.analiz.shots || {})[taraf] || [];
+        durum.oyuncular.forEach(function (o) {
+          var mac = o.maclar.filter(function (m) { return m.date === kayit.fix.date; })[0];
+          if (!mac || o.no == null) return;
+          var s2 = sureler[String(o.no)];
+          if (s2) {
+            mac.pm = s2.pm;
+            mac.gercekDk = s2.sec / 60;
+          }
+          var kendi = atislar.filter(function (x) { return String(x[4]) === String(o.no); });
+          if (kendi.length) {
+            mac.sut = kendi.length;
+            mac.isabet = kendi.filter(function (x) { return x[3]; }).length;
+            mac.isabetYuzde = Math.round((100 * mac.isabet) / kendi.length);
+            o.atislar = (o.atislar || []).concat(kendi);
+          }
+        });
+      });
+      durum.oyuncular.forEach(function (o) {
+        OLCUTLER.forEach(function (m) {
+          var degerler = o.maclar.map(function (x) { return x[m.k]; })
+            .filter(function (v) { return typeof v === "number"; });
+          o.ort[m.k] = degerler.length ? ortalama(degerler) : 0;
+        });
+      });
+    });
+  }
+
+  /** Oyuncunun butun maclardaki atislari tek yari sahada. */
+  function atisHaritasi(atislar) {
+    var m2p = 18, W = SAHA.en * m2p, H = SAHA.boy * m2p;
+    function px(y) { return (y + SAHA.en / 2) * m2p; }
+    function py(x) { return x * m2p; }
+    var r = SAHA.ucR * m2p;
+    var ciz = ['<rect x="0" y="0" width="' + W + '" height="' + H +
+      '" fill="none" stroke="rgba(232,240,236,.18)"/>',
+      '<rect x="' + px(-SAHA.boyaEn) + '" y="0" width="' + (SAHA.boyaEn * 2 * m2p) +
+      '" height="' + py(SAHA.boyaBoy) + '" fill="none" stroke="rgba(232,240,236,.18)"/>',
+      '<circle cx="' + px(0) + '" cy="' + py(SAHA.boyaBoy) + '" r="' + (SAHA.serbestR * m2p) +
+      '" fill="none" stroke="rgba(232,240,236,.18)"/>',
+      '<circle cx="' + px(0) + '" cy="' + py(SAHA.potaX) + '" r="' + (0.225 * m2p) +
+      '" fill="none" stroke="rgba(232,240,236,.3)"/>',
+      '<path d="M ' + px(-SAHA.ucKose) + " " + py(SAHA.ucKoseX) + " A " + r + " " + r +
+      " 0 0 0 " + px(SAHA.ucKose) + " " + py(SAHA.ucKoseX) +
+      '" fill="none" stroke="rgba(232,240,236,.18)"/>'];
+    var isabet = 0;
+    (atislar || []).forEach(function (s3) {
+      if (s3[3]) isabet++;
+      var X = px((s3[1] - 50) * BIRIM_Y).toFixed(1), Y = py(s3[0] * BIRIM_X).toFixed(1);
+      ciz.push(s3[3]
+        ? '<circle cx="' + X + '" cy="' + Y + '" r="4.5" fill="#f2a33c"/>'
+        : '<circle cx="' + X + '" cy="' + Y + '" r="4.5" fill="none" ' +
+          'stroke="rgba(232,240,236,.42)" stroke-width="1.4"/>');
+    });
+    return { svg: '<svg viewBox="0 0 ' + W + " " + H + '" role="img">' + ciz.join("") + "</svg>",
+             isabet: isabet, deneme: (atislar || []).length };
   }
 
   // ------------------------------------------------------------- grafik
@@ -248,7 +329,7 @@
 
     var tiles = '<div class="tiles">' +
       [["dk", "Dakika"], ["points", "Sayı"], ["rebounds", "Ribaund"],
-       ["assists", "Asist"], ["steals", "Top çalma"], ["turnovers", "Top kaybı"]]
+       ["assists", "Asist"], ["steals", "Top çalma"], ["pm", "Sahadayken fark"]]
         .map(function (t) {
           return '<div class="tile"><b>' + bir(ortalama(ml.map(function (m) { return m[t[0]]; }))) +
             "</b><span>" + t[1] + " ort</span></div>";
@@ -261,20 +342,31 @@
         : "") +
       OLCUTLER.map(function (m) { return grafikKutu(m, o); }).join("");
 
+    var harita = o.atislar && o.atislar.length ? atisHaritasi(o.atislar) : null;
+    var sahaBolumu = harita
+      ? "<h2>Atış haritası</h2>" +
+        '<div class="chart" style="padding:.5rem">' + harita.svg + "</div>" +
+        '<p class="hint" style="margin-top:-.3rem">' + harita.isabet + "/" + harita.deneme +
+        " · %" + Math.round((100 * harita.isabet) / harita.deneme) +
+        ". Dolu daire isabet, boş halka ıska; bütün maçlar üst üste.</p>"
+      : "";
+
     var tablo = "<h2>Maç maç</h2>" +
       '<div class="mtable"><table><thead><tr><th>Maç</th><th>Dk</th><th>Sayı</th><th>Rib</th>' +
-      "<th>Ast</th><th>Çal</th><th>Blok</th><th>Kayıp</th><th>Faul</th><th>+/–</th></tr></thead><tbody>" +
+      "<th>Ast</th><th>Çal</th><th>Şut</th><th>Kayıp</th><th>Faul</th><th>+/–</th></tr></thead><tbody>" +
       ml.slice().reverse().map(function (m) {
         return "<tr><td>" + esc(gunAy(m.date)) + " · " + esc(m.opp) +
           '<div style="color:var(--chalk-faint);font-size:.75rem">' + esc(m.sonuc) +
           (m.starter ? " · ilk beş" : "") + "</div></td>" +
           "<td>" + esc(m.min || bir(m.dk)) + "</td><td><b>" + m.points + "</b></td><td>" + m.rebounds +
-          "</td><td>" + m.assists + "</td><td>" + m.steals + "</td><td>" + m.blocks +
+          "</td><td>" + m.assists + "</td><td>" + m.steals + "</td><td>" +
+          (m.sut ? m.isabet + "/" + m.sut : "–") +
           "</td><td>" + m.turnovers + "</td><td>" + m.fouls + "</td><td>" +
-          esc(m.plusMinus == null ? "" : m.plusMinus) + "</td></tr>";
+          esc(m.pm != null ? (m.pm > 0 ? "+" + m.pm : m.pm)
+                           : (m.plusMinus == null ? "" : m.plusMinus)) + "</td></tr>";
       }).join("") + "</tbody></table></div>";
 
-    el("oyuncuIcerik").innerHTML = kunye + tiles + grafikler + tablo;
+    el("oyuncuIcerik").innerHTML = kunye + tiles + grafikler + sahaBolumu + tablo;
     el("listeGorunum").hidden = true;
     el("oyuncuGorunum").hidden = false;
     window.scrollTo({ top: 0, behavior: "auto" });
