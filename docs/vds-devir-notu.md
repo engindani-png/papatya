@@ -1,89 +1,98 @@
-# VDS devir notu — 17 Eylül 2026
+# VDS durum notu — 17 Eylül 2026 (akşam)
 
-Bu dosya, **bilgisayarındaki Claude CLI oturumunun** işi devralması için yazıldı.
-Bulut oturumunun ağı VDS'e ve `tbf.org.tr`'ye kapalı; senin ağın açık.
-
-Kullanıcı Türkçe konuşuyor.
+Bulut oturumunun bıraktığı devir notu, yerel CLI oturumunda uygulandı.
+Aşağıdaki maddeler **yapıldı**; sonda açık kalanlar var.
 
 ## Sistem
 
 | | |
 |---|---|
 | Repo | `github.com/engindani-png/papatya`, dal `master` |
-| Canlı site | https://evolog.213-159-6-115.sslip.io/evolog/ |
+| Canlı site | https://evologsiyah.com/evolog/ · https://evolog.213-159-6-115.sslip.io/evolog/ |
 | VDS | `213.159.6.115` · uygulama `/var/www/evolog` · durum `/var/lib/evolog` |
-| Kullanıcılar | Veliler. PWA olarak telefonlarına kurulu. |
+| Zamanlayıcı | `evolog-sync.timer` — saat başı: `git reset --hard origin/master` → `tbf_sync.py` → `evolog_push.py` |
+| Kullanıcılar | Veliler. PWA olarak telefonlarına kurulu. 9 abone. |
 
-Veri akışı: TBF → `scripts/tbf_sync.py` → `data/<yaş>/league.json` → git →
-VDS'te cron `git pull` → nginx. Bildirimler `server/evolog_push.py`.
+Zinciri yürüten script: `deploy/evolog-sync.sh` (VDS'te `/usr/local/bin/evolog-sync.sh`).
 
-## Bugün yapılanlar (push'landı, son commit `5fb0185`)
+## A. Bildirimler — ÇÖZÜLDÜ
 
-1. **Maç düzeltmesi.** Eyüpsultan Belediyesi – Evolog (U14, 2. hafta)
-   **23 Eylül Çarşamba 20:00**'ye alındı (önceki: 3 Ekim Cumartesi 18:30).
-   `data/u14/overrides.json` içinde; senkronizasyon ezmez.
+Devir notundaki teşhis ("cron yalnızca git pull yapıyordu, push hiç
+çalıştırılmadı") **yanlıştı**: `evolog-sync.sh` bildirim betiğini saat başı
+zaten çağırıyordu. Bildirimlerin gitmemesinin gerçek sebebi bir kod hatası:
 
-2. **Sahte tarih tespiti.** TBF fikstür servisi ilan edilmemiş maçlar için
-   gerçek tarih yerine dolgu döndürüyor: her üç yaş grubunda da maçlar tam
-   **9 gün arayla ve hep aynı saatte** diziliyor (U14'te 22 maçın 21'i 18:30).
-   Her takımda **20/22 maç** bu durumda. `scripts/local_edits.py` bunları
-   bulup `dateConfirmed=false` işaretliyor; uygulama o maçlarda gün/saat
-   yerine "TBF'de kesinleşmedi" gösteriyor ve **geri sayımı yalnızca tarihi
-   kesin maça** yapıyor.
-
-3. **Değişiklik bildirimi.** `server/evolog_push.py` artık gün/saat
-   değişikliğinde bildirim üretiyor. `--status` teşhis modu eklendi.
-
-## Yapılacak
-
-### A. Bildirimleri ayağa kaldır (acil)
-
-**Bulgu:** VDS'teki cron şimdiye kadar yalnızca `git pull` yapıyordu;
-`server/evolog_push.py` **hiç çalıştırılmamış**. Bu yüzden bugüne kadar
-hiçbir push gitmemiş (maç sonuçları dahil).
-
-```bash
-cd /var/www/evolog && git pull && bash deploy/bildirim_kur.sh
+```
+ValueError: Could not deserialize key data ... ASN.1 parsing error: invalid length
 ```
 
-Script pywebpush'u bulur/kurar, 5 dakikalık cron'u yazar, bekleyenleri
-gönderir. `notified.json` sayesinde aynı bildirim ikinci kez gitmez.
+`pywebpush`'a VAPID özel anahtarı **PEM metni** olarak veriliyordu; `py_vapid`
+metni ham DER sanıp her abonede çöküyordu. Sunucuda ölçüldü:
+`Vapid.from_string(pem)` → hata, `Vapid.from_file(yol)` → OK. Anahtar artık
+dosya yolu olarak geçiliyor (commit `78ff0ed`).
 
-Çıktıdaki `--status` satırlarını kullanıcıya raporla: abone sayısı,
-bekleyen/gönderilmiş olaylar, pywebpush ve VAPID durumu.
+İkinci hata: gönderim başarısız olsa bile olay `notified.json`'a "gönderildi"
+yazılıyordu, yani hata kalıcı oluyordu. Artık yalnızca en az bir aboneye
+ulaşan olay işaretleniyor.
 
-### B. Canlıyı doğrula
+**Sonuç:** 17 Eylül 19:00'da maç değişikliği bildirimi **9 aboneye gitti**,
+1 geçersiz abonelik listeden düşürüldü.
 
-```bash
-curl -s https://evolog.213-159-6-115.sslip.io/data/u14/league.json \
-  | python3 -c "import sys,json;f=[x for x in json.load(sys.stdin)['fixtures'] if str(x.get('matchId'))=='346858'];print(f[0]['date'],f[0]['time'],f[0].get('dateConfirmed'))"
-# beklenen: 2026-09-23 20:00 True
+> `deploy/bildirim_kur.sh` çalıştırılmadı: 5 dakikalık ikinci bir cron,
+> `evolog-sync.timer` ile aynı `notified.json` üzerinde yarışırdı. Script
+> artık timer'ı görürse cron yazmıyor, yalnızca durum raporluyor.
 
-curl -s https://evolog.213-159-6-115.sslip.io/evolog/sw.js | head -2
-# beklenen: CACHE = "evolog-v16"
-```
+## B. Canlı doğrulama — TAMAM
 
-Site eski veriyi veriyorsa VDS'te `git pull` cron'u çalışmıyor demektir
-(`/etc/cron.d/evolog`).
+| Kontrol | Sonuç |
+|---|---|
+| `sw.js` | `CACHE = "evolog-v16"` (her iki alan adında) |
+| `data/u14/league.json` → 346858 | `2026-09-23 20:00`, `dateConfirmed: true` |
+| Kesinleşmemiş maç | 20 (her üç yaş grubunda da 20/22) |
 
-### C. Duyurunun kaynağı (kullanıcının asıl sorusu)
+VDS'in bir süre eski veri göstermesinin sebebi arıza değildi: commit'ler
+18:22–18:31'de push'landı, son senkron 18:10'daydı. `git fetch` sağlıklı.
 
-Maç saatinin değiştiği duyurusu TBF'de nerede yayınlandı? Senin ağın
-`tbf.org.tr`'ye erişebiliyor.
+## C. Duyurunun kaynağı — TBF'de yok (araştırma tamamlandı)
 
-- Lig `22859`, takım `269325`, maç `346858`
-- API: `https://miniappapi.tbf.org.tr/webapi-service` (bkz. `scripts/tbf_config.json`)
+TBF'nin Nuxt paketinden **tüm API uçları** çıkarılıp denendi. Erteleme/duyuru
+verisi hiçbirinde yok:
 
-Duyuru/erteleme bilgisi düzenli çekilebiliyorsa `tbf_sync.py`'ye bağla;
-o zaman değişiklikler elle girilmeden yakalanır ve bildirim kendiliğinden
-gider. Ayrıca **B maddesindeki sahte tarihlerin** gerçeği API'de başka bir
-uçta duruyor olabilir — bulunursa `dateConfirmed` tahmini yerine gerçek
-takvim kullanılır, bu en değerli düzeltme olur.
+| Uç | Sonuç |
+|---|---|
+| `Team/get-team-detail-matches-by-season-and-league` | 346858 → hâlâ `2026-10-03T18:30` |
+| `Match/mac-header?matchId=346858` | aynı tarih; duyuru alanı yok |
+| `Altyapilar/news`, `Altyapilar/news-details` | boş liste |
+| `Altyapilar/matches` | filtreleri yok sayıyor, sabit 20 kayıtlık vitrin |
+| `Match/get-daily-matches`, `Match/get-all-matches-for-filter` | yerel lig için boş |
+| `Match/tarih-mac-sayisi` | yalnız üst ligleri sayıyor (14 Eylül'deki maçımız yok) |
 
-### D. Bekleyen
+**Yer tutucu imzası düzeltildi.** Lig genelindeki 132 maç incelendi:
 
-25 Eylül'deki 3. hafta maçı da üretilmiş dizinin içinde; gerçek gün/saati
-öğrenilirse `data/u14/overrides.json`'a eklenmeli.
+- 1. ve 2. hafta maçlarının saatleri maç maç farklı (11:30 / 16:00 / 18:00 /
+  20:00) → bunlar **gerçek, ilan edilmiş** tarihler.
+- 3. haftadan itibaren haftanın **altı maçı da aynı gün ve aynı saatte**
+  (25 Eylül 18:30 gibi) → yer tutucu.
+
+Yani dolgunun asıl imzası "aynı haftanın tüm maçları aynı gün+saat".
+`scripts/local_edits.py` takım bazlı 9 gün + aynı saat kuralını kullanıyor;
+u14/u16/u18'de aynı sonucu veriyor (20/22), ama lig geneline bakan kural daha
+sağlam olur — ileride iyileştirilebilir.
+
+**Çelişki (kullanıcıya bildirildi):** TBF, 346858 için hâlâ *3 Ekim 18:30*
+diyor; kulüpten gelen bilgi *23 Eylül 20:00*. Velilere kulüp bilgisi gönderildi
+(`overrides.json` kesin bilgidir). TBF kaydını sonradan düzeltirse senkron
+bunu görür; override durduğu sürece velilere yanlış tarih gitmez.
+
+**İyi haber:** TBF bir maçın gerçek tarihini yayınladığında API'de görünüyor
+(1. ve 2. hafta böyle). Değişiklik bildirimi artık çalıştığı için, elle
+girmeye gerek kalmadan velilere kendiliğinden gidecek.
+
+## D. Açık kalanlar
+
+1. **25 Eylül (3. hafta, `346867`)** — TBF'de hâlâ yer tutucu (25 Eylül 18:30,
+   ligin altı maçı da aynı saatte). Kulüpten kesin gün/saat gelince
+   `data/u14/overrides.json`'a eklenmeli; bildirim kendiliğinden gider.
+2. `346858` için TBF kaydı 3 Ekim'de kalırsa kulüple teyit edilmeli.
 
 ## Kurallar
 

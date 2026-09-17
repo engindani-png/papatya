@@ -4,10 +4,12 @@
 # VDS'te root olarak:
 #   bash /var/www/evolog/deploy/bildirim_kur.sh
 #
-# Neden gerekli: kurulum cron'u yalnizca depoyu cekiyordu; bildirim scripti
-# hic calistirilmiyordu. Bu script onu 5 dakikalik cron'a baglar.
+# Yalnizca zamanlayici YOKSA gereklidir. Mevcut VDS'te bildirim zaten
+# evolog-sync.timer icinde (saat basi) calisiyor; o durumda bu script cron
+# YAZMAZ, sadece durumu raporlar. Iki zamanlayici ayni anda calisirsa
+# notified.json uzerinde yarisirlar.
 # evolog_push.py gonderdigi her olayi notified.json'a yazar, ayni bildirim
-# ikinci kez gitmez - cron guvenle sik calisabilir.
+# ikinci kez gitmez - zamanlayici guvenle sik calisabilir.
 
 set -euo pipefail
 
@@ -41,6 +43,16 @@ mkdir -p "$STATE"
 
 echo "==> Durum"
 EVOLOG_STATE_DIR="$STATE" "$PY" "$PUSH" --status || true
+
+# Zaten zamanlanmis mi? (VDS'teki kurulum: evolog-sync.timer saat basi
+# depoyu tazeler, TBF'den ceker ve bildirimi gonderir.)
+if systemctl is-enabled evolog-sync.timer >/dev/null 2>&1; then
+  echo
+  echo "evolog-sync.timer kurulu: bildirim saat basi zaten gonderiliyor."
+  echo "Ikinci bir zamanlayici kurulmadi. Bekleyenleri simdi gondermek icin:"
+  echo "  systemctl start evolog-sync"
+  exit 0
+fi
 
 echo
 echo "==> Cron kuruluyor (5 dakikada bir)"

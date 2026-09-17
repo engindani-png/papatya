@@ -6,17 +6,24 @@ gerekmez — herhangi bir web sunucusu yeter.
 ## Nasıl çalışıyor
 
 ```
-  Sizin bilgisayarınız                GitHub                    VDS
-  ────────────────────                ──────                    ───
-  yerel_guncelle.sh                                      nginx (siteyi yayınlar)
-  → TBF'den çeker         ──push──▶  data/league.json  ──▶ cron her 5 dk'da
-  (Türkiye bağlantısı)                                      git pull yapar
+  GitHub (kaynak kod)              VDS 213.159.6.115
+  ───────────────────              ─────────────────
+  master dalı        ──git──▶  evolog-sync.timer (saatte bir)
+                                 1. git fetch + reset --hard origin/master
+                                 2. scripts/tbf_sync.py  → TBF'den veri
+                                 3. server/evolog_push.py → veli bildirimi
+                                        │
+                                   nginx /var/www/evolog
 ```
 
-Veriyi **sizin bilgisayarınız** çeker, çünkü TBF veri merkezi IP'lerini
-403 ile engelliyor (ölçüldü: GitHub Actions'tan hem düz HTTP hem gerçek
-Chromium reddedildi). VDS yalnızca siteyi yayınlar — orada TBF'ye istek
-atılmaz, dolayısıyla engel sorun olmaz.
+Zinciri `deploy/evolog-sync.sh` yürütür; VDS'te `/usr/local/bin/evolog-sync.sh`
+olarak durur ve `evolog-sync.timer` saat başı tetikler. **TBF'ye VDS'ten
+erişiliyor** (ölçüldü, 17 Eylül 2026: `miniappapi.tbf.org.tr` sunucudan
+sorunsuz yanıt veriyor) — veriyi çekmek için ev bilgisayarı gerekmiyor.
+Yalnızca kod değişikliği push'lanır; veri dosyalarını sunucu kendisi üretir.
+
+Durum dosyaları (abonelikler, gönderilmiş bildirimler, VAPID anahtarı)
+`/var/lib/evolog` altındadır ve depoya girmez.
 
 ## Seçenek 1 — VDS (kendi sunucunuz)
 
@@ -57,8 +64,13 @@ Maçtan sonra, depo klasöründe:
 ./scripts/yerel_guncelle.sh          # Windows: scripts\yerel_guncelle.cmd
 ```
 
-TBF'den çeker, `data/league.json` dosyasını günceller, commit'leyip
-push'lar. VDS 5 dakika içinde, GitHub Pages ise hemen yeni veriyi gösterir.
+TBF'den çeker, `data/<yaş>/league.json` dosyalarını günceller, commit'leyip
+push'lar. Normalde gerekmez: VDS zaten saat başı kendisi çekiyor. GitHub
+Pages kullanıyorsanız veri ancak bu yolla güncellenir.
+
+Maç günü/saati kulüpten kesin olarak bildirildiyse `data/<yaş>/overrides.json`
+dosyasına yazın; senkronizasyon bunu asla ezmez ve değişiklik velilere
+bildirim olarak gider.
 
 ## Kendi bilgisayarınızda Claude Code
 
