@@ -76,6 +76,24 @@
 .ptab td b{font-family:var(--display);font-weight:600;color:var(--chalk)}
 .ptab td.pm.arti{color:var(--win)}
 .ptab td.pm.eksi{color:var(--loss)}
+
+/* --- verimlilik olcumleri --- */
+.olcumler{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin:.2rem 0 .8rem}
+.olcum{border:1px solid var(--line);padding:.55rem .45rem;text-align:center}
+.olcum b{display:block;font-family:var(--display);font-weight:600;font-size:1.35rem;line-height:1.1}
+.olcum span{display:block;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--chalk-faint);margin-top:.25rem}
+.olcum small{display:block;font-size:.66rem;color:var(--chalk-faint);opacity:.8;margin-top:.15rem}
+.ff{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:.4rem}
+.ff th{text-align:right;font-family:var(--display);font-weight:600;font-size:.66rem;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--chalk-faint);
+  border-bottom:1px solid var(--line);padding:.4rem .3rem}
+.ff th:first-child,.ff td:first-child{text-align:left}
+.ff td{border-bottom:1px solid var(--line-soft);padding:.5rem .3rem;text-align:right;
+  color:var(--chalk-dim)}
+.ff td b{font-family:var(--display);font-weight:600;color:var(--chalk)}
+.ff .ffa{font-size:.7rem;color:var(--chalk-faint);margin-top:.15rem;line-height:1.4}
+.ptab td small{color:var(--chalk-faint);font-size:.75rem}
 </style>
 </head>
 <body>
@@ -107,6 +125,7 @@
 </div>
 
 <script src="panel-auth.js"></script>
+<script src="panel-analiz.js"></script>
 <script src="macanaliz.js"></script>
 </body>
 </html>

@@ -69,6 +69,12 @@
         return [f[0], bizEv ? f[1] : f[2], bizEv ? f[2] : f[1]];
       }),
       turnovers: (a.turnovers || {})[b] || {},
+      asist: (a.asist || {})[b] || null,
+      kayiptan: (a.kayiptan || {})[b] || null,
+      kayiptanBiz: (a.kayiptan || {})[r] || null,
+      besli: (a.besli || {})[b] || null,
+      faul: (a.faul || {})[b] || null,
+      faulRakip: (a.faul || {})[r] || null,
       shotTypes: (a.shotTypes || {})[b] || {},
       players: (a.players || {})[b] || {},
       run: (a.run || {})[b] || [0, ""],
@@ -274,6 +280,10 @@
         harita.isabet + "/" + harita.deneme + " · %" + yuzde(harita.isabet, harita.deneme) +
         ". İkinci yarının koordinatları saha değişimi için aynalandı.</p>" +
 
+      verimlilikBolumu(a) +
+
+      faulBolumu(a) +
+
       dokum("Top kaybı nerede", a.turnovers, false) +
       dokum("Şut tipine göre", a.shotTypes, true) +
 
@@ -286,6 +296,123 @@
       }).join("") + "</tbody></table>" +
       '<p class="aciklama">Süre ve +/– oyun akışındaki değişikliklerden hesaplandı; ' +
         "TBF'nin kendi değerleriyle karşılaştırılıp doğrulandı.</p>";
+  }
+
+  /** Pozisyon bazlı verimlilik, dört faktör, kayıptan sayı, asist, beşliler. */
+  function verimlilikBolumu(a) {
+    var A2 = window.EvologAnaliz;
+    var biz = a.team.biz, rakip = a.team.rakip;
+    var poz = A2.pozisyon(biz), pozR = A2.pozisyon(rakip);
+    if (!poz || !pozR) return "";
+    var tempo = A2.tempo(biz, rakip);
+
+    var asist = a.asist
+      ? '<div class="olcum"><b>%' + yuzde(a.asist.asistli, a.asist.basket) + "</b>" +
+        "<span>Asistli basket</span><small>" + a.asist.asistli + "/" + a.asist.basket +
+        "</small></div>"
+      : "";
+    var kayip = a.kayiptan
+      ? '<div class="olcum"><b>' + a.kayiptan.yenilen + "</b>" +
+        "<span>Kayıptan yenilen</span><small>" + a.kayiptan.kayip + " kayıpta</small></div>"
+      : "";
+    var kazanc = a.kayiptanBiz
+      ? '<div class="olcum"><b>' + a.kayiptanBiz.yenilen + "</b>" +
+        "<span>Kayıptan bulduğumuz</span><small>rakip " + a.kayiptanBiz.kayip +
+        " kayıp</small></div>"
+      : "";
+
+    var ciftler = (a.asist && a.asist.ciftler && a.asist.ciftler.length)
+      ? '<p class="aciklama">En sık asist: ' + a.asist.ciftler.slice(0, 4).map(function (c) {
+          return c[0] + " → " + c[1] + (c[2] > 1 ? " (" + c[2] + ")" : "");
+        }).join(" · ") + " (forma numaraları).</p>"
+      : "";
+
+    var besliler = (a.besli && a.besli.lineups && a.besli.lineups.length)
+      ? "<h2>Beşliler</h2>" +
+        '<table class="ptab"><thead><tr><th>Sahadaki beş</th><th>Süre</th><th>Fark</th>' +
+        "</tr></thead><tbody>" +
+        a.besli.lineups.map(function (l) {
+          var fark = l.lehte - l.aleyhte;
+          return "<tr><td>" + l.p.join(" · ") + "</td><td>" + (l.sec / 60).toFixed(1) +
+            ' dk</td><td class="pm ' + (fark > 0 ? "arti" : fark < 0 ? "eksi" : "") + '">' +
+            (fark > 0 ? "+" : "") + fark + " <small>(" + l.lehte + "-" + l.aleyhte +
+            ")</small></td></tr>";
+        }).join("") + "</tbody></table>" +
+        '<p class="aciklama">Oyuncu değişikliklerinden yeniden kurulan beşliler; ' +
+        "30 saniyeden kısa duran kombinasyonlar gösterilmiyor.</p>"
+      : "";
+
+    var kullanim = (a.besli && a.besli.usage)
+      ? "<h2>Şut payı</h2>" +
+        '<table class="ptab"><thead><tr><th>Forma</th><th>Kendi şutu</th>' +
+        "<th>Sahadayken takım</th><th>Pay</th></tr></thead><tbody>" +
+        Object.keys(a.besli.usage).map(function (no) {
+          return { no: no, v: a.besli.usage[no] };
+        }).filter(function (x) { return x.v.fga; })
+          .sort(function (x, y) { return (y.v.fga / y.v.takim) - (x.v.fga / x.v.takim); })
+          .map(function (x) {
+            return "<tr><td><b>" + esc(x.no) + "</b></td><td>" + x.v.fga + "</td>" +
+              "<td>" + x.v.takim + "</td><td><b>%" + yuzde(x.v.fga, x.v.takim) +
+              "</b></td></tr>";
+          }).join("") + "</tbody></table>" +
+        '<p class="aciklama">Oyuncu sahadayken takımın attığı şutların yüzde kaçını ' +
+        "kendisi kullandı (usage). Sayı ortalamasından bağımsız bir yük ölçüsü.</p>"
+      : "";
+
+    return "<h2>Verimlilik</h2>" +
+      '<div class="olcumler">' +
+        '<div class="olcum"><b>' + Math.round(A2.rating(a.score[0], poz)) + "</b>" +
+          "<span>Hücum ratingi</span><small>100 pozisyonda</small></div>" +
+        '<div class="olcum"><b>' + Math.round(A2.rating(a.score[1], pozR)) + "</b>" +
+          "<span>Savunma ratingi</span><small>100 pozisyonda</small></div>" +
+        '<div class="olcum"><b>' + Math.round(tempo) + "</b>" +
+          "<span>Tempo</span><small>maçtaki pozisyon</small></div>" +
+        asist + kayip + kazanc +
+      "</div>" + ciftler +
+      A2.dortFaktorTablosu(biz, rakip, "Biz", "Rakip") +
+      '<p class="aciklama">Dört faktör, kazanmayı en çok açıklayan dört orandır. ' +
+      "Pozisyon tahmini: şut denemesi − hücum ribaundu + top kaybı + 0,44 × serbest atış.</p>" +
+      besliler + kullanim;
+  }
+
+  /** Faul: kim yaptı, kim aldırdı, hangi çeyrekte. Boxscore yalnız toplamı
+   *  veriyor; zamanlama ve faul aldıran oyuncu yalnız oyun akışında var. */
+  function faulBolumu(a) {
+    var f = a.faul;
+    if (!f) return "";
+    var yapan = Object.keys(f.yapan || {}).map(function (no) {
+      return { no: no, n: f.yapan[no] };
+    }).sort(function (x, y) { return y.n - x.n; });
+    var aldiran = Object.keys(f.aldiran || {}).map(function (no) {
+      return { no: no, n: f.aldiran[no] };
+    }).sort(function (x, y) { return y.n - x.n; });
+    var toplam = yapan.reduce(function (t, x) { return t + x.n; }, 0);
+    var rakipToplam = a.faulRakip
+      ? Object.keys(a.faulRakip.yapan || {}).reduce(function (t, k) {
+          return t + a.faulRakip.yapan[k];
+        }, 0)
+      : 0;
+
+    return "<h2>Faul</h2>" +
+      '<div class="olcumler">' +
+        '<div class="olcum"><b>' + toplam + "</b><span>Yaptığımız faul</span>" +
+          "<small>çeyrek: " + (f.ceyrek || []).join(" · ") + "</small></div>" +
+        '<div class="olcum"><b>' + rakipToplam + "</b><span>Rakip faulü</span>" +
+          "<small>" + (a.faulRakip ? (a.faulRakip.ceyrek || []).join(" · ") : "") +
+          "</small></div>" +
+        '<div class="olcum"><b>' + (f.hucum || 0) + "</b><span>Hücum faulü</span>" +
+          "<small>kendi yaptığımız</small></div>" +
+      "</div>" +
+      (aldiran.length
+        ? '<p class="aciklama"><b>Faul aldıranlar:</b> ' + aldiran.slice(0, 5).map(function (x) {
+            return x.no + " (" + x.n + ")";
+          }).join(" · ") + ". Serbest atışa giden oyuncu, savunmayı zorlayan oyuncudur.</p>"
+        : "") +
+      (yapan.length
+        ? '<p class="aciklama"><b>Faul yapanlar:</b> ' + yapan.slice(0, 5).map(function (x) {
+            return x.no + " (" + x.n + ")";
+          }).join(" · ") + ".</p>"
+        : "");
   }
 
   function macSec(m) {

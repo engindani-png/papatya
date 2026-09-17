@@ -117,7 +117,11 @@
       run: (a.run || {})[b] || [0, ""],
       team: (a.team || {})[b] || {},
       karsi: (a.team || {})[r] || {},
-      box: (a.box || {})[b] || []
+      box: (a.box || {})[b] || [],
+      karsiAtislar: (a.shots || {})[r] || [],
+      asist: (a.asist || {})[b] || null,
+      kayiptan: (a.kayiptan || {})[b] || null,
+      faul: (a.faul || {})[b] || null
     };
   }
 
@@ -262,6 +266,136 @@
     return satirlar;
   }
 
+  /** Pozisyon bazlı profil + dört faktör + neyi verdiği (savunma profili). */
+  function verimlilikBolumu(analizler) {
+    var A2 = window.EvologAnaliz;
+    var poz = 0, pozR = 0, atilan = 0, yenilen = 0, n = 0;
+    analizler.forEach(function (a) {
+      var p1 = A2.pozisyon(a.team), p2 = A2.pozisyon(a.karsi);
+      if (!p1 || !p2) return;
+      poz += p1; pozR += p2; atilan += a.score[0]; yenilen += a.score[1]; n++;
+    });
+    if (!n) return "";
+
+    // Dört faktörü maçlar boyunca toplayıp tek takım özeti gibi hesaplıyoruz.
+    function topla(secici) {
+      var t = { iki: [0, 0], uc: [0, 0], sa: [0, 0], hucumRib: 0, savunmaRib: 0,
+                topKaybi: 0, rib: 0, asist: 0 };
+      analizler.forEach(function (a) {
+        var k = secici(a);
+        ["iki", "uc", "sa"].forEach(function (alan) {
+          t[alan][0] += ((k[alan] || [])[0] || 0);
+          t[alan][1] += ((k[alan] || [])[1] || 0);
+        });
+        ["hucumRib", "savunmaRib", "topKaybi", "rib", "asist"].forEach(function (alan) {
+          t[alan] += (k[alan] || 0);
+        });
+      });
+      return t;
+    }
+    var kendi = topla(function (a) { return a.team; });
+    var karsi = topla(function (a) { return a.karsi; });
+
+    // Savunma profili: rakiplerinin ONA KARŞI attığı şutların bölge dağılımı.
+    var verdigi = { "Boya içi": { d: 0, i: 0 }, "Orta mesafe": { d: 0, i: 0 },
+                    "Üçlük": { d: 0, i: 0 } };
+    analizler.forEach(function (a) {
+      (a.karsiAtislar || []).forEach(function (s2) {
+        var b = bolge(s2);
+        if (!verdigi[b.alan]) return;
+        verdigi[b.alan].d++;
+        if (s2[3]) verdigi[b.alan].i++;
+      });
+    });
+    var verdigiToplam = Object.keys(verdigi).reduce(function (t, k) {
+      return t + verdigi[k].d;
+    }, 0);
+
+    var asistli = 0, basket = 0, kayip = 0, kayiptanYenilen = 0;
+    analizler.forEach(function (a) {
+      if (a.asist) { asistli += a.asist.asistli; basket += a.asist.basket; }
+      if (a.kayiptan) { kayip += a.kayiptan.kayip; kayiptanYenilen += a.kayiptan.yenilen; }
+    });
+
+    return "<h2>Verimlilik</h2>" +
+      '<div class="kutular">' +
+        '<div class="kutu"><b>' + Math.round(A2.rating(atilan, poz)) +
+          "</b><span>Hücum ratingi</span></div>" +
+        '<div class="kutu"><b>' + Math.round(A2.rating(yenilen, pozR)) +
+          "</b><span>Savunma ratingi</span></div>" +
+        '<div class="kutu"><b>' + Math.round((poz + pozR) / (2 * n)) +
+          "</b><span>Tempo</span></div>" +
+        '<div class="kutu"><b>%' + yuzde(asistli, basket) +
+          "</b><span>Asistli basket</span></div>" +
+        '<div class="kutu"><b>' + bir(kayiptanYenilen / n) +
+          "</b><span>Kayıptan yediği</span></div>" +
+        '<div class="kutu"><b>' + bir(kayip / n) +
+          "</b><span>Top kaybı</span></div>" +
+      "</div>" +
+      A2.dortFaktorTablosu(kendi, karsi, "Rakip", "Karşısı") +
+      '<p class="aciklama">' + n + " maçın toplamı üzerinden. Pozisyon tahmini: " +
+      "şut denemesi − hücum ribaundu + top kaybı + 0,44 × serbest atış.</p>" +
+
+      faulProfili(analizler) +
+
+      (verdigiToplam
+        ? "<h2>Neyi veriyor</h2>" +
+          '<table class="bolge"><thead><tr><th>Rakiplerinin attığı</th><th>Deneme</th>' +
+          "<th>İsabet</th><th>Pay</th></tr></thead><tbody>" +
+          Object.keys(verdigi).map(function (k) {
+            var v = verdigi[k];
+            var pay = yuzde(v.d, verdigiToplam);
+            return "<tr" + (v.d && yuzde(v.i, v.d) >= 45 ? ' class="vurgu"' : "") +
+              "><td>" + esc(k) + "</td><td>" + v.d + "</td><td><b>%" +
+              yuzde(v.i, v.d) + "</b></td><td>%" + pay + "</td></tr>";
+          }).join("") + "</tbody></table>" +
+          '<p class="aciklama">Bu takıma karşı oynayanların attığı şutlar. Yüksek ' +
+          "isabet verdiği bölge, bizim arayacağımız bölgedir.</p>"
+        : "");
+  }
+
+  /** Rakibin faul profili: kim faule giriyor, kim faul aldırıyor. */
+  function faulProfili(analizler) {
+    var yapan = {}, aldiran = {}, ceyrek = [0, 0, 0, 0], mac = 0;
+    analizler.forEach(function (a) {
+      if (!a.faul) return;
+      mac++;
+      Object.keys(a.faul.yapan || {}).forEach(function (no) {
+        yapan[no] = (yapan[no] || 0) + a.faul.yapan[no];
+      });
+      Object.keys(a.faul.aldiran || {}).forEach(function (no) {
+        aldiran[no] = (aldiran[no] || 0) + a.faul.aldiran[no];
+      });
+      (a.faul.ceyrek || []).forEach(function (n, i) { ceyrek[i] += n; });
+    });
+    if (!mac) return "";
+    var toplam = Object.keys(yapan).reduce(function (t, k) { return t + yapan[k]; }, 0);
+    var sirala = function (nesne) {
+      return Object.keys(nesne).map(function (no) { return { no: no, n: nesne[no] }; })
+        .sort(function (x, y) { return y.n - x.n; }).slice(0, 5);
+    };
+    var enCokYapan = sirala(yapan), enCokAldiran = sirala(aldiran);
+
+    return "<h2>Faul profili</h2>" +
+      '<div class="kutular">' +
+        '<div class="kutu"><b>' + bir(toplam / mac) + "</b><span>Maç başına faul</span></div>" +
+        '<div class="kutu"><b>' + ceyrek.map(function (n) { return Math.round(n / mac); }).join("·") +
+          "</b><span>Çeyrek dağılımı</span></div>" +
+        '<div class="kutu"><b>' + (enCokYapan[0] ? enCokYapan[0].no : "–") +
+          "</b><span>En çok faul yapan</span></div>" +
+      "</div>" +
+      (enCokYapan.length
+        ? '<p class="aciklama"><b>Faule giren oyuncuları:</b> ' + enCokYapan.map(function (x) {
+            return x.no + " (" + bir(x.n / mac) + "/maç)";
+          }).join(" · ") + ". Bu oyuncuların üstüne gitmek faul yükü yaratır.</p>"
+        : "") +
+      (enCokAldiran.length
+        ? '<p class="aciklama"><b>Faul aldıranları:</b> ' + enCokAldiran.map(function (x) {
+            return x.no + " (" + bir(x.n / mac) + "/maç)";
+          }).join(" · ") + ". Bunlara temassız savunmak gerekiyor.</p>"
+        : "");
+  }
+
   /** Birden çok maçın atışları tek yarı sahada. */
   function atisHaritasi(analizler) {
     var m2p = 20, W = SAHA.en * m2p, H = SAHA.boy * m2p;
@@ -350,6 +484,8 @@
           "</b><span>Top kaybı</span></div>" +
         '<div class="kutu"><b>' + bir(ucDeneme) + "</b><span>Üçlük den.</span></div>" +
       "</div>" +
+
+      verimlilikBolumu(analizler) +
 
       (satirlar.length
         ? "<h2>Taktik okuması</h2><div class=\"okuma\">" + satirlar.map(function (r) {

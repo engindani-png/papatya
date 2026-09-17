@@ -576,7 +576,13 @@ def build(cfg: dict, want_details: bool) -> dict:
                 continue
             dosya = hedef / f"{mid}.json"
             if dosya.exists():
-                continue
+                try:
+                    varolan = json.loads(dosya.read_text(encoding="utf-8"))
+                except ValueError:
+                    varolan = {}
+                # Bicim surumu eskiyse yeniden uret (yeni olcumler eklenmis).
+                if varolan.get("v", 1) >= tbf_analiz.ANALIZ_SURUM:
+                    continue
             if yeni_sayi >= ANALIZ_LIMIT:
                 break
             try:

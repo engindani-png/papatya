@@ -27,7 +27,11 @@
     // Asagidaki ikisi mac analizinden (oyun akisi + atis haritasi) geliyor:
     // boxscore'da olmayan iki sey, sahadayken skor farki ve sut isabeti.
     { k: "pm", ad: "Sahadayken fark" },
-    { k: "isabetYuzde", ad: "Şut isabeti %" }
+    { k: "isabetYuzde", ad: "Şut isabeti %" },
+    // Gelisim takibinde en dürüst iki ölçü: dakikaya normalize üretim ve
+    // sahadayken takımın şutlarının ne kadarını kullandığı.
+    { k: "p36", ad: "36 dakikada sayı" },
+    { k: "usage", ad: "Şut payı %" }
   ];
 
   // Saha olculeri (atis haritasi) — mac analizi ekraniyla ayni.
@@ -166,6 +170,12 @@
             mac.pm = s2.pm;
             mac.gercekDk = s2.sec / 60;
           }
+          var kullanim = ((kayit.analiz.besli || {})[taraf] || {}).usage || {};
+          var u = kullanim[String(o.no)];
+          if (u && u.takim) mac.usage = Math.round((100 * u.fga) / u.takim);
+          var dk = mac.gercekDk || mac.dk;
+          // 4 dakikanin altinda oynamis maci normalize etmek yaniltir.
+          if (dk >= 4) mac.p36 = Math.round((mac.points * 36) / dk * 10) / 10;
           var kendi = atislar.filter(function (x) { return String(x[4]) === String(o.no); });
           if (kendi.length) {
             mac.sut = kendi.length;
@@ -328,8 +338,8 @@
       toplam("assists") + " asist</div></div></div>";
 
     var tiles = '<div class="tiles">' +
-      [["dk", "Dakika"], ["points", "Sayı"], ["rebounds", "Ribaund"],
-       ["assists", "Asist"], ["steals", "Top çalma"], ["pm", "Sahadayken fark"]]
+      [["dk", "Dakika"], ["points", "Sayı"], ["p36", "36 dk'da sayı"],
+       ["usage", "Şut payı %"], ["rebounds", "Ribaund"], ["pm", "Sahadayken fark"]]
         .map(function (t) {
           return '<div class="tile"><b>' + bir(ortalama(ml.map(function (m) { return m[t[0]]; }))) +
             "</b><span>" + t[1] + " ort</span></div>";

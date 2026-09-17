@@ -187,5 +187,74 @@ class NotrTest(unittest.TestCase):
         self.assertEqual(a["box"]["home"][0]["points"], 14)
 
 
+class DerinTest(unittest.TestCase):
+    """Boxscore'da olmayan olcumler: asist agi, kayiptan yenilen, besliler."""
+
+    def test_asist_basketin_ardindaki_olaydan_eslesir(self):
+        ev = [olay(1, "09:00", "2-0", True, "24", "2 Sayı Turnike Başarılı"),
+              olay(1, "09:00", "2-0", True, "0", "Asist"),
+              olay(1, "08:00", "4-0", True, "96", "2 Sayı Turnike Başarılı")]
+        a = A.asist_agi(ev, bizim_ev=True)
+        self.assertEqual(a["basket"], 2)
+        self.assertEqual(a["asistli"], 1)
+        self.assertEqual(a["ciftler"][0], ["0", "24", 1])
+
+    def test_rakibin_asisti_bizim_sayilmaz(self):
+        ev = [olay(1, "09:00", "0-2", False, "9", "2 Sayı Turnike Başarılı"),
+              olay(1, "09:00", "0-2", False, "7", "Asist")]
+        self.assertEqual(A.asist_agi(ev, bizim_ev=True)["asistli"], 0)
+        self.assertEqual(A.asist_agi(ev, bizim_ev=False)["asistli"], 1)
+
+    def test_kayiptan_yenilen_sayilir(self):
+        ev = [olay(1, "09:00", "0-0", True, "2", "Top Kaybı - Kötü Pas"),
+              olay(1, "08:55", "0-2", False, "9", "2 Sayı Turnike Başarılı")]
+        self.assertEqual(A.kayiptan_yenilen(ev, bizim_ev=True), {"kayip": 1, "yenilen": 2})
+
+    def test_pozisyon_bize_donunce_sayilmaz(self):
+        # Kayiptan sonra topu geri aldik ve biz sut attik: o kayip sonucsuz.
+        ev = [olay(1, "09:00", "0-0", True, "2", "Top Kaybı - Kötü Pas"),
+              olay(1, "08:50", "0-0", True, "5", "Savunma Ribaundu"),
+              olay(1, "08:40", "2-0", True, "5", "2 Sayı Turnike Başarılı"),
+              olay(1, "08:20", "2-2", False, "9", "2 Sayı Turnike Başarılı")]
+        self.assertEqual(A.kayiptan_yenilen(ev, bizim_ev=True)["yenilen"], 0)
+
+    def test_ucluk_uc_sayi_yazilir(self):
+        ev = [olay(1, "09:00", "0-0", True, "2", "Top Kaybı - Kötü Pas"),
+              olay(1, "08:55", "0-3", False, "9", "3 Sayı Sıçrayarak Atış Başarılı")]
+        self.assertEqual(A.kayiptan_yenilen(ev, bizim_ev=True)["yenilen"], 3)
+
+    def test_ilk_bes_boxscore_isaretinden(self):
+        box = [{"no": n, "starter": True} for n in (2, 5, 8, 11, 96)] +               [{"no": 24, "starter": False}]
+        self.assertEqual(sorted(A._ilk_bes(box, [], True)),
+                         sorted(["2", "5", "8", "11", "96"]))
+
+    def test_besli_suresi_ve_farki(self):
+        box = [{"no": n, "starter": True} for n in (1, 2, 3, 4, 5)]
+        ev = [olay(1, "10:00", "0-0", None),
+              olay(1, "08:00", "4-0", True, "2", "2 Sayı Turnike Başarılı"),
+              olay(1, "07:00", "4-0", True, "5", "Değişiklik Çıkan"),
+              olay(1, "07:00", "4-0", True, "7", "Değişiklik Giren"),
+              olay(1, "06:00", "4-3", False, "9", "3 Sayı Sıçrayarak Atış Başarılı")]
+        b = A.besliler(ev, True, box)
+        ilk = [l for l in b["lineups"] if "5" in l["p"]][0]
+        self.assertEqual(ilk["sec"], 180)          # 0 -> 3. dakika
+        self.assertEqual(ilk["lehte"], 4)
+
+    def test_usage_sahadayken_takim_sutuyla_oranlanir(self):
+        box = [{"no": n, "starter": True} for n in (1, 2, 3, 4, 5)]
+        ev = [olay(1, "09:00", "0-0", True, "2", "2 Sayı Turnike Başarısız"),
+              olay(1, "08:00", "0-0", True, "2", "2 Sayı Turnike Başarısız"),
+              olay(1, "07:00", "0-0", True, "3", "2 Sayı Turnike Başarısız")]
+        u = A.besliler(ev, True, box)["usage"]
+        self.assertEqual(u["2"]["fga"], 2)
+        self.assertEqual(u["2"]["takim"], 3)       # sahadayken takimin 3 sutu
+
+    def test_serbest_atis_saha_sutu_sayilmaz(self):
+        box = [{"no": n, "starter": True} for n in (1, 2, 3, 4, 5)]
+        ev = [olay(1, "09:00", "0-0", True, "2", "Serbest Atış 1/2 Başarılı")]
+        u = A.besliler(ev, True, box)["usage"]
+        self.assertEqual(u.get("2", {}).get("fga", 0), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
