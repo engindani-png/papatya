@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1e1c">
+<meta name="description" content="Evolog U14 Kız Siyah Basketbol Takımı — kadro, fikstür, puan durumu ve antrenman programı">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Evolog U14 Siyah">
+<title>DEMO · Evolog U14 Kız Siyah</title>
+
+<link rel="icon" href="../evolog/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../evolog/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wrap">
+    <button type="button" class="home" id="homeBtn" aria-label="Başa dön">
+      <img class="crest" src="../evolog/logo.png" alt="Evolog Şerifali Spor Kulübü" width="44" height="44">
+      <span>
+        <span class="h1" id="teamName">Evolog U14 Kız Siyah</span>
+        <span class="sub" id="leagueLabel">TBF İstanbul U14 Kız</span>
+      </span>
+    </button>
+    <div class="sync" id="syncBox"><span class="dot off"></span>yükleniyor</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel" id="panel-maclar" role="tabpanel" aria-labelledby="tab-maclar">
+    <div id="matchNotice"></div>
+    <div id="iosHint"></div>
+
+    <div class="seg" role="tablist" aria-label="Maç görünümü">
+      <button role="tab" id="seg-bizim" data-view="bizim" aria-selected="true">Takımımız</button>
+      <button role="tab" id="seg-lig" data-view="lig" aria-selected="false">Lig geneli</button>
+    </div>
+
+    <div id="viewOurs">
+      <div id="boardSlot"></div>
+
+      <div class="sec" id="lastTitle" hidden></div>
+      <div class="sheet" id="lastMatch"></div>
+
+      <div class="sec" id="upcomingTitle"></div>
+      <div class="sheet" id="upcomingList"></div>
+
+      <div class="sec" id="prevTitle" hidden></div>
+      <div class="sheet" id="playedList"></div>
+    </div>
+
+    <div id="viewLeague" hidden>
+      <div id="leagueWeeks"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-puan" role="tabpanel" aria-labelledby="tab-puan" hidden>
+    <div id="standingsNotice"></div>
+    <h2 class="label" id="standingsTitle" style="display:block;margin:16px 0 4px">Puan durumu</h2>
+    <div id="standingsSlot"></div>
+  </section>
+
+  <section class="panel" id="panel-kadro" role="tabpanel" aria-labelledby="tab-kadro" hidden>
+    <div id="rosterSlot"></div>
+    <div class="sec"><span class="label">Teknik kadro</span><i class="hair"></i></div>
+    <div id="staffSlot"></div>
+  </section>
+
+  <section class="panel" id="panel-antrenman" role="tabpanel" aria-labelledby="tab-antrenman" hidden>
+    <div class="weekdays" id="weekStrip"></div>
+    <div class="sec" id="weekTitle"></div>
+    <div id="sessionsSlot"></div>
+    <div id="nextTrainingSlot"></div>
+    <div class="sec"><span class="label">Salonlar</span><i class="hair"></i></div>
+    <div id="venuesSlot"></div>
+  </section>
+
+</main>
+
+<div class="overlay" id="playerSheet" hidden></div>
+<div class="overlay" id="ageSheet" hidden></div>
+
+<!-- Antrenor paneli: uygulamanin icinde tam ekran. Icerik ayri bir sayfadan
+     (yonetim.html) gelir; sifre kontrolu orada, sunucu tarafinda yapilir. -->
+<div class="cpanel" id="coachPanel" hidden>
+  <header class="ch">
+    <strong id="coachTitle">Antrenör paneli</strong>
+    <button class="pclose" id="coachClose" aria-label="Kapat">✕</button>
+  </header>
+  <div class="ctabs" id="coachTabs"></div>
+  <iframe id="coachFrame" title="Antrenör paneli" src="about:blank"></iframe>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<nav class="tabbar" role="tablist" aria-label="Bölümler">
+  <button role="tab" id="tab-maclar" data-panel="maclar" aria-selected="true" aria-controls="panel-maclar">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3.4 3 3.4 9.8 0 12.8M18.4 5.6c-3.4 3-3.4 9.8 0 12.8"/></svg>
+    Maçlar
+  </button>
+  <button role="tab" id="tab-puan" data-panel="puan" aria-selected="false" aria-controls="panel-puan">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+    Puan
+  </button>
+  <button role="tab" id="tab-kadro" data-panel="kadro" aria-selected="false" aria-controls="panel-kadro">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 4 5.5V10h3v11h10V10h3V5.5L15 3a3 3 0 0 1-6 0Z"/></svg>
+    Kadro
+  </button>
+  <button role="tab" id="tab-antrenman" data-panel="antrenman" aria-selected="false" aria-controls="panel-antrenman">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="1"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+    Antrenman
+  </button>
+  <button type="button" id="tab-takim" class="agetab" aria-haspopup="dialog" aria-expanded="false"
+          aria-label="Takım ve ayarlar">
+    <span class="agebadge" id="ageBadge">U14</span>
+    Takım
+  </button>
+</nav>
+
+<script>window.EVOLOG_DATA_PATH = "../data/";</script>
+<script src="app.js"></script>
+</body>
+</html>

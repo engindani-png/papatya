@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# Antrenman programı canlıda /var/lib/evolog/training-u14.json'dan servis edilir
+# (nginx alias). Depodaki kopya ölü veri olur ve karışıklık yaratır; yalnızca
+# yerel geliştirme için tutulur.
+data/u14/training.json
