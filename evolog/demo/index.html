@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="Evolog U14 Siyah">
 <title>DEMO · Evolog U14 Kız Siyah</title>
 
-<link rel="icon" href="../evolog/icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="../evolog/icon-192.png">
+
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
@@ -26,7 +26,7 @@
 <header class="topbar">
   <div class="wrap">
     <button type="button" class="home" id="homeBtn" aria-label="Başa dön">
-      <img class="crest" src="../evolog/logo.png" alt="Evolog Şerifali Spor Kulübü" width="44" height="44">
+      <img class="crest" src="about:blank" data-asset="logo.png" alt="Evolog Şerifali Spor Kulübü" width="44" height="44">
       <span>
         <span class="h1" id="teamName">Evolog U14 Kız Siyah</span>
         <span class="sub" id="leagueLabel">TBF İstanbul U14 Kız</span>
@@ -127,7 +127,30 @@
   </button>
 </nav>
 
-<script>window.EVOLOG_DATA_PATH = "../data/";</script>
+<script>
+/* Demo, nginx kokunun nerede oldugundan bagimsiz calissin.
+   Sayfa /demo/ ya da /evolog/demo/ altinda olabilir; ana uygulamanin
+   dosyalari ile veri klasoru buna gore bulunur. */
+(function () {
+  var yol = location.pathname;
+  var kes = yol.indexOf("/demo/");
+  var taban = kes >= 0 ? yol.slice(0, kes) : "";     // "" ya da "/evolog"
+  window.EVOLOG_ASSET_BASE = taban + "/";            // ana uygulama dosyalari
+  window.EVOLOG_DATA_PATH  = "/data/";               // her iki yerlesimde de burada
+  if (location.protocol === "file:") {               // yerelde dosyadan acilirsa
+    window.EVOLOG_ASSET_BASE = "../";
+    window.EVOLOG_DATA_PATH = "../../data/";
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("[data-asset]").forEach(function (el) {
+      el.src = window.EVOLOG_ASSET_BASE + el.getAttribute("data-asset");
+    });
+    var ico = document.createElement("link");
+    ico.rel = "icon"; ico.href = window.EVOLOG_ASSET_BASE + "icon.svg";
+    document.head.appendChild(ico);
+  });
+})();
+</script>
 <script src="app.js"></script>
 </body>
 </html>

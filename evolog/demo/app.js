@@ -83,9 +83,18 @@
 
   // Takım logosu: TBF dışarıya bağlantı vermiyor, bu yüzden logolar
   // senkronizasyonda indirilip uygulamayla birlikte sunuluyor.
+  /* DEMO: league.json'daki logo yollari ("../evolog/logos/x.png") ana
+     uygulamanin derinligine gore yazilmis. Demo bir seviye daha asagida
+     oldugu icin yolu calisma aninda hesaplanan tabana baglariz. */
+  function logoUrl(src) {
+    if (!src) return "";
+    var taban = window.EVOLOG_ASSET_BASE || "";
+    return taban ? src.replace(/^(\.\.\/)*evolog\//, taban) : src;
+  }
+
   function teamLogo(src, size) {
     if (!src) return "";
-    return '<img class="lg' + (size ? " " + size : "") + '" src="' + esc(src) +
+    return '<img class="lg' + (size ? " " + size : "") + '" src="' + esc(logoUrl(src)) +
       '" alt="" loading="lazy" decoding="async">';
   }
   function teamCell(name, logo) {
