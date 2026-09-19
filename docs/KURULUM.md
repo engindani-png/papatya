@@ -35,7 +35,7 @@ gerektiren tek parça yoklama ve duyuru kaydı (SQLite).
 | VDS | `213.159.6.115`, SSH portu `23422`, kullanıcı `root` |
 | Uygulama dizini | `/var/www/evolog` (git klonu) |
 | Durum dizini | `/var/lib/evolog` (git ağacının **dışında**) |
-| Antrenör şifresi | `1313` (systemd `EVOLOG_ADMIN_PASS`) |
+| Antrenör şifresi | systemd `EVOLOG_ADMIN_PASS` (sunucuda tutulur — **bu depoya yazılmaz**) |
 
 ---
 
@@ -145,8 +145,16 @@ systemctl start evolog-sync                     # elle tetikle
 ```
 
 Ortam değişkenleri (`evolog-api.service` içinde):
-`EVOLOG_STATE_DIR=/var/lib/evolog` · `EVOLOG_ADMIN_PASS=1313` ·
+`EVOLOG_STATE_DIR=/var/lib/evolog` · `EVOLOG_ADMIN_PASS=<sunucuda tanımlı>` ·
 `EVOLOG_PORT=8106` · `EVOLOG_DATA_DIR=/var/www/evolog/data`
+
+> **Şifre buraya yazılmaz.** Depo herkese açık; buraya yazılan şifre
+> yayınlanmış demektir. Değiştirmek için sunucuda:
+>
+> ```bash
+> systemctl edit evolog-api          # EVOLOG_ADMIN_PASS=<yeni sifre>
+> systemctl restart evolog-api
+> ```
 
 ---
 

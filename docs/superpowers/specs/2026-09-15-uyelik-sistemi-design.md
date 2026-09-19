@@ -52,7 +52,7 @@ uygulanan kuraldan güvenli.
 | Veliler (onayla · reddet · sil · geçici şifre) | ✓ | — |
 | Kayıtlar (giriş/işlem dökümü) | ✓ | — |
 
-Ortak `1313` şifresi kaldırılır. Başlangıç hesapları: `admin` (yönetici),
+Ortak antrenör şifresi kaldırılır. Başlangıç hesapları: `admin` (yönetici),
 `antrenor` (antrenör). **Bilinen sınır:** bunlar ortak hesap olduğu için
 loglar kişiyi değil hesabı ayırt eder; kişiye özel hesap sonradan eklenebilir.
 
