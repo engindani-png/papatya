@@ -1084,36 +1084,35 @@
 
     // Haftanin yedi gunu de yazilir: veli "o gun bos mu, izin mi, mac mi"
     // diye tahmin etmek zorunda kalmasin.
+    // Antrenmani ve maci olmayan gun izin gunudur: antrenorun ayrica
+    // isaretlemesine gerek yok, "program yok" diye bos birakilmaz.
     var satirlar = [];
     for (var gun = 1; gun <= 7; gun++) {
-      var d = haftaGunu(week, gun);
       var seanslar = seansGun[gun] || [];
       var gunMaclari = maclar[gun] || [];
-      var offMu = !!izin[gun] && !seanslar.length;
-      if (!seanslar.length && !gunMaclari.length && !offMu) {
-        satirlar.push({ gun: gun, d: d, bos: true });
-        continue;
-      }
-      satirlar.push({ gun: gun, d: d, seanslar: seanslar, maclar: gunMaclari, off: offMu });
+      satirlar.push({
+        gun: gun,
+        d: haftaGunu(week, gun),
+        seanslar: seanslar,
+        maclar: gunMaclari,
+        off: !seanslar.length && !gunMaclari.length
+      });
     }
 
     slot.innerHTML = satirlar.map(function (r) {
       var bugunMu = r.d && isoDay(r.d) === bugunIso && kind === "current";
       var sinif = "tr" + (bugunMu ? " today" : "") +
-                  (r.off ? " off" : "") + (r.bos ? " bos" : "") +
+                  (r.off ? " off" : "") +
                   (r.maclar && r.maclar.length ? " mac" : "");
       var gunAdi = esc(GUNLER[(r.gun % 7)]) +
         (r.d ? " · " + r.d.getDate() + " " + esc(AYLAR[r.d.getMonth()]) : "");
 
-      var saat = r.bos ? "–"
-               : r.off ? "İZİN"
+      var saat = r.off ? "İZİN"
                : (r.seanslar.length ? esc(r.seanslar[0].start)
                   : esc((r.maclar[0] || {}).time || ""));
 
       var alt;
-      if (r.bos) {
-        alt = '<span class="dim">Program yok</span>';
-      } else if (r.off) {
+      if (r.off) {
         alt = '<span class="dim">Antrenman yok</span>';
       } else {
         alt = r.seanslar.map(function (x) {
