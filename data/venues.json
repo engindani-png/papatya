@@ -1,0 +1,54 @@
+{
+  "note": [
+    "Salon rehberi. Antrenörün yazdığı kısa ad ya da TBF'den gelen salon adı",
+    "burada eşleşirse uygulamada tam ad ve konum gösterilir.",
+    "'match' listesindeki parçalar küçük harfe indirgenmiş adın İÇİNDE aranır.",
+    "Sokak adresi uydurulmaz; konum, salonun tam adıyla harita aramasıdır."
+  ],
+  "venues": [
+    {
+      "key": "tev",
+      "name": "Tarık Uğuz Demirap Mesleki ve Teknik Anadolu Lisesi",
+      "short": "TEV",
+      "maps": "https://www.google.com/maps/search/?api=1&query=Tar%C4%B1k%20U%C4%9Fuz%20Demirap%20Mesleki%20ve%20Teknik%20Anadolu%20Lisesi",
+      "match": [
+        "tev",
+        "tarik uguz",
+        "tarık uğuz",
+        "demirap"
+      ]
+    },
+    {
+      "key": "toki",
+      "name": "TOKİ Maltepe Anadolu Lisesi",
+      "short": "TOKİ Maltepe",
+      "maps": "https://www.google.com/maps/search/?api=1&query=TOK%C4%B0%20Maltepe%20Anadolu%20Lisesi",
+      "match": [
+        "toki",
+        "tokı",
+        "tokі",
+        "maltepe toki",
+        "maltepe tokı"
+      ]
+    },
+    {
+      "key": "bgm",
+      "name": "Turkcell Basketbol Gelişim Merkezi",
+      "short": "BGM",
+      "maps": "https://www.google.com/maps/search/?api=1&query=Turkcell%20Basketbol%20Geli%C5%9Fim%20Merkezi%20%C4%B0stanbul",
+      "match": [
+        "bgm",
+        "basketbol gelisim",
+        "basketbol gelişim",
+        "ulker go ahead",
+        "ülker go ahead",
+        "ulker cizi",
+        "ülker çizi"
+      ],
+      "courts": {
+        "c2": "Go Ahead Salonu (C2)",
+        "c3": "Çizi Salonu (C3)"
+      }
+    }
+  ]
+}

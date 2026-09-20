@@ -50,7 +50,7 @@
   var GUNLER = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
   var AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
-  var state = { team: null, training: null, league: null, timer: null };
+  var state = { team: null, training: null, league: null, venues: null, timer: null };
 
   // Arka planda kendini tazeleme: sunucu TBF'den her 10 dk veri çektiği için
   // uygulama da açık kaldığı sürece yeni skoru/istatistiği kendiliğinden alır.
@@ -126,6 +126,14 @@
   }
 
   // ------------------------------------------------------------- veri
+  /** Yaş grubundan bağımsız, data/ kökündeki dosya. */
+  function loadRoot(key, file) {
+    if (INLINE) return Promise.resolve(INLINE[key] || null);
+    return fetch((window.EVOLOG_DATA_PATH || "../data/") + file, { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error(file); return r.json(); })
+      .catch(function () { return null; });
+  }
+
   function load(key, file) {
     if (INLINE) return Promise.resolve(INLINE[key] || null);
     return fetch(dataPath() + file, { cache: "no-cache" })
@@ -137,7 +145,8 @@
     return Promise.all([
       load("team", "team.json"),
       load("training", "training.json"),
-      load(DEMO ? "leagueDemo" : "league", DEMO ? "league.example.json" : "league.json")
+      load(DEMO ? "leagueDemo" : "league", DEMO ? "league.example.json" : "league.json"),
+      loadRoot("venues", "venues.json")
     ]);
   }
 
@@ -191,6 +200,7 @@
       state.team = res[0] || state.team;
       state.training = res[1] || state.training;
       state.league = res[2] || state.league;
+      state.venues = res[3] || state.venues;
       var y = window.scrollY;
       render();
       window.scrollTo(0, y);
@@ -219,6 +229,7 @@
     state.team = res[0];
     state.training = res[1];
     state.league = res[2];
+    state.venues = res[3] || state.venues;
     sync.sig = signature(res[0], res[1], res[2]);
     sync.lastCheck = Date.now();
   }
@@ -909,6 +920,42 @@
       .filter(function (v) { return v.id === id; })[0] || null;
   }
 
+  /* Salon rehberi (data/venues.json): antrenörün yazdığı kısa ad ya da
+     TBF'den gelen salon adı burada eşleşirse tam ad ve konum gösterilir.
+     Böylece "TEV" yerine okulun tam adı, maçlarda da salonun gerçek adı
+     çıkar - veri kaynağını değiştirmeden. */
+  function salonBul(ad) {
+    if (!ad) return null;
+    var n = norm(ad);
+    var liste = (state.venues && state.venues.venues) || [];
+    for (var i = 0; i < liste.length; i++) {
+      var kalip = liste[i].match || [];
+      for (var j = 0; j < kalip.length; j++) {
+        if (kalip[j] && n.indexOf(norm(kalip[j])) !== -1) return liste[i];
+      }
+    }
+    return null;
+  }
+
+  /** Salonu tam adıyla ve varsa kort bilgisiyle yazar. */
+  function salonAdi(ad) {
+    var v = salonBul(ad);
+    if (!v) return ad || "";
+    var kort = "";
+    if (v.courts) {
+      var n = norm(ad);
+      Object.keys(v.courts).forEach(function (k) {
+        if (n.indexOf("(" + k + ")") !== -1 || n.indexOf(" " + k) !== -1) kort = v.courts[k];
+      });
+    }
+    return v.name + (kort ? " · " + kort : "");
+  }
+
+  function salonLink(ad) {
+    var v = salonBul(ad);
+    return v && v.maps ? v.maps : null;
+  }
+
   /** Bugünün içinde bulunduğu haftanın pazartesisi. */
   function thisMonday() {
     var n = new Date();
@@ -1062,8 +1109,9 @@
       } else {
         alt = r.seanslar.map(function (x) {
           var v = venueOf(x.venue);
-          return "<b>" + esc(x.title || "Antrenman") + "</b> · " + esc(x.start) +
-            (x.end ? "–" + esc(x.end) : "") + (v ? " · " + esc(v.name) : "");
+          var ad = v ? salonAdi(v.name) : "";
+          return "<b>" + esc(x.title || "Antrenman") + "</b> \u00b7 " + esc(x.start) +
+            (x.end ? "\u2013" + esc(x.end) : "") + (ad ? " \u00b7 " + esc(ad) : "");
         }).join("<br>");
       }
       // Mac gunu programda da gorunur; antrenmanla ayni gune de dusebilir.
@@ -1073,7 +1121,7 @@
           var nerede = isOurTeam(f.home) ? "ev sahibi" : "deplasman";
           return '<b class="macet">MAÇ</b> · ' + esc(f.time || "") + " · " +
             esc(rakip) + " <span class=\"dim\">(" + nerede + ")</span>" +
-            (f.venue ? ' <span class="dim">· ' + esc(f.venue) + "</span>" : "");
+            (f.venue ? ' <span class="dim">· ' + esc(salonAdi(f.venue)) + "</span>" : "");
         }).join("<br>");
       }
 
@@ -1086,28 +1134,30 @@
 
     // Gelecek hafta: program girilmediyse kesikli kutu — bos ekran birakilmaz.
     var sonraki = week ? new Date(week.getFullYear(), week.getMonth(), week.getDate() + 7) : null;
-    // Gosterilen program bu haftanin degilse, bu haftanin durumu ayrica yazilir;
-    // gelecek haftanin programi "bu hafta" sanilmasin.
-    el("nextTrainingSlot").innerHTML = (kind !== "current" || !week)
+    // Gelecek haftanin programi geldiyse gosterilecek program odur; biten
+    // hafta icin "henuz aciklanmadi" uyarisi asmak bilgi degil gurultu.
+    // Uyari yalnizca elimizdeki program GECMIS haftaya aitse anlamli.
+    el("nextTrainingSlot").innerHTML = (kind === "past" || !week)
       ? '<div class="sec"><span class="label">Bu hafta</span><i class="hair"></i>' +
         '<span class="cnt">' + esc(haftaAraligi(thisMonday())) + "</span></div>" +
         '<div class="tbdbox"><b>Henüz açıklanmadı</b>' +
-        (kind === "future"
-          ? "Yukarıdaki program gelecek hafta için. Bu haftanın programı antrenörden gelmedi."
-          : "Bu haftanın antrenman programı antrenörden gelmedi.") +
-        " Geldiğinde burada görünecek ve size bildirim göndereceğiz.</div>"
-      : '<div class="sec"><span class="label">Gelecek hafta</span><i class="hair"></i>' +
-        '<span class="cnt">' + esc(haftaAraligi(sonraki)) + "</span></div>" +
+        "Bu haftanın antrenman programı antrenörden gelmedi. Geldiğinde burada " +
+        "görünecek ve size bildirim göndereceğiz.</div>"
+      : kind === "current"
+      ? '<div class="sec"><span class="label">Gelecek hafta</span><i class="hair"></i>' +
+        '<span class="cnt">' + esc(haftaAraligi(new Date(week.getFullYear(),
+            week.getMonth(), week.getDate() + 7))) + "</span></div>" +
         '<div class="tbdbox"><b>Henüz açıklanmadı</b>' +
-        esc(haftaAraligi(sonraki)) + " programı henüz açıklanmadı.</div>";
+        "Gelecek haftanın programı henüz açıklanmadı.</div>"
+      : "";
 
     var exc = (tr.exceptions || []).filter(function (e) {
       return new Date(e.date + "T23:59:59") >= new Date();
     });
     el("venuesSlot").innerHTML =
-      '<div class="venuelist">' + (tr.venues || []).map(function (v) {
+      '<div class="venuelist">' + salonlariTopla(tr).map(function (v) {
         return "<div><span>" + esc(v.name) +
-          (v.address ? ' <span class="unit">' + esc(v.address) + "</span>" : "") + "</span>" +
+          (v.alt ? ' <span class="unit">' + esc(v.alt) + "</span>" : "") + "</span>" +
           (v.maps ? '<a href="' + esc(v.maps) + '" target="_blank" rel="noopener">Yol tarifi</a>' : "") +
           "</div>";
       }).join("") + "</div>" +
@@ -1120,7 +1170,33 @@
         : "");
   }
 
-  /** "14 – 20 Eylül" */
+    /** Salonlar bolumu: antrenman salonlari + o haftanin mac salonlari,
+      hepsi rehberdeki tam adi ve konumuyla, yinelenmeden. */
+  function salonlariTopla(tr) {
+    var out = [], gorulen = {};
+    function ekle(hamAd, etiket) {
+      if (!hamAd) return;
+      var ad = salonAdi(hamAd);
+      var anahtar = norm(ad);
+      if (gorulen[anahtar]) return;
+      gorulen[anahtar] = true;
+      var v = salonBul(hamAd);
+      out.push({
+        name: ad,
+        alt: etiket,
+        maps: (v && v.maps) ||
+              ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(hamAd))
+      });
+    }
+    ((tr && tr.venues) || []).forEach(function (v) { ekle(v.name, "antrenman"); });
+    var maclar = haftaninMaclari(programWeek(tr));
+    Object.keys(maclar).forEach(function (g) {
+      maclar[g].forEach(function (f) { ekle(f.venue, "maç"); });
+    });
+    return out;
+  }
+
+/** "14 – 20 Eylül" */
   function haftaAraligi(pazartesi) {
     if (!pazartesi) return "";
     var son = new Date(pazartesi.getFullYear(), pazartesi.getMonth(), pazartesi.getDate() + 6);

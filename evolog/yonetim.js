@@ -123,7 +123,14 @@
     if (!box) return;
     var bu = mondayOf(new Date());
     var gelecek = mondayOf(addDays(bu, 7));
-    if (state.weekStart !== bu && state.weekStart !== gelecek) state.weekStart = bu;
+    if (state.weekStart !== bu && state.weekStart !== gelecek) {
+      // Hafta sonuna gelindiyse program genelde gelecek hafta icin girilir.
+      // Cuma ve sonrasi varsayilani gelecek hafta yapiyoruz; antrenor yine de
+      // iki secenekten istedigini secebilir.
+      var gun = new Date().getDay();            // 0=Pazar, 5=Cuma, 6=Cumartesi
+      var haftaSonu = (gun === 0 || gun >= 5);
+      state.weekStart = haftaSonu ? gelecek : bu;
+    }
     box.innerHTML = "";
     [{ iso: bu, ad: "Bu hafta" }, { iso: gelecek, ad: "Gelecek hafta" }].forEach(function (w) {
       var b = document.createElement("button");
