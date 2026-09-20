@@ -163,8 +163,23 @@ def validate_training(payload):
                          "venue": clean_str(s.get("venue"), 40),
                          "title": clean_str(s.get("title"), 80) or "Antrenman",
                          "coach": clean_str(s.get("coach"), 80)})
-    if not sessions:
-        raise ValueError("En az bir gecerli antrenman gerekli")
+    # Izin gunleri: antrenorun "bu gun off" dedigi gunler. Veli bos gun ile
+    # aciklanmis izin gununu ayirt edebilsin diye ayri tutulur.
+    off_days = []
+    for d in (payload.get("offDays") or [])[:7]:
+        try:
+            d = int(d)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= d <= 7 and d not in off_days:
+            off_days.append(d)
+    off_days.sort()
+    # Ayni gun hem antrenmanli hem izinli olamaz; antrenman kazanir.
+    dolu = {s["day"] for s in sessions}
+    off_days = [d for d in off_days if d not in dolu]
+
+    if not sessions and not off_days:
+        raise ValueError("En az bir antrenman ya da izin gunu gerekli")
 
     exceptions = []
     for e in (payload.get("exceptions") or [])[:60]:
@@ -184,11 +199,12 @@ def validate_training(payload):
         week = monday_of_week()
 
     return {
-        "note": "Antrenman programi uygulamadaki yonetim ekranindan kaydedilir. day 1=Pazartesi ... 7=Pazar.",
+        "note": "Antrenman programi uygulamadaki yonetim ekranindan kaydedilir. day 1=Pazartesi ... 7=Pazar. offDays: izin gunleri.",
         "updatedAt": time.strftime("%Y-%m-%dT%H:%M:%S+03:00", time.localtime()),
         "weekStart": week,
         "venues": venues,
         "sessions": sessions,
+        "offDays": off_days,
         "exceptions": exceptions,
     }
 

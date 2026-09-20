@@ -925,10 +925,40 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
+  /** Program hangi haftaya ait: "past" | "current" | "future" | null */
+  function programWeekKind(tr) {
+    var w = programWeek(tr);
+    if (!w) return null;
+    var fark = w.getTime() - thisMonday().getTime();
+    if (fark === 0) return "current";
+    return fark < 0 ? "past" : "future";
+  }
+
   /** Program geçen haftaya mı ait? Öyleyse veliye kesinmiş gibi gösterilmez. */
   function programStale(tr) {
-    var w = programWeek(tr);
-    return !!w && thisMonday().getTime() > w.getTime();
+    return programWeekKind(tr) === "past";
+  }
+
+  /** Program haftasındaki günün tarihi (1=Pazartesi … 7=Pazar). */
+  function haftaGunu(week, gun) {
+    return week ? new Date(week.getFullYear(), week.getMonth(),
+                           week.getDate() + (gun - 1)) : null;
+  }
+
+  /** Program haftasına düşen, tarihi kesinleşmiş kendi maçlarımız. */
+  function haftaninMaclari(week) {
+    if (!week) return {};
+    var ilk = isoDay(week);
+    var son = isoDay(haftaGunu(week, 7));
+    var out = {};
+    ((state.league && state.league.fixtures) || []).forEach(function (f) {
+      if (!f.date || !f.isOurs || f.dateConfirmed === false) return;
+      if (f.date < ilk || f.date > son) return;
+      var d = new Date(f.date + "T00:00:00");
+      var gun = ((d.getDay() + 6) % 7) + 1;
+      (out[gun] = out[gun] || []).push(f);
+    });
+    return out;
   }
 
   /** 1=Pazartesi … 7=Pazar için bir sonraki tarih. */
@@ -957,7 +987,7 @@
     var bugunIdx = ((bugun.getDay() + 6) % 7) + 1;
     el("weekStrip").innerHTML = KISA.map(function (ad, i) {
       var g = i + 1;
-      return '<div class="' + (dolu[g] && !stale ? "on" : "") +
+      return '<div class="' + (dolu[g] && !programStale(tr) ? "on" : "") +
         (g === bugunIdx ? " today" : "") + '">' + ad + "</div>";
     }).join("");
 
@@ -980,41 +1010,92 @@
       return new Date(week.getFullYear(), week.getMonth(), week.getDate() + (gun - 1));
     }
 
-    el("weekTitle").innerHTML = '<span class="label">' +
-      (stale ? "Geçen haftanın programı" : "Bu hafta") + "</span><i class=\"hair\"></i>" +
+    var kind = programWeekKind(tr);
+    var baslik = kind === "past" ? "Geçen haftanın programı"
+               : kind === "future" ? "Gelecek haftanın programı"
+               : "Bu hafta";
+
+    el("weekTitle").innerHTML = '<span class="label">' + esc(baslik) +
+      "</span><i class=\"hair\"></i>" +
       (week ? '<span class="cnt">' + esc(haftaAraligi(week)) + "</span>" : "");
 
-    // Ayni gunun seanslari tek kartta toplanir; veli gunu tek parca okuyor.
-    var gunler = [];
-    sorted.forEach(function (x) {
-      var son = gunler[gunler.length - 1];
-      if (son && son.day === x.day) son.items.push(x);
-      else gunler.push({ day: x.day, items: [x] });
-    });
+    // Gunlere gore topla: antrenman, izin, mac.
+    var seansGun = {};
+    sorted.forEach(function (x) { (seansGun[x.day] = seansGun[x.day] || []).push(x); });
+    var izin = {};
+    ((tr.offDays) || []).forEach(function (d) { izin[Number(d)] = true; });
+    var maclar = haftaninMaclari(week);
 
-    slot.innerHTML = gunler.map(function (g) {
-      var d = gunTarihi(g.day);
-      var ilk = g.items[0];
-      var bugunMu = d && isoDay(d) === bugunIso && !stale;
-      return '<article class="tr' + (bugunMu ? " today" : "") + '">' +
-        '<div class="day">' + esc(GUNLER[(g.day % 7)]) +
-          (d ? " · " + d.getDate() + " " + esc(AYLAR[d.getMonth()]) : "") + "</div>" +
-        '<div class="hh">' + esc(ilk.start) + "</div>" +
-        '<div class="sub">' + g.items.map(function (x) {
+    // Haftanin yedi gunu de yazilir: veli "o gun bos mu, izin mi, mac mi"
+    // diye tahmin etmek zorunda kalmasin.
+    var satirlar = [];
+    for (var gun = 1; gun <= 7; gun++) {
+      var d = haftaGunu(week, gun);
+      var seanslar = seansGun[gun] || [];
+      var gunMaclari = maclar[gun] || [];
+      var offMu = !!izin[gun] && !seanslar.length;
+      if (!seanslar.length && !gunMaclari.length && !offMu) {
+        satirlar.push({ gun: gun, d: d, bos: true });
+        continue;
+      }
+      satirlar.push({ gun: gun, d: d, seanslar: seanslar, maclar: gunMaclari, off: offMu });
+    }
+
+    slot.innerHTML = satirlar.map(function (r) {
+      var bugunMu = r.d && isoDay(r.d) === bugunIso && kind === "current";
+      var sinif = "tr" + (bugunMu ? " today" : "") +
+                  (r.off ? " off" : "") + (r.bos ? " bos" : "") +
+                  (r.maclar && r.maclar.length ? " mac" : "");
+      var gunAdi = esc(GUNLER[(r.gun % 7)]) +
+        (r.d ? " · " + r.d.getDate() + " " + esc(AYLAR[r.d.getMonth()]) : "");
+
+      var saat = r.bos ? "–"
+               : r.off ? "İZİN"
+               : (r.seanslar.length ? esc(r.seanslar[0].start)
+                  : esc((r.maclar[0] || {}).time || ""));
+
+      var alt;
+      if (r.bos) {
+        alt = '<span class="dim">Program yok</span>';
+      } else if (r.off) {
+        alt = '<span class="dim">Antrenman yok</span>';
+      } else {
+        alt = r.seanslar.map(function (x) {
           var v = venueOf(x.venue);
           return "<b>" + esc(x.title || "Antrenman") + "</b> · " + esc(x.start) +
             (x.end ? "–" + esc(x.end) : "") + (v ? " · " + esc(v.name) : "");
-        }).join("<br>") + "</div>" +
+        }).join("<br>");
+      }
+      // Mac gunu programda da gorunur; antrenmanla ayni gune de dusebilir.
+      if (r.maclar && r.maclar.length) {
+        alt += (alt ? "<br>" : "") + r.maclar.map(function (f) {
+          var rakip = isOurTeam(f.home) ? f.away : f.home;
+          var nerede = isOurTeam(f.home) ? "ev sahibi" : "deplasman";
+          return '<b class="macet">MAÇ</b> · ' + esc(f.time || "") + " · " +
+            esc(rakip) + " <span class=\"dim\">(" + nerede + ")</span>" +
+            (f.venue ? ' <span class="dim">· ' + esc(f.venue) + "</span>" : "");
+        }).join("<br>");
+      }
+
+      return '<article class="' + sinif + '">' +
+        '<div class="day">' + gunAdi + "</div>" +
+        '<div class="hh">' + saat + "</div>" +
+        '<div class="sub">' + alt + "</div>" +
       "</article>";
     }).join("");
 
     // Gelecek hafta: program girilmediyse kesikli kutu — bos ekran birakilmaz.
     var sonraki = week ? new Date(week.getFullYear(), week.getMonth(), week.getDate() + 7) : null;
-    el("nextTrainingSlot").innerHTML = (stale || !week)
-      ? '<div class="sec"><span class="label">Bu hafta</span><i class="hair"></i></div>' +
+    // Gosterilen program bu haftanin degilse, bu haftanin durumu ayrica yazilir;
+    // gelecek haftanin programi "bu hafta" sanilmasin.
+    el("nextTrainingSlot").innerHTML = (kind !== "current" || !week)
+      ? '<div class="sec"><span class="label">Bu hafta</span><i class="hair"></i>' +
+        '<span class="cnt">' + esc(haftaAraligi(thisMonday())) + "</span></div>" +
         '<div class="tbdbox"><b>Henüz açıklanmadı</b>' +
-        "Bu haftanın antrenman programı antrenörden gelmedi. Geldiğinde burada " +
-        "görünecek ve size bildirim göndereceğiz.</div>"
+        (kind === "future"
+          ? "Yukarıdaki program gelecek hafta için. Bu haftanın programı antrenörden gelmedi."
+          : "Bu haftanın antrenman programı antrenörden gelmedi.") +
+        " Geldiğinde burada görünecek ve size bildirim göndereceğiz.</div>"
       : '<div class="sec"><span class="label">Gelecek hafta</span><i class="hair"></i>' +
         '<span class="cnt">' + esc(haftaAraligi(sonraki)) + "</span></div>" +
         '<div class="tbdbox"><b>Henüz açıklanmadı</b>' +

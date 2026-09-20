@@ -1304,3 +1304,16 @@ input:focus, select:focus, textarea:focus {
 .tabbar button { min-width: 0; }
 .tabbar button span,
 .tabbar button { font-size: 10px; letter-spacing: .06em; }
+
+/* ---------- Haftalık program: izin, boş ve maç günleri ---------------- */
+.tr.off .hh { color: var(--color-fog-veil); font-size: 12px; letter-spacing: .08em; }
+.tr.off .day, .tr.bos .day { color: var(--color-fog-veil); }
+.tr.bos { opacity: .55; }
+.tr .sub .dim { color: var(--color-fog-veil); }
+.tr.mac { box-shadow: var(--edge-inset), inset 3px 0 0 var(--color-void-violet); }
+.tr .macet { color: var(--color-void-violet); letter-spacing: .06em; }
+
+.tr.off { border-left-color: var(--hairline) !important; }
+.tr.bos { border-left-color: transparent !important; }
+.tr.mac { border-left-color: var(--color-void-violet) !important; }
+.tr.mac .macet { font-weight: 700; }

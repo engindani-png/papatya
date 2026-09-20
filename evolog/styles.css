@@ -994,3 +994,25 @@ button.event[aria-expanded] .ev-detay { color: var(--muted-deep); }
   text-transform: uppercase; color: var(--muted); margin: 18px 0 8px; }
 .eyebrow::after { display: none; }
 .shint { font-size: 11.5px; color: var(--muted); line-height: 1.6; margin-top: 10px; }
+
+/* ---------- Haftalık program: izin, boş ve maç günleri ---------------- */
+/* Haftanın yedi günü de yazılır. Veli "o gün bos mu, izin mi, maç mı"
+   diye tahmin etmek zorunda kalmasın diye her gün açık bir durum taşır. */
+.tr.off .hh { color: var(--muted); font-size: 12px; letter-spacing: .08em; }
+.tr.off .day, .tr.bos .day { color: var(--muted); }
+.tr.bos { opacity: .55; }
+.tr.bos .hh { color: var(--muted-deep); }
+.tr .sub .dim { color: var(--muted); }
+.tr.mac { box-shadow: inset 3px 0 0 var(--amber); }
+.tr .macet {
+  color: var(--amber);
+  letter-spacing: .06em;
+}
+
+/* Sol ray artık günün durumunu anlatır: antrenman ve maç günü vurgulu,
+   izin günü sönük, boş gün raysız. Yedi gün birden listelendiği için
+   her satırda duran sabit ray anlamını yitiriyordu. */
+.tr.off { border-left-color: var(--line-dash); }
+.tr.bos { border-left-color: transparent; }
+.tr.mac { border-left-width: 3px; border-left-color: var(--amber); }
+.tr.mac .macet { font-weight: 700; }

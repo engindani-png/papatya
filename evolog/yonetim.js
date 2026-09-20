@@ -25,7 +25,8 @@
   try { age = knownAge(localStorage.getItem(AGE_STORE)); } catch (e) { /* depolama yok */ }
   age = age || AGES[0].key;
 
-  var state = { venues: [], sessions: [], exceptions: [], matches: [], weekStart: null };
+  var state = { venues: [], sessions: [], exceptions: [], matches: [],
+               offDays: [], weekStart: null };
 
   /** Verilen tarihin haftasinin pazartesisi (YYYY-MM-DD). */
   function mondayOf(d) {
@@ -167,6 +168,7 @@
       });
       state.exceptions = data.exceptions || [];
       state.weekStart = data.weekStart || null;
+      state.offDays = (data.offDays || []).slice();
       renderAll();
       mark(false);
     }).catch(function () { /* henüz kayıt yok, boş başla */ });
@@ -228,6 +230,38 @@
       })(d);
     }
     return box;
+  }
+
+  // Izin gunleri: antrenman olmayan gunler. Antrenman girilmis bir gun
+  // isaretlenemez - veli celiskili program gormesin.
+  function renderOffStrip() {
+    var box = el("offStrip");
+    if (!box) return;
+    var dolu = {};
+    state.sessions.forEach(function (s) { dolu[Number(s.day)] = true; });
+    state.offDays = state.offDays.filter(function (d) { return !dolu[d]; });
+
+    box.innerHTML = "";
+    for (var d = 1; d <= 7; d++) {
+      (function (day) {
+        var secili = state.offDays.indexOf(day) !== -1;
+        var b = document.createElement("button");
+        b.type = "button";
+        b.innerHTML = esc(KISA[day]) +
+          (dolu[day] ? "<small>antrenman</small>" : secili ? "<small>izin</small>" : "");
+        b.setAttribute("aria-pressed", secili ? "true" : "false");
+        b.disabled = !!dolu[day];
+        b.title = dolu[day] ? GUNLER[day] + ": antrenman var, izin yapılamaz" : GUNLER[day];
+        b.addEventListener("click", function () {
+          var at = state.offDays.indexOf(day);
+          if (at === -1) state.offDays.push(day); else state.offDays.splice(at, 1);
+          state.offDays.sort(function (a, b2) { return a - b2; });
+          renderOffStrip();
+          mark(true);
+        });
+        box.appendChild(b);
+      })(d);
+    }
   }
 
   // --------------------------------------------------- saat tekerlegi
@@ -553,6 +587,7 @@
   function renderAll() {
     renderWeekStrip();
     renderSessions();
+    renderOffStrip();
     renderExceptions();
     renderVenues();
     renderMatches();
@@ -578,6 +613,7 @@
           return { day: s.day, start: s.start, end: s.end, venue: s.venue, title: s.title, coach: s.coach };
         }),
         exceptions: state.exceptions,
+        offDays: state.offDays,
         weekStart: state.weekStart
       })
     }).then(function (res) {
