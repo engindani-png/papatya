@@ -83,6 +83,9 @@
 
   // Takım logosu: TBF dışarıya bağlantı vermiyor, bu yüzden logolar
   // senkronizasyonda indirilip uygulamayla birlikte sunuluyor.
+  /* DEMO: league.json'daki logo yollari ana uygulamanin derinligine gore
+     yazilmis. Demo bir seviye asagida oldugu icin calisma aninda hesaplanan
+     tabana baglanir. */
   function logoUrl(src) {
     if (!src) return "";
     var taban = window.EVOLOG_ASSET_BASE || "";
@@ -1632,7 +1635,7 @@
   var initial = location.hash.replace("#", "");
   if (PANELS.indexOf(initial) !== -1) showPanel(initial);
 
-  // DEMO: servis calisani kaydi yok.
+  // DEMO: servis calisani kaydi yok - ana uygulamanin onbellegine karismasin.
 
 
   boot();

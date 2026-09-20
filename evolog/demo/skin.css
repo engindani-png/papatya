@@ -1,0 +1,381 @@
+/* AuthKit giydirme katmani — DEMO.
+   Ana uygulamanin styles.css dosyasinin USTUNE yuklenir; yerlesimi
+   oradan alir, yalnizca gorunumu degistirir. Boylece ana uygulama
+   gelistikce demo kendiliginden takip eder, kopya bayatlamaz. */
+
+:root {
+  /* ------------------------------------------------------------------
+     AuthKit — "Frosted glass cathedral at midnight"
+     Ham token'lar: docs/tasarim-v2/03-tokens.css ile birebir.
+     Altta uygulamanin mevcut degisken adlari bu token'lara baglanir;
+     boylece isaretleme degismeden butun ekran yeniden giyinir.
+     ------------------------------------------------------------------ */
+
+  /* Ham palet */
+  --color-midnight-canvas: #05060f;
+  --color-steel-plate:     #2f343e;
+  --color-fog-veil:        #9da7ba;
+  --color-moon-mist:       #c7d3ea;
+  --color-frost-glow:      #d1e4fa;
+  --color-ice-highlight:   #d8ecf8;
+  --color-pure-white:      #ffffff;
+  --color-void-violet:     #663af3;
+  --color-gridline-blue:   #3f4959;
+  --gradient-ice-highlight: linear-gradient(0deg, #d8ecf8 0%, #98c0ef 100%);
+
+  /* Yuzeyler */
+  --surface-frosted-glass: rgba(186, 214, 247, .03);
+  --surface-deep-glass:    rgba(5, 6, 15, .97);
+  --luminous-fill:         rgba(199, 211, 234, .12);
+
+  /* Sistemin kenar dili: solid cizgi yok, 1px inset saç teli */
+  --hairline: rgba(186, 215, 247, .12);
+  --hairline-soft: rgba(186, 215, 247, .06);
+  --edge-inset:   inset 0 0 0 1px rgba(186, 215, 247, .12);
+  --edge-inset-2: inset 0 0 0 1px rgba(186, 214, 247, .06);
+
+  /* Yukseklik: drop-shadow degil, inset frost + yumusak hale */
+  --lift-card: inset 0 1px 1px rgba(199, 211, 234, .12),
+               inset 0 24px 48px rgba(199, 211, 234, .05),
+               0 24px 32px rgba(6, 6, 14, .7);
+  --lift-modal: inset 0 1px 1px rgba(216, 236, 248, .2),
+                inset 0 24px 48px rgba(168, 216, 245, .06),
+                0 16px 32px rgba(0, 0, 0, .3);
+  --halo: 0 0 6px rgba(186, 207, 247, .32), 0 0 12px rgba(238, 186, 247, .24);
+
+  /* Yaricap aileleri — karistirilmaz */
+  --r-card: 16px;
+  --r-badge: 6px;
+  --r-input: 6px;
+  --r-button: 999px;
+  --r-icon: 9999px;
+
+  /* ---- Uygulamanin mevcut degisken adlari bu palete baglanir ---- */
+
+  /* Zemin */
+  --ink:        var(--color-midnight-canvas);
+  --ink-raised: var(--surface-frosted-glass);
+  --ink-bar:    var(--surface-deep-glass);
+  --ink-2:      var(--surface-frosted-glass);
+  --ink-3:      var(--surface-frosted-glass);
+
+  /* Metin: Ice Highlight -> Frost Glow -> Moon Mist -> Fog Veil */
+  --paper:       var(--color-frost-glow);
+  --paper-2:     var(--color-moon-mist);
+  --muted:       var(--color-fog-veil);
+  --muted-deep:  var(--color-fog-veil);
+  --chalk:       var(--color-frost-glow);
+  --chalk-dim:   var(--color-moon-mist);
+  --chalk-faint: var(--color-fog-veil);
+
+  /* Tek kromatik aksan. Sistemde violet yalnizca birincil eylemin rengi;
+     burada "kesin olan / aktif olan" isareti o role karsilik geliyor. */
+  --amber:      var(--color-void-violet);
+  --amber-wash: rgba(102, 58, 243, .16);
+  --amber-line: rgba(102, 58, 243, .60);
+  --amber-dim:  rgba(102, 58, 243, .16);
+
+  /* Durum renkleri: "ek kromatik aksan yok" kurali geregi yesil/kirmizi
+     yerine parlaklik kademesi. Galibiyet one cikar, maglubiyet geri cekilir. */
+  --win:  var(--color-ice-highlight);
+  --loss: var(--color-fog-veil);
+
+  /* Cizgi */
+  --line:      var(--hairline);
+  --line-soft: var(--hairline-soft);
+  --line-dash: rgba(186, 215, 247, .24);
+  --hatch: repeating-linear-gradient(135deg,
+             transparent 0 7px, rgba(186, 215, 247, .03) 7px 14px);
+
+  /* Tipografi — lisansli yuz yerine ikameler:
+     aeonikPro -> Space Grotesk, Untitled Sans -> Inter, dotDigital -> JetBrains Mono */
+  --display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --body:    "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --eyebrow-font: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Olcu — kaynak masaustu tanitim sayfasi (120px bolum araligi, 48px display).
+     390px'lik yogun bir arac ekraninda ritim asagi olceklendi. */
+  --gutter:   16px;
+  --pad-card: 16px;
+  --gap-row:  10px;
+  --row-h:    44px;
+  --radius:   var(--r-card);
+  --edge:     3px;
+  --rail:     52px;
+  --tabbar:   56px;
+  --sec-gap:  40px;      /* kaynakta 120px */
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+/* ====================================================================
+   AuthKit giydirme katmanı
+   Token'ların ifade edemediği sistem kuralları. Mevcut yerleşim
+   korunur; yalnızca yüzey, kenar, yarıçap ve tipografi dili değişir.
+   ==================================================================== */
+
+/* --- Zemin: gece tuvali + blueprint grid + tepede konik spot --------- */
+body {
+  background: var(--color-midnight-canvas);
+  position: relative;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(186,215,247,.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(186,215,247,.06) 1px, transparent 1px);
+  background-size: 80px 80px;
+  -webkit-mask-image: radial-gradient(ellipse 120% 70% at 50% 0%, #000 35%, transparent 78%);
+          mask-image: radial-gradient(ellipse 120% 70% at 50% 0%, #000 35%, transparent 78%);
+}
+body::after {
+  content: "";
+  position: fixed; top: 0; left: 0; right: 0; height: 320px;
+  z-index: 0; pointer-events: none;
+  background: conic-gradient(at 50% -12%,
+      transparent 44%, rgba(124,145,182,.18) 49%,
+      rgba(124,145,182,.32) 50%, rgba(124,145,182,.18) 51%, transparent 56%);
+}
+.topbar, main, .tabbar, .psheet, .overlay, .toast { position: relative; z-index: 1; }
+
+/* --- Kenar dili: solid çizgi yok, her yerde 1px inset hairline ------- */
+.nextcard, .event, .note, .blank, .tile, .venuelist .tv,
+.box, .periods, .stbl, .badge, .seg, .agetab, .pl, .ss, .ts2 {
+  border-color: transparent !important;
+}
+.nextcard, .tile, .box, .periods, .venuelist .tv {
+  background: var(--surface-frosted-glass);
+  border-radius: var(--r-card);
+  box-shadow: var(--lift-card);
+  padding: var(--pad-card);
+}
+
+/* --- Kartlar cam levha: sıradaki maç / antrenman ------------------- */
+.nextcard {
+  background: var(--surface-deep-glass);
+  box-shadow: var(--lift-modal);
+  padding: 18px 16px 16px;
+}
+.nc-tn { color: var(--color-ice-highlight); }
+.nc-vs, .nc-venue, .nc-meta { color: var(--color-moon-mist); }
+
+/* Geri sayım: rakamlar cam hücrelerde */
+.clock { gap: 6px; background: none; border: 0; }
+.tick {
+  background: rgba(186,214,247,.06);
+  box-shadow: var(--edge-inset);
+  border-radius: var(--r-badge);
+  border: 0;
+}
+.tick .n { color: var(--color-ice-highlight); }
+.tick .unit { color: var(--color-fog-veil); }
+
+/* --- Eyebrow: ortalanmış, iki yanı solan çizgi --------------------- */
+.eyebrow {
+  font-family: var(--eyebrow-font);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: .10em;
+  text-transform: uppercase;
+  color: var(--color-moon-mist);
+  display: flex; align-items: center; gap: 12px;
+  margin: var(--sec-gap) 0 14px;
+}
+.eyebrow::before, .eyebrow::after {
+  content: ""; flex: 1; height: 1px;
+}
+.eyebrow::before { background: linear-gradient(to right, transparent, var(--hairline)); }
+.eyebrow::after  { background: linear-gradient(to left,  transparent, var(--hairline)); }
+main .panel > .eyebrow:first-of-type,
+main .sec:first-child .eyebrow { margin-top: 18px; }
+
+/* --- Başlık: Skywash gradyan, ağırlık 500, asla 600+ --------------- */
+.topbar h1 {
+  font-family: var(--display);
+  font-weight: 500;
+  letter-spacing: -.01em;
+  background: var(--gradient-ice-highlight);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+.topbar .sub { color: var(--color-fog-veil); letter-spacing: .08em; }
+
+/* --- Fikstür satırları: cam levha, kesin olan violet rayla ---------- */
+.event {
+  background: var(--surface-frosted-glass);
+  border-radius: var(--r-card);
+  box-shadow: var(--edge-inset-2);
+  margin-bottom: var(--gap-row);
+  overflow: hidden;
+}
+.event.ours, .event.hw, .event.aw {
+  box-shadow: var(--edge-inset), inset 3px 0 0 var(--color-void-violet);
+}
+.event--tbd { background: rgba(186,214,247,.015); }
+.ev-date .dd { color: var(--color-ice-highlight); }
+.ev-date .mm, .ev-date .hh { color: var(--color-fog-veil); }
+.ev-team .nm { color: var(--color-frost-glow); }
+.ev-team .sc { color: var(--color-ice-highlight); }
+.ev-sub, .event-note { color: var(--color-fog-veil); }
+.ev-chg { color: var(--color-void-violet); }
+
+/* Galibiyet/mağlubiyet: ek renk yok, parlaklık kademesi */
+.win  { color: var(--color-ice-highlight) !important; }
+.loss { color: var(--color-fog-veil) !important; }
+
+/* --- Rozetler ve düğmeler: yarıçap aileleri karışmaz --------------- */
+.badge, .tag {
+  border-radius: var(--r-badge);
+  background: var(--luminous-fill);
+  color: var(--color-frost-glow);
+  box-shadow: var(--edge-inset);
+  border: 0;
+}
+.seg, .agetab, button.seg, .tgl, .pick {
+  border-radius: var(--r-button);
+  background: rgba(186,214,247,.06);
+  box-shadow: var(--edge-inset);
+  border: 0;
+  color: var(--color-pure-white);
+}
+.seg[aria-selected="true"], .agetab[aria-selected="true"], .seg.on, .pick.on {
+  background: rgba(186,214,247,.12);
+  color: var(--color-ice-highlight);
+}
+.agebadge {
+  border-radius: var(--r-button);
+  background: var(--luminous-fill);
+  box-shadow: var(--edge-inset);
+  color: var(--color-frost-glow);
+}
+input, select, textarea {
+  border-radius: var(--r-input) !important;
+  background: rgba(199,211,234,.06) !important;
+  color: var(--color-pure-white) !important;
+  box-shadow: var(--edge-inset);
+  border: 0 !important;
+}
+input::placeholder { color: rgba(199,211,234,.6); }
+input:focus, select:focus, textarea:focus {
+  box-shadow: inset 0 0 0 1px rgba(186,215,247,.24);
+  outline: none;
+}
+
+/* --- Tablolar: satır ayracı saç teli ------------------------------- */
+.stbl, .box { background: var(--surface-frosted-glass); }
+.strow, .sthead, table.box tr { border-color: var(--hairline-soft) !important; }
+.sthead, table.box th { color: var(--color-fog-veil); }
+.strow.ours { background: rgba(102,58,243,.14); }
+.strow.ours .rk, .strow.ours .pts { color: var(--color-void-violet); }
+.tm { color: var(--color-frost-glow); }
+
+/* --- Kadro / antrenman satırları ----------------------------------- */
+.pl, .ss, .ts2 {
+  border-bottom: 1px solid var(--hairline-soft);
+  border-radius: 0;
+}
+.pl .no { color: var(--color-void-violet); font-family: var(--display); font-weight: 500; }
+.pl .nm, .ss .nm { color: var(--color-frost-glow); }
+.pl .meta, .pl .yr, .ss .role { color: var(--color-fog-veil); }
+.ts2.bugun, .ts2.today { box-shadow: inset 3px 0 0 var(--color-void-violet); }
+
+/* --- Uyarı / boş durum --------------------------------------------- */
+.note {
+  border-radius: var(--r-card);
+  background: rgba(186,214,247,.04);
+  box-shadow: var(--edge-inset);
+  border-left: 0;
+  color: var(--color-moon-mist);
+}
+.note b { color: var(--color-ice-highlight); }
+.note.bad { box-shadow: inset 0 0 0 1px rgba(102,58,243,.35); }
+.note.bad b { color: var(--color-void-violet); }
+.blank {
+  border: 0;
+  box-shadow: var(--edge-inset-2);
+  border-radius: var(--r-card);
+  background: rgba(186,214,247,.02);
+  color: var(--color-fog-veil);
+}
+
+/* --- Alt sekme çubuğu: cam, aktif olan violet ---------------------- */
+.tabbar {
+  background: var(--surface-deep-glass);
+  border-top: 1px solid var(--hairline);
+  backdrop-filter: blur(16px);
+}
+.tabbar button { color: var(--color-fog-veil); }
+.tabbar button[aria-selected="true"] { color: var(--color-void-violet); }
+.tabbar button[aria-selected="true"]::before { background: var(--color-void-violet); }
+
+/* --- Arma: dairesel ikon kabı -------------------------------------- */
+.crest { border-radius: var(--r-icon); box-shadow: var(--edge-inset); }
+
+/* --- Erişilebilirlik: odak violet ---------------------------------- */
+:focus-visible { outline: 2px solid var(--color-void-violet); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+
+/* --- Düzeltmeler: sistem kurallarına aykırı kalan iki yer -------------- */
+
+/* Segment kontrolü: violet dolgu yalnızca birincil eylemin hakkı.
+   Aktif segment buzlu cam kademesiyle ayrışır, renkle değil. */
+.seg button,
+.ctabs .seg button {
+  background: transparent;
+  color: var(--color-fog-veil);
+  border-radius: var(--r-button);
+  border: 0;
+}
+.seg button[aria-selected="true"],
+.seg button.on,
+.ctabs .seg button[aria-selected="true"] {
+  background: rgba(186, 214, 247, .12);
+  color: var(--color-ice-highlight);
+  box-shadow: var(--edge-inset);
+}
+.seg { background: rgba(186,214,247,.04); box-shadow: var(--edge-inset); border-radius: var(--r-button); }
+
+/* Sonuç rozeti: "ek kromatik aksan yok" kuralı yeşil/kırmızıyı dışarıda
+   bırakıyor. Galibiyet parlaklıkla öne çıkar, mağlubiyet geri çekilir;
+   zemin her ikisinde de aynı buzlu dolgu. */
+.badge.win, .badge.loss, .tag.w, .tag.l {
+  background: var(--luminous-fill) !important;
+  box-shadow: var(--edge-inset);
+  border: 0;
+}
+.badge.win, .tag.w {
+  color: var(--color-ice-highlight) !important;
+  font-weight: 600;
+}
+.badge.loss, .tag.l {
+  color: var(--color-fog-veil) !important;
+  font-weight: 400;
+}
+
+/* Alt çubuk: takım rozeti sekme etiketine girmesin. Dairesel ikon kabı
+   yarıçapı yalnızca gerçek ikon kaplarına ait; bu bir etiket, hap olmalı. */
+.agebadge {
+  border-radius: var(--r-button);
+  padding: 3px 9px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.tabbar button { min-width: 0; }
+.tabbar button span,
+.tabbar button { font-size: 10px; letter-spacing: .06em; }
+
+/* ---------- Haftalık program: izin, boş ve maç günleri ---------------- */
+.tr.off .hh { color: var(--color-fog-veil); font-size: 12px; letter-spacing: .08em; }
+.tr.off .day, .tr.bos .day { color: var(--color-fog-veil); }
+.tr.bos { opacity: .55; }
+.tr .sub .dim { color: var(--color-fog-veil); }
+.tr.mac { box-shadow: var(--edge-inset), inset 3px 0 0 var(--color-void-violet); }
+.tr .macet { color: var(--color-void-violet); letter-spacing: .06em; }
+
+.tr.off { border-left-color: var(--hairline) !important; }
+.tr.bos { border-left-color: transparent !important; }
+.tr.mac { border-left-color: var(--color-void-violet) !important; }
+.tr.mac .macet { font-weight: 700; }

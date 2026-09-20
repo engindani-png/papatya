@@ -1,0 +1,65 @@
+name: Yayına al
+
+# Tek tıkla VDS'e deploy. GitHub telefon uygulamasından da çalıştırılabilir:
+#   Actions -> "Yayına al" -> Run workflow
+#
+# TEK KURULUM ADIMI: depoya VDS_SSH_KEY secret'i eklenmeli.
+#   Settings -> Secrets and variables -> Actions -> New repository secret
+#   Ad:    VDS_SSH_KEY
+#   Deger: VDS'e root olarak baglanan ozel anahtarin TAMAMI
+#          (-----BEGIN ... KEY----- satirindan sonuna kadar)
+# Anahtariniz yoksa VDS'te: ssh-keygen -t ed25519 -f ~/.ssh/deploy -N ""
+#   sonra: cat ~/.ssh/deploy.pub >> ~/.ssh/authorized_keys
+#   ve ~/.ssh/deploy dosyasinin icerigini secret olarak ekleyin.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: yayina-al
+  cancel-in-progress: false
+
+env:
+  VDS_HOST: "213.159.6.115"
+  VDS_PORT: "23422"
+  VDS_USER: "root"
+  VDS_DIR: "/var/www/evolog"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Anahtari hazirla
+        run: |
+          if [ -z "${{ secrets.VDS_SSH_KEY }}" ]; then
+            echo "::error::VDS_SSH_KEY secret'i tanimli degil."
+            echo "Settings -> Secrets and variables -> Actions -> New repository secret"
+            echo "Ad: VDS_SSH_KEY  ·  Deger: VDS'e baglanan ozel anahtar"
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VDS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # Sunucunun kimligini kaydet: StrictHostKeyChecking kapatilmaz.
+          ssh-keyscan -p "$VDS_PORT" -H "$VDS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Depoyu VDS'e cek
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$VDS_PORT" \
+              -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+              "$VDS_USER@$VDS_HOST" \
+              "cd $VDS_DIR && git fetch -q origin && git reset -q --hard origin/master \
+               && chown -R www-data:www-data $VDS_DIR \
+               && echo 'Yayindaki surum:' && git log --oneline -1"
+
+      - name: Siteyi dogrula
+        run: |
+          for adres in "https://evologsiyah.com/" "https://evologsiyah.com/demo/"; do
+            kod=$(curl -s -o /dev/null -w '%{http_code}' -m 20 "$adres" || echo 000)
+            echo "$adres -> $kod"
+            [ "$kod" = "200" ] || echo "::warning::$adres beklenen 200 yerine $kod dondu"
+          done
+
+      - name: Temizle
+        if: always()
+        run: rm -f ~/.ssh/id_deploy
