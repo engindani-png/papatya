@@ -393,3 +393,18 @@ input:focus, select:focus, textarea:focus {
 .tr.off { border-left-color: var(--hairline) !important; }
 .tr.mac { border-left-color: var(--color-void-violet) !important; }
 .tr.mac .macet { font-weight: 700; }
+
+/* ---------- Açılan yarım sayfa: okunur olmalı ------------------------- */
+/* styles.css `.psheet` için `--ink-raised` kullanıyor; bu skin onu %3 opak
+   frosted-glass'a bağladığı için (rgba(186,214,247,.03)) panel neredeyse
+   görünmez oluyordu: arkadaki fikstür listesi "Takım" sayfasının yazılarının
+   içinden geçiyor, metin okunmuyordu. Çubuklarla aynı derin cam kademesine
+   çekiliyor - dil korunuyor, okunurluk geliyor. */
+.psheet {
+  background: var(--surface-deep-glass);
+  -webkit-backdrop-filter: blur(20px);
+          backdrop-filter: blur(20px);
+}
+/* Sayfanın arkası da biraz koyulaşsın; aksi halde %97 opak panelin kenarında
+   arkadaki liste hâlâ göz yoruyor. */
+.overlay { background: rgba(2, 3, 10, .82); }
