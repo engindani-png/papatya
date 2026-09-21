@@ -137,7 +137,23 @@ body::after {
       transparent 44%, rgba(124,145,182,.18) 49%,
       rgba(124,145,182,.32) 50%, rgba(124,145,182,.18) 51%, transparent 56%);
 }
-.topbar, main, .tabbar, .psheet, .overlay, .toast { position: relative; z-index: 1; }
+/* Dekoratif katmanlar (body::before / body::after) z-index:0'da duruyor;
+   icerik onlarin ustunde kalmali.
+
+   DIKKAT - `position` BURADA YAZILMAZ. Onceki surum bu secicilere toptan
+   `position: relative` veriyordu ve .tabbar'in styles.css'teki
+   `position: fixed` kuralini eziyordu: alt sekme cubugu ekranin altina
+   sabitlenmek yerine sayfayla birlikte kayiyor, ancak en asagi inilince
+   gorunuyordu. .topbar (sticky), .tabbar (fixed), .overlay (fixed) ve
+   .toast (fixed) zaten konumlandirilmis.
+
+   Z-INDEX'E DE DOKUNULMAZ. Onceki surum hepsini `z-index: 1` yapiyordu;
+   DOM sirasi overlay -> toast -> tabbar oldugu icin alt cubuk, acilan
+   katmanlarin ve bildirim balonunun USTUNE biniyordu. styles.css'teki
+   tasarlanmis sira korunmali: topbar 20 < tabbar 30 < toast 60 <
+   cpanel 70 < overlay 80 - hepsi zaten dekoratif katmanin (0) ustunde.
+   Geriye yalnizca konumlandirilmamis `main` kaliyor. */
+main { position: relative; z-index: 1; }
 
 /* --- Kenar dili: solid çizgi yok, her yerde 1px inset hairline ------- */
 .nextcard, .event, .note, .blank, .tile, .venuelist .tv,

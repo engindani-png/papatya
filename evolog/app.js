@@ -1410,9 +1410,25 @@
               '<span>Antrenör paneli<span class="sdesc">Yoklama · program · oyuncu analizi' +
               "</span></span>" +
               '<span class="dim">Şifreli ›</span></button>' +
+            gorunumSatiri() +
           "</div>" +
         "</div>" +
       "</div>";
+  }
+
+  /* Gorunum gecisi. 21 Eylul 2026'da yeni tasarim ana uygulamaya alindi;
+     eskisi /klasik/ altinda duruyor, gerekirse geri donulebilsin diye.
+     Adres calisma aninda hesaplanir: bu dosya demo/ ve klasik/ altina da
+     uretiliyor, sabit "klasik/" yazilsaydi klasik surum kendine link verirdi. */
+  function gorunumSatiri() {
+    var taban = window.EVOLOG_ASSET_BASE || "";
+    var klasikte = location.pathname.indexOf("/klasik/") !== -1;
+    var adres = klasikte ? (taban || "./") : taban + "klasik/";
+    var ad = klasikte ? "Yeni görünüm" : "Klasik görünüm";
+    var alt = klasikte ? "Guncel tasarima dön" : "Önceki tasarımı aç";
+    return '<a class="srow link" href="' + esc(adres) + '">' +
+             "<span>" + ad + '<span class="sdesc">' + alt + "</span></span>" +
+             '<span class="dim">›</span></a>';
   }
 
   function openSheet() {
