@@ -38,7 +38,19 @@
         "evolog daçka şerifali",
         "evolog dacka serifali",
         "daçka şerifali"
-      ]
+      ],
+      "drive": {
+        "_not": "Istanbul temsilciliginin haftalik mac programi (resmi). Bos folderId = kapali.",
+        "folderId": "0ByPao_qBUjN-YXJZSG5Fancybmc",
+        "resourceKey": "0-MKTgAd4XnpTp7S5flJBKuA",
+        "category": "U14KA",
+        "weeksAhead": 1,
+        "teamNames": [
+          "EVOLOG DAÇKA ŞERİFALİ",
+          "DAÇKA ŞERİFALİ",
+          "EVOLOG"
+        ]
+      }
     }
   ]
 }

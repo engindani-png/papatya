@@ -74,9 +74,16 @@ def detect_generated(fixtures: list[dict]) -> set:
     return generated
 
 
-def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = None) -> dict:
-    """Elle duzeltmeleri uygular, uretilmis tarihleri isaretler, degisikligi yazar."""
+def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = None,
+          drive: dict | None = None) -> dict:
+    """Elle duzeltmeleri uygular, uretilmis tarihleri isaretler, degisikligi yazar.
+
+    `drive`: federasyonun Drive'daki haftalik programindan cikan
+    {matchId: {date, time, venue}} (bkz. scripts/drive_program.py).
+    ONCELIK: elle overrides > Drive > TBF.
+    """
     overrides = load_overrides(overrides_path)
+    drive = drive or {}
     now = dt.datetime.now(TZ).isoformat(timespec="seconds")
 
     prev_by_id = {}
@@ -92,13 +99,26 @@ def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = No
             old = prev_by_id.get(mid) or {}
             patch = overrides.get(mid)
 
-            if patch:
-                # Elle girilen bilgi her zaman kazanir.
-                for field in ("date", "time", "venue"):
-                    if patch.get(field):
-                        fx[field] = patch[field]
+            drive_patch = drive.get(mid) if not fx.get("played") else None
+
+            if patch or drive_patch:
+                # Oncelik ALAN BAZINDA: once Drive, ustune elle girilen.
+                # Kayit bazinda olsaydi, yalnizca tarih/saat yazilmis bir
+                # override federasyonun verdigi SALONU da bloklardi.
+                kaynak = []
+                if drive_patch:
+                    for field in ("date", "time", "venue"):
+                        if drive_patch.get(field):
+                            fx[field] = drive_patch[field]
+                    fx["source"] = "drive"
+                    kaynak.append("Federasyon haftalık programı")
+                if patch:
+                    for field in ("date", "time", "venue"):
+                        if patch.get(field):
+                            fx[field] = patch[field]
+                    kaynak.insert(0, patch.get("note") or "Kulüpten gelen bilgi")
                 fx["dateConfirmed"] = True
-                fx["confirmedBy"] = patch.get("note") or "Kulüpten gelen bilgi"
+                fx["confirmedBy"] = " · ".join(kaynak)
             elif fx.get("played"):
                 fx["dateConfirmed"] = True     # oynanmis mac: tarihi zaten kesin
             else:

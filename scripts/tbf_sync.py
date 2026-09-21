@@ -47,6 +47,7 @@ ANALIZ_LIMIT = int(os.environ.get("EVOLOG_ANALIZ_LIMIT", "10"))
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import local_edits  # noqa: E402  (scripts/ sys.path'e eklendikten sonra)
+import drive_program  # noqa: E402
 import tbf_analiz  # noqa: E402
 
 
@@ -672,10 +673,28 @@ def sync_team(cfg: dict, args) -> None:
         except ValueError:
             previous = {}
 
+    # Federasyonun Drive'daki haftalik programi TBF'den daha guvenilir:
+    # TBF dolgu tarih donuyor ve salonu guncellemeyebiliyor. Hata durumunda
+    # drive_program onceki durumu dondurur, senkron kirilmaz.
+    drive_state = {}
+    drive_cfg = cfg.get("drive") or {}
+    if drive_cfg.get("folderId"):
+        dpath = DATA_DIR / cfg["key"] / "drive_program.json"
+        try:
+            drive_state = drive_program.guncelle(
+                drive_cfg, league.get("leagueFixtures") or [],
+                drive_program.yukle(dpath), gunluk=log)
+            if not args.dry_run:          # kuru calistirma diske dokunmaz
+                drive_program.yaz(dpath, drive_state)
+        except Exception as exc:                                   # noqa: BLE001
+            log(f"  uyari: Drive programi islenemedi: {exc}")
+            drive_state = drive_program.yukle(dpath)
+
     # TBF ilan edilmemis maclar icin duzenli araliklarla uretilmis dolgu tarih
     # donuyor; bunlari kesin gunmus gibi gostermeyelim. Elle girilen bilgiler
     # ise her zaman kazanir.
-    league = local_edits.apply(league, overrides_path(cfg["key"]), previous)
+    league = local_edits.apply(league, overrides_path(cfg["key"]), previous,
+                               drive=drive_state.get("matches") or {})
     if league.get("unconfirmedCount"):
         log(f"  {league['unconfirmedCount']} macin tarihi TBF'de kesinlesmemis "
             f"(uretilmis dizi) - uygulamada 'tarih belli degil' gosterilecek")
