@@ -417,6 +417,21 @@
       (f.boxscore && ((f.boxscore.home || []).length || (f.boxscore.away || []).length)));
   }
 
+  /**
+   * Oyuncu bu maçta sahaya çıktı mı?
+   * TBF kutu skoru kadroda olup hiç oynamayanı da listeleyebiliyor; o zaman
+   * dakika "00:00" gelir. Önce dakikaya bakılır, yoksa (TBF kimi maçta
+   * dakika göndermiyor) herhangi bir istatistik izi aranır: bir oyuncu
+   * ribaund aldıysa sahaya çıkmıştır.
+   * Faul ve top kaybı da sayılır — kötü geçen bir dakika da dakikadır.
+   */
+  function sahayaCikti(r) {
+    var m = String(r.min == null ? "" : r.min).match(/^(\d+):(\d+)/);
+    if (m) return Number(m[1]) * 60 + Number(m[2]) > 0;
+    return ["points", "rebounds", "assists", "steals", "blocks", "turnovers", "fouls"]
+      .some(function (k) { return Number(r[k]) > 0; });
+  }
+
   function boxTable(rows, title) {
     if (!rows || !rows.length) return "";
     var cols = [["min", "DK"], ["points", "SAY"], ["rebounds", "RIB"], ["assists", "AST"],
@@ -427,7 +442,10 @@
       cols.map(function (c) { return "<th>" + esc(c[1]) + "</th>"; }).join("") +
       "</tr></thead><tbody>" +
       rows.map(function (r) {
-        return "<tr><td>" + esc(r.no != null ? r.no : "") + "</td><td>" + esc(r.name || "") + "</td>" +
+        var yildiz = sahayaCikti(r)
+          ? '<i class="pstar" title="Sahaya çıktı">★</i>' : "";
+        return '<tr class="' + (sahayaCikti(r) ? "oynadi" : "oynamadi") + '"><td>' +
+          esc(r.no != null ? r.no : "") + "</td><td>" + esc(r.name || "") + yildiz + "</td>" +
           cols.map(function (c) {
             return "<td" + (c[0] === "points" ? ' class="pts"' : "") + ">" +
               esc(r[c[0]] != null ? r[c[0]] : "–") + "</td>";
@@ -859,10 +877,16 @@
 
     // Maç kadrosunda oynayıp lisans listesinde görünmeyenler (üst yaş takviyesi
     // ya da TBF listesi henüz güncellenmemiş olabilir) kaybolmasın.
+    //
+    // ADI ALTINA ETİKET YAZILMIYOR. Önceden burada `meta: "maç kadrosu"` vardı;
+    // veli çocuğunun adının altında anlam veremediği bir ibare görüyordu —
+    // çünkü o ibare oyuncuyla ilgili değil, TBF'nin lisans listesiyle kutu skoru
+    // arasındaki bir tutarsızlıkla ilgiliydi. Kim maçta sahaya çıktı bilgisi
+    // artık ait olduğu yerde duruyor: her maçın kutu skorunda, yıldızla.
     Object.keys(stats).forEach(function (k) {
       if (used[k]) return;
       rows.push({ key: k, name: stats[k].name, st: stats[k], no: stats[k].no,
-                  meta: "maç kadrosu", birthYear: null });
+                  meta: null, birthYear: null });
     });
 
     // Üç kademe: (1) forma numarası olanlar, küçükten büyüğe — 0 dahil.

@@ -279,6 +279,13 @@ table.box th:first-child, table.box td:first-child { text-align: left; padding-l
   font-family: var(--display); font-size: 14px; color: var(--chalk-dim); width: 24px; }
 table.box th:nth-child(2), table.box td:nth-child(2) { text-align: left; }
 table.box td.pts { color: var(--amber); font-weight: 700; }
+/* Sahaya çıktı yıldızı. Adın SAĞINDA, adın kendisinden küçük ve daha
+   sönük: bilgiyi verir ama okunan şey hep isim kalır. Satırın tamamı
+   `.oynamadi` ise TBF kadroya yazmış ama oyuncu hiç girmemiş demektir;
+   o satır bir kademe geri çekiliyor. */
+table.box .pstar { font-style: normal; font-size: 10px; margin-left: 5px;
+  color: var(--amber); vertical-align: 1px; }
+table.box tr.oynamadi td { color: var(--chalk-faint); }
 table.box + .box-title { margin-top: 18px; }
 
 /* ---------------------------------------------------------- puan durumu */
