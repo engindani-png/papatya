@@ -20,6 +20,15 @@
   --color-ice-highlight:   #d8ecf8;
   --color-pure-white:      #ffffff;
   --color-void-violet:     #663af3;
+  /* Mor METIN kademesi. #663af3 gece tuvalinde yalnizca 3.33:1 veriyor;
+     govde metni icin WCAG AA 4.5:1 ister, yani mor yazilar "gorunuyor ama
+     okunmuyor" oluyordu (gun haplari, saatler, aktif sekme etiketi).
+     Bir kademe acilmis hali her iki yonu birden kurtariyor:
+       #8b6cf7 gece tuvalinde 5.37:1  (mor METIN)
+       #05060f  #8b6cf7 uzerinde 5.37:1  (mor DOLGU uzerindeki koyu metin)
+     Mor DOLGU/ray/odak halkasi #663af3 olarak KALIR - kimlik degismiyor,
+     yalnizca "mor yaziya donustugu an" bir kademe aciliyor. */
+  --color-violet-ink:      #8b6cf7;
   --color-gridline-blue:   #3f4959;
   --gradient-ice-highlight: linear-gradient(0deg, #d8ecf8 0%, #98c0ef 100%);
 
@@ -70,7 +79,7 @@
 
   /* Tek kromatik aksan. Sistemde violet yalnizca birincil eylemin rengi;
      burada "kesin olan / aktif olan" isareti o role karsilik geliyor. */
-  --amber:      var(--color-void-violet);
+  --amber:      var(--color-violet-ink);
   --amber-wash: rgba(102, 58, 243, .16);
   --amber-line: rgba(102, 58, 243, .60);
   --amber-dim:  rgba(102, 58, 243, .16);
@@ -234,7 +243,7 @@ main .sec:first-child .eyebrow { margin-top: 18px; }
 .ev-team .nm { color: var(--color-frost-glow); }
 .ev-team .sc { color: var(--color-ice-highlight); }
 .ev-sub, .event-note { color: var(--color-fog-veil); }
-.ev-chg { color: var(--color-void-violet); }
+.ev-chg { color: var(--color-violet-ink); }
 
 /* Galibiyet/mağlubiyet: ek renk yok, parlaklık kademesi */
 .win  { color: var(--color-ice-highlight) !important; }
@@ -283,7 +292,7 @@ input:focus, select:focus, textarea:focus {
 .strow, .sthead, table.box tr { border-color: var(--hairline-soft) !important; }
 .sthead, table.box th { color: var(--color-fog-veil); }
 .strow.ours { background: rgba(102,58,243,.14); }
-.strow.ours .rk, .strow.ours .pts { color: var(--color-void-violet); }
+.strow.ours .rk, .strow.ours .pts { color: var(--color-violet-ink); }
 .tm { color: var(--color-frost-glow); }
 
 /* --- Kadro / antrenman satırları ----------------------------------- */
@@ -291,7 +300,7 @@ input:focus, select:focus, textarea:focus {
   border-bottom: 1px solid var(--hairline-soft);
   border-radius: 0;
 }
-.pl .no { color: var(--color-void-violet); font-family: var(--display); font-weight: 500; }
+.pl .no { color: var(--color-violet-ink); font-family: var(--display); font-weight: 500; }
 .pl .nm, .ss .nm { color: var(--color-frost-glow); }
 .pl .meta, .pl .yr, .ss .role { color: var(--color-fog-veil); }
 .ts2.bugun, .ts2.today { box-shadow: inset 3px 0 0 var(--color-void-violet); }
@@ -306,7 +315,7 @@ input:focus, select:focus, textarea:focus {
 }
 .note b { color: var(--color-ice-highlight); }
 .note.bad { box-shadow: inset 0 0 0 1px rgba(102,58,243,.35); }
-.note.bad b { color: var(--color-void-violet); }
+.note.bad b { color: var(--color-violet-ink); }
 .blank {
   border: 0;
   box-shadow: var(--edge-inset-2);
@@ -322,7 +331,7 @@ input:focus, select:focus, textarea:focus {
   backdrop-filter: blur(16px);
 }
 .tabbar button { color: var(--color-fog-veil); }
-.tabbar button[aria-selected="true"] { color: var(--color-void-violet); }
+.tabbar button[aria-selected="true"] { color: var(--color-violet-ink); }
 .tabbar button[aria-selected="true"]::before { background: var(--color-void-violet); }
 
 /* --- Arma: dairesel ikon kabı -------------------------------------- */
@@ -388,7 +397,7 @@ input:focus, select:focus, textarea:focus {
 .tr.off .day { color: var(--color-fog-veil); }
 .tr .sub .dim { color: var(--color-fog-veil); }
 .tr.mac { box-shadow: var(--edge-inset), inset 3px 0 0 var(--color-void-violet); }
-.tr .macet { color: var(--color-void-violet); letter-spacing: .06em; }
+.tr .macet { color: var(--color-violet-ink); letter-spacing: .06em; }
 
 .tr.off { border-left-color: var(--hairline) !important; }
 .tr.mac { border-left-color: var(--color-void-violet) !important; }
