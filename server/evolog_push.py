@@ -152,6 +152,33 @@ def training_by_day(program: dict) -> dict:
     return gunler
 
 
+# Ayni duyurunun tekrar gonderilmemesi icin pencere. Sonsuza dek engellemek
+# YANLIS olur: kocun ayni hatirlatmayi gelecek hafta tekrar gondermesi mesru.
+DUYURU_TEKRAR_DK = 10
+
+
+def duyuru_tekrar_mi(done: dict, olay_id: str, simdi: float | None = None,
+                     pencere_dk: int = DUYURU_TEKRAR_DK) -> bool:
+    """Ayni duyuru pencere icinde zaten gitti mi?
+
+    Kodda "ayni metin iki kez gonderilmez" yorumu vardi ama kontrol HIC
+    yapilmiyordu: `done` okunuyor, gonderimden SONRA yaziliyor, ama gondermeden
+    once bakilmiyordu (kiyas: fikstur yolunda `e["id"] not in done` var).
+    Sonuc: ayni metin her cagrida yeniden gidiyordu. CP kopru ucu zaman
+    asiminda tekrar denerse veliler cift bildirim alirdi.
+    """
+    kayit = done.get(olay_id)
+    if not kayit:
+        return False
+    try:
+        gonderildi = dt.datetime.fromisoformat(kayit)
+    except (ValueError, TypeError):
+        return False          # okunamayan kayit mesru duyuruyu bloklamasin
+    simdi_dt = (dt.datetime.fromtimestamp(simdi, TZ) if simdi is not None
+                else dt.datetime.now(TZ))
+    return (simdi_dt - gonderildi).total_seconds() < pencere_dk * 60
+
+
 def bildirim_govdesi(metin: str, sinir: int = 180) -> str:
     """Bildirime giden ozet.
 
@@ -468,6 +495,10 @@ def main() -> int:
             "url": "./?duyuru=1",
         }
         done = read_json(NOTIFIED, {})
+        if duyuru_tekrar_mi(done, olay["id"]):
+            print(f"TEKRAR: ayni metin son {DUYURU_TEKRAR_DK} dakikada gonderildi.")
+            print("Duyuru: 0 gonderim.")
+            return 0
         sent, delivered = send_all([olay], args.dry_run)
         if not args.dry_run and olay["id"] in delivered:
             done[olay["id"]] = dt.datetime.now(TZ).isoformat(timespec="seconds")

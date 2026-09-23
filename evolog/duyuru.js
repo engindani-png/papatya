@@ -79,6 +79,10 @@
         el("metin").value = "";
         el("baslik").value = "";
         onizle();
+      } else if (String(res.cikti || "").indexOf("TEKRAR:") !== -1) {
+        // Tekrar korumasi devreye girdi; "abone yok" demek yaniltici olurdu.
+        P.note("mesaj", "bad", "<b>Gönderilmedi.</b> Aynı metin son 10 dakika " +
+          "içinde zaten gönderildi. Metni değiştirin ya da biraz bekleyin.");
       } else {
         P.note("mesaj", "bad", "Duyuru kaydedildi ama <b>kimseye ulaşmadı</b>: " +
           "şu an bildirimi açık veli yok.");

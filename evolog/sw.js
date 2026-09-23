@@ -1,5 +1,5 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-v35";
+var CACHE = "evolog-v36";
 var SHELL = ["./", "./index.html", "./styles.css", "./skin.css", "./app.js", "./icon.svg", "./logo.png",
   "./icon-192.png", "./manifest.webmanifest",
   // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
@@ -20,8 +20,15 @@ self.addEventListener("install", function (e) {
 
 self.addEventListener("activate", function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k !== CACHE; })
-      .map(function (k) { return caches.delete(k); }));
+    // CacheStorage KOKEN basinadir, servis calisani kapsami basina degil.
+    // Ayni koken (evologsiyah.com) altinda /parke2/ adresinde Coach's
+    // Playground kendi onbellegini ("parke2-vNN") tutuyor. Onek suzgeci
+    // olmadan burada ONUN onbellegini de siliyorduk: Evolog her
+    // guncellendiginde kocun CP'si cevrimdisi acilmaz hale geliyordu.
+    // Yalnizca KENDI eski surumlerimizi sil.
+    return Promise.all(keys.filter(function (k) {
+      return k.indexOf("evolog-") === 0 && k !== CACHE;
+    }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 

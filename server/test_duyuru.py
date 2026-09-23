@@ -133,6 +133,37 @@ class UcTest(unittest.TestCase):
         self.assertEqual(c.exception.code, 401)
 
 
+class TekrarTest(unittest.TestCase):
+    """Ayni duyuru kisa sure icinde IKI KEZ gitmemeli.
+
+    Kodda "ayni metin iki kez gonderilmez" yorumu vardi ama kontrol HIC
+    yapilmiyordu: `done` okunuyor, gonderimden SONRA yaziliyor, ama gondermeden
+    once bakilmiyordu. Fikstur yolunda kontrol var (`e["id"] not in done`),
+    duyuru yolunda yoktu. CP kopru ucu zaman asiminda tekrar denerse veliler
+    cift bildirim alirdi.
+    """
+
+    def test_yeni_duyuru_gonderilir(self):
+        self.assertFalse(evolog_push.duyuru_tekrar_mi({}, "duyuru-abc", 1000.0))
+
+    def test_ayni_duyuru_pencere_icinde_ENGELLENIR(self):
+        done = {"duyuru-abc": evolog_push.dt.datetime.fromtimestamp(
+            1000.0, evolog_push.TZ).isoformat(timespec="seconds")}
+        self.assertTrue(evolog_push.duyuru_tekrar_mi(done, "duyuru-abc", 1000.0 + 60))
+
+    def test_ayni_duyuru_pencere_disinda_GECER(self):
+        """Kocun ayni hatirlatmayi gelecek hafta tekrar gondermesi mesru."""
+        done = {"duyuru-abc": evolog_push.dt.datetime.fromtimestamp(
+            1000.0, evolog_push.TZ).isoformat(timespec="seconds")}
+        self.assertFalse(evolog_push.duyuru_tekrar_mi(done, "duyuru-abc",
+                                                      1000.0 + 11 * 60))
+
+    def test_bozuk_zaman_damgasi_engellemez(self):
+        """Okunamayan kayit yuzunden mesru duyuru bloklanmasin."""
+        self.assertFalse(evolog_push.duyuru_tekrar_mi({"duyuru-abc": "bozuk"},
+                                                      "duyuru-abc", 1000.0))
+
+
 class SinirTest(unittest.TestCase):
     """Metin siniri 1000 olmali (eskiden 300'du ve sessizce kesiyordu)."""
 
