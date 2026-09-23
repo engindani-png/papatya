@@ -214,12 +214,15 @@
   function startAutoRefresh() {
     if (INLINE || sync.poll) return;
     sync.poll = setInterval(function () {
-      if (document.visibilityState === "visible") refresh(true);
+      // Duyuru da yoklanir: uygulama acikken gelen duyuru icin yenileme
+      // beklenmesin (bildirimi kapali veli yalnizca burayi gorur).
+      if (document.visibilityState === "visible") { refresh(true); loadDuyuru(); }
     }, REFRESH_MS);
     document.addEventListener("visibilitychange", function () {
       // Uygulamaya dönüldüğünde (telefonda en sık bu olur) hemen bak.
       if (document.visibilityState === "visible" && Date.now() - sync.lastCheck > 15000) {
         refresh(true);
+        loadDuyuru();
       }
     });
     window.addEventListener("online", function () { refresh(true); });
@@ -273,6 +276,10 @@
       render();
       startAutoRefresh();
       initPush();
+    });
+    // Bildirime dokunan veli dogrudan tam metne dussun.
+    loadDuyuru().then(function () {
+      if (QUERY.get("duyuru") === "1") openDuyuru();
     });
   }
 
@@ -1537,8 +1544,63 @@
     window.scrollTo(0, 0);
   }
 
+  /* --------------------------------------------------------------- duyurular */
+  /* Antrenorun duyurusu SQLite'ta duruyordu ama yalnizca antrenor panelinden
+     okunabiliyordu. Telefon bildirimi kesiyor (Android kapali bildirimde ~2
+     satir) ve bildirim kapatilinca metin veli icin tamamen kayboluyordu.
+     Burasi TAM metni herkese gosterir; bildirimdeki ?duyuru=1 katmani acar. */
+  var duyurular = [];
+
+  function duyuruKart(d, katmanda) {
+    var z = String(d.zaman || "").replace("T", " ").slice(0, 16);
+    var bag = (!katmanda && duyurular.length > 1)
+      ? '<button type="button" class="tumu" data-duyuru-tumu>Tüm duyurular (' +
+        duyurular.length + ') →</button>'
+      : "";
+    return '<div class="duyuru">' +
+      '<div class="ust"><span class="et">Antrenörden</span>' +
+      '<span class="z">' + esc(z) + "</span></div>" +
+      (d.baslik ? '<div class="b">' + esc(d.baslik) + "</div>" : "") +
+      '<div class="m">' + esc(d.metin || "") + "</div>" + bag + "</div>";
+  }
+
+  function renderDuyuru() {
+    var slot = el("duyuruSlot");
+    if (slot) slot.innerHTML = duyurular.length ? duyuruKart(duyurular[0], false) : "";
+    var liste = el("duyuruListe");
+    if (liste) {
+      liste.innerHTML = duyurular.length
+        ? duyurular.map(function (d) { return duyuruKart(d, true); }).join("")
+        : '<p class="bos">Henüz duyuru yok.</p>';
+    }
+  }
+
+  function loadDuyuru() {
+    // Cevrimdisiyken sessizce bos kalir; duyuru kritik veri degil.
+    return fetch("/api/duyuru?age=" + age, { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : { duyurular: [] }; })
+      .then(function (res) { duyurular = res.duyurular || []; renderDuyuru(); })
+      .catch(function () { renderDuyuru(); });
+  }
+
+  function openDuyuru() {
+    var panel = el("duyuruPanel");
+    if (!panel) return;
+    renderDuyuru();
+    panel.hidden = false;
+    document.body.classList.add("locked");
+  }
+
+  function closeDuyuru() {
+    var panel = el("duyuruPanel");
+    if (!panel || panel.hidden) return;
+    panel.hidden = true;
+    document.body.classList.remove("locked");
+  }
+
   function render() {
     renderIdentity();
+    renderDuyuru();
     renderSync();
     renderIosHint();
     renderMatches();
@@ -1552,6 +1614,7 @@
   // Basa don: acik katmanlari kapat, ilk sekmeye gec, yukari kaydir.
   function basaDon() {
     closeCoach();
+    closeDuyuru();
     closeSheet();
     var ps = el("playerSheet");
     if (ps && !ps.hidden) { ps.hidden = true; ps.innerHTML = ""; document.body.classList.remove("locked"); }
@@ -1562,6 +1625,15 @@
 
   var homeBtn = el("homeBtn");
   if (homeBtn) homeBtn.addEventListener("click", basaDon);
+
+  document.addEventListener("click", function (ev) {
+    if (!ev.target.closest) return;
+    if (ev.target.closest("[data-duyuru-tumu]")) { openDuyuru(); return; }
+    if (ev.target.closest("#duyuruClose")) { closeDuyuru(); return; }
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") closeDuyuru();
+  });
 
   document.querySelectorAll(".tabbar button").forEach(function (btn) {
     btn.addEventListener("click", function () {

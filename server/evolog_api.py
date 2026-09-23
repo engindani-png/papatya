@@ -38,6 +38,10 @@ STATE_DIR = pathlib.Path(os.environ.get("EVOLOG_STATE_DIR", "/var/lib/evolog"))
 ADMIN_PASS = os.environ.get("EVOLOG_ADMIN_PASS", "")
 PORT = int(os.environ.get("EVOLOG_PORT", "8106"))
 MAX_BODY = 512 * 1024
+# Duyuru metni siniri. Eskiden 300'du ve fazlasi SESSIZCE kesiliyordu; antrenor
+# yazdiginin gittigini saniyordu. Tam metin artik uygulamada okundugu icin
+# sinir genis; bildirime giden ozet ayrica kisaltilir (evolog_push.bildirim_govdesi).
+DUYURU_MAX = 1000
 
 SUBS = STATE_DIR / "subs.json"
 VAPID = STATE_DIR / "vapid.json"
@@ -281,8 +285,11 @@ class Handler(BaseHTTPRequestHandler):
                                                                 roster(age)))
 
         if path == "/api/duyuru":
-            if not authorized(self):
-                return self.send_json(401, {"error": "Sifre hatali"})
+            # OKUMA herkese acik: veli bildirimi kacirdiysa ya da telefon
+            # metni kestiyse duyuruyu uygulamadan okuyabilmeli. Gonderme
+            # (POST) yalnizca antrenorde kalir.
+            # NOT: duyurular disaridan da okunabilir; panelde antrenore
+            # "kisisel bilgi yazma" uyarisi duruyor.
             return self.send_json(200, {"duyurular": attendance.duyurular(STATE_DIR, age_of(self))})
 
         if path == "/api/attendance/summary":
@@ -325,7 +332,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not authorized(self):
                     return self.send_json(401, {"error": "Sifre hatali"})
                 govde = self.body_json() or {}
-                metin = clean_str(govde.get("body"), 300)
+                metin = clean_str(govde.get("body"), DUYURU_MAX)
                 baslik = clean_str(govde.get("title"), 80) or "Antrenörden duyuru"
                 if not metin or len(metin) < 3:
                     return self.send_json(400, {"error": "Duyuru metni cok kisa"})

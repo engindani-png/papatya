@@ -13,14 +13,37 @@
   function el(id) { return document.getElementById(id); }
   function esc(v) { return P.esc(v); }
 
+  /* Sunucudaki evolog_push.bildirim_govdesi ile AYNI kural: 180 karakter,
+     kelime ortadan bolunmez. Antrenor neyin kesilecegini yazarken gorsun. */
+  var BILDIRIM_SINIR = 180;
+
+  function bildirimGovdesi(metin) {
+    metin = metin.split(/\s+/).join(" ");
+    if (metin.length <= BILDIRIM_SINIR) return metin;
+    var kirp = metin.slice(0, BILDIRIM_SINIR);
+    var bosluk = kirp.lastIndexOf(" ");
+    if (bosluk > BILDIRIM_SINIR * 0.6) kirp = kirp.slice(0, bosluk);
+    return kirp.replace(/[ ,.;:-]+$/, "") + "…";
+  }
+
   function onizle() {
     var baslik = (el("baslik").value || "").trim() || "Antrenörden duyuru";
     var metin = (el("metin").value || "").trim();
-    el("sayac").textContent = (el("metin").value || "").length + " / 280";
+    el("sayac").textContent = (el("metin").value || "").length + " / 1000";
+
+    var ozet = metin ? bildirimGovdesi(metin) : "";
+    var kesildi = metin && ozet.length < metin.length;
     el("onizleme").innerHTML =
       '<div class="b">U14 · ' + esc(baslik) + "</div>" +
+      '<div class="m">' + (ozet ? esc(ozet) : "Mesajınız burada görünecek.") + "</div>" +
+      '<div class="u">Telefonda bildirim olarak böyle görünür' +
+      (kesildi ? ' · <span class="kirpik">devamı uygulamada</span>' : "") + "</div>";
+
+    el("onizlemeTam").innerHTML =
+      '<div class="b">' + esc(baslik) + "</div>" +
       '<div class="m">' + (metin ? esc(metin) : "Mesajınız burada görünecek.") + "</div>" +
-      '<div class="u">Telefonda bildirim olarak böyle görünür</div>';
+      '<div class="u">Uygulamadaki Duyurular bölümünde tamamı böyle görünür</div>';
+
     el("gonderBtn").disabled = metin.length < 3;
   }
 

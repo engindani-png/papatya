@@ -152,6 +152,24 @@ def training_by_day(program: dict) -> dict:
     return gunler
 
 
+def bildirim_govdesi(metin: str, sinir: int = 180) -> str:
+    """Bildirime giden ozet.
+
+    Telefon zaten kesiyor (Android kapali bildirimde ~2 satir). Kesmeyi
+    isletim sistemine birakmak yerine KASITLI kisaltiyoruz: boylece kesik
+    yerde kelime ortadan bolunmez ve ucnokta veliye "devami var" der.
+    Tam metin veritabaninda durur, uygulamadaki Duyurular ekraninda okunur.
+    """
+    metin = " ".join((metin or "").split())
+    if len(metin) <= sinir:
+        return metin
+    kirp = metin[:sinir]
+    bosluk = kirp.rfind(" ")
+    if bosluk > sinir * 0.6:          # kelimeyi ortadan bolme
+        kirp = kirp[:bosluk]
+    return kirp.rstrip(" ,.;:-") + "…"
+
+
 def training_summary(onceki: dict, yeni: dict) -> list[str]:
     """Bildirim metni: programin KALAN gunleri, veli diliyle.
 
@@ -434,7 +452,7 @@ def main() -> int:
     if args.duyuru:
         # Antrenor panelinden gelen duyuru. Olay kimligi metnin ozetinden
         # uretilir: ayni metin iki kez gonderilmez, farkli metin engellenmez.
-        metin = args.duyuru.strip()[:300]
+        metin = args.duyuru.strip()[:1000]
         if not metin:
             print("Bos duyuru gonderilmedi.")
             return 1
@@ -443,8 +461,11 @@ def main() -> int:
             "id": "duyuru-" + imza,
             "age": DEFAULT_AGE,
             "title": (args.baslik or "Antrenörden duyuru").strip()[:80],
-            "body": metin,
+            # Bildirimde OZET; tam metin uygulamada. url, veliyi dogrudan
+            # Duyurular ekranina goturur (app.js ?duyuru=1'i yakalar).
+            "body": bildirim_govdesi(metin),
             "tag": "duyuru-" + imza,
+            "url": "./?duyuru=1",
         }
         done = read_json(NOTIFIED, {})
         sent, delivered = send_all([olay], args.dry_run)

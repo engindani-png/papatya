@@ -1020,3 +1020,22 @@ button.event[aria-expanded] .ev-detay { color: var(--muted-deep); }
 .tr.off { border-left-color: var(--line-dash); }
 .tr.mac { border-left-width: 3px; border-left-color: var(--amber); }
 .tr.mac .macet { font-weight: 700; }
+
+
+/* ---------------------------------------------------------------- duyurular */
+/* Ana ekrandaki kart en son duyuruyu TAM gosterir; bildirimde kesilen metin
+   burada butun okunur. Birden fazla duyuru varsa alttaki bag katmani acar. */
+.duyuru { border: 1px solid var(--line); border-left: 3px solid var(--amber);
+  border-radius: 10px; padding: 12px 14px; margin: 0 0 12px; background: var(--ink-2, transparent); }
+.duyuru .ust { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.duyuru .et { font-family: var(--display); font-size: 11px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--amber); }
+.duyuru .z { margin-left: auto; font-size: 11px; color: var(--chalk-faint); }
+.duyuru .b { font-weight: 600; margin-bottom: 4px; }
+.duyuru .m { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.duyuru .tumu { display: inline-block; margin-top: 8px; font-size: 13px;
+  color: var(--amber); background: none; border: 0; padding: 0; cursor: pointer; }
+
+.cpanel .dlist { flex: 1; overflow: auto; padding: 14px var(--gutter) 40px; }
+.cpanel .dlist .duyuru { margin-bottom: 14px; }
+.cpanel .dlist .bos { color: var(--chalk-faint); font-size: 14px; }

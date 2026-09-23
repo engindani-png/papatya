@@ -23,6 +23,8 @@
 .gecmis .k .ad{font-family:var(--display);font-weight:600;letter-spacing:.02em}
 .gecmis .k .z{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--chalk-faint)}
 .gecmis .k .m{color:var(--chalk-dim);margin-top:.25rem;line-height:1.5}
+.hint.uyari{color:var(--amber)}
+.onizleme .kirpik{color:var(--chalk-faint)}
 .sayac{font-size:.75rem;color:var(--chalk-faint);text-align:right;margin-top:-.4rem}
 </style>
 </head>
@@ -49,16 +51,22 @@
 
   <main id="adminBox" hidden>
     <h2>Velilere bildirim</h2>
-    <p class="hint">Bildirimi açık olan velilerin telefonuna anında düşer. Kısa ve net yazın;
-      uzun metin telefonda kırpılır.</p>
+    <p class="hint">Bildirimi açık olan velilerin telefonuna anında düşer.
+      <b>İlk cümleye en önemli bilgiyi yazın</b> — telefon bildirimi yalnızca ilk
+      satırları gösterir. Tamamı uygulamadaki <b>Duyurular</b> bölümünde okunur,
+      hiçbir şey kaybolmaz.</p>
+    <p class="hint uyari">Duyurular uygulamada <b>herkese açık</b> görünür.
+      Kadro, isim ve forma numarası sorun değil — bunlar zaten Kadro sekmesinde
+      açık. Yazmayın: <b>telefon, adres, sağlık/sakatlık bilgisi</b> ve veli adı.</p>
 
     <input type="text" id="baslik" maxlength="60" placeholder="Başlık (örn. Antrenman değişikliği)">
-    <textarea id="metin" maxlength="280" rows="4"
+    <textarea id="metin" maxlength="1000" rows="6"
       placeholder="Örnek: Yarınki antrenman 20:00'de Maltepe TOKİ'de. Servis 19:30'da okuldan kalkacak."></textarea>
-    <div class="sayac" id="sayac">0 / 280</div>
+    <div class="sayac" id="sayac">0 / 1000</div>
 
     <h2>Önizleme</h2>
     <div class="onizleme" id="onizleme"></div>
+    <div class="onizleme" id="onizlemeTam"></div>
 
     <div class="row">
       <button id="gonderBtn">Gönder</button>

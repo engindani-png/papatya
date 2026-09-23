@@ -1,5 +1,5 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-v34";
+var CACHE = "evolog-v35";
 var SHELL = ["./", "./index.html", "./styles.css", "./skin.css", "./app.js", "./icon.svg", "./logo.png",
   "./icon-192.png", "./manifest.webmanifest",
   // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
@@ -85,8 +85,15 @@ self.addEventListener("notificationclick", function (e) {
   var url = (e.notification.data && e.notification.data.url) || "./";
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true })
     .then(function (list) {
+      // Uygulama artik KOK adreste (evologsiyah.com). Eski kontrol
+      // url.indexOf("/evolog/") hicbir zaman tutmuyordu, bu yuzden bildirime
+      // her dokunusta YENI pencere aciliyordu. Kapsam (scope) ile karsilastir.
+      var kapsam = self.registration.scope;
       for (var i = 0; i < list.length; i++) {
-        if (list[i].url.indexOf("/evolog/") !== -1 && "focus" in list[i]) return list[i].focus();
+        if (list[i].url.indexOf(kapsam) === 0 && "focus" in list[i]) {
+          if ("navigate" in list[i]) { try { list[i].navigate(url); } catch (err) { /* onemsiz */ } }
+          return list[i].focus();
+        }
       }
       if (self.clients.openWindow) return self.clients.openWindow(url);
     }));

@@ -38,6 +38,7 @@
 <main class="wrap">
   <section class="panel" id="panel-maclar" role="tabpanel" aria-labelledby="tab-maclar">
     <div id="matchNotice"></div>
+    <div id="duyuruSlot"></div>
     <div id="iosHint"></div>
 
     <div class="seg" role="tablist" aria-label="Maç görünümü">
@@ -98,6 +99,18 @@
   </header>
   <div class="ctabs" id="coachTabs"></div>
   <iframe id="coachFrame" title="Antrenör paneli" src="about:blank"></iframe>
+</div>
+
+<!-- Duyurular: antrenorun gonderdigi TAM metin. Telefon bildirimi kesiyor
+     (Android kapali bildirimde ~2 satir) ve bildirim kapatilinca metin
+     kayboluyordu; buradan her zaman okunabilir. Bildirimdeki ?duyuru=1
+     bu katmani dogrudan acar. -->
+<div class="cpanel" id="duyuruPanel" hidden>
+  <header class="ch">
+    <strong>Duyurular</strong>
+    <button class="pclose" id="duyuruClose" aria-label="Kapat">✕</button>
+  </header>
+  <div class="dlist" id="duyuruListe"></div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
