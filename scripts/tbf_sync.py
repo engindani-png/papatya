@@ -50,10 +50,10 @@ ANALIZ_LIMIT = int(os.environ.get("EVOLOG_ANALIZ_LIMIT", "10"))
 # ertesi gunu, bazen gunler sonra yayinliyor. Eskiden dosya bir kez yazilinca
 # bir daha uretilmiyordu; 18 Eylul Besiktas - Emlak Konut (B) macinin
 # analizi bu yuzden bos kaldi, oysa TBF'de 143 atis ve 581 olay duruyor.
-ANALIZ_BOS_TEKRAR_SAAT = int(os.environ.get("EVOLOG_ANALIZ_BOS_TEKRAR_SAAT", "12"))
+ANALIZ_BOS_TEKRAR_SAAT = int(os.environ.get("EVOLOG_ANALIZ_BOS_TEKRAR_SAAT", "3"))
 # Bu kadar gun sonra hala bos ise TBF o maci hic yayinlamamis demektir
 # (8-10 Eylul maclarinda durum bu). Sonsuza kadar istek atmayalim.
-ANALIZ_BOS_GUN = int(os.environ.get("EVOLOG_ANALIZ_BOS_GUN", "30"))
+ANALIZ_BOS_GUN = int(os.environ.get("EVOLOG_ANALIZ_BOS_GUN", "45"))
 
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -68,6 +68,43 @@ def league_path(key: str) -> pathlib.Path:
 
 def team_path(key: str) -> pathlib.Path:
     return DATA_DIR / key / "team.json"
+
+
+def eksik_analiz_defteri(hedef: pathlib.Path, fixtures: list,
+                         simdi=None) -> list:
+    """Hangi oynanmis macin analizi hala bos - takip edilebilir liste.
+
+    NEDEN: federasyon istatistigi duzensiz yayinliyor; bir mac bugun bos,
+    uc gun sonra dolu olabiliyor. Neyin eksik oldugunu gorebilmek lazim,
+    yoksa eksik kaldigini ancak veli sikayet edince ogreniyoruz (Emlak
+    Konut (B) sayfasi tamamen bostu ve haftalardir oyleydi).
+    """
+    simdi = simdi or dt.datetime.now(TZ)
+    eksik = []
+    for f in fixtures:
+        if not f.get("played"):
+            continue
+        mid = f.get("matchId")
+        dosya = hedef / f"{mid}.json"
+        if not dosya.exists():
+            durum, denendi = "uretilmedi", None
+        else:
+            try:
+                a = json.loads(dosya.read_text(encoding="utf-8"))
+            except ValueError:
+                a = {}
+            if not analiz_bos_mu(a):
+                continue
+            durum, denendi = "bos", a.get("denendi")
+        eksik.append({
+            "matchId": mid, "date": f.get("date"),
+            "home": f.get("home"), "away": f.get("away"),
+            "durum": durum, "denendi": denendi,
+            "tekrarDenenecek": bool(dosya.exists()) and
+                               bos_analiz_tekrar_mi({"denendi": denendi}, f, simdi),
+        })
+    eksik.sort(key=lambda x: x.get("date") or "")
+    return eksik
 
 
 def analiz_bos_mu(analiz: dict) -> bool:
@@ -671,6 +708,20 @@ def build(cfg: dict, want_details: bool) -> dict:
                 errors.append(f"Mac {mid} analizi alinamadi: {exc}")
         if yeni_sayi:
             print(f"  {yeni_sayi} mac analizi uretildi.")
+
+        # Eksik analiz defteri: her calismada yeniden yazilir, boylece
+        # "hangi mac hala bos" sorusunun cevabi tek dosyada duruyor.
+        eksik = eksik_analiz_defteri(hedef, league_fixtures or [])
+        (analiz_dir(cfg["key"]).parent / "analiz_eksik.json").write_text(
+            json.dumps({"updatedAt": dt.datetime.now(TZ).isoformat(timespec="seconds"),
+                        "eksik": eksik}, ensure_ascii=False),
+            encoding="utf-8")
+        if eksik:
+            bekleyen = sum(1 for e in eksik if e["tekrarDenenecek"])
+            print(f"  {len(eksik)} macin analizi hala bos "
+                  f"({bekleyen} tanesi tekrar denenecek):")
+            for e in eksik:
+                print(f"     {e['date']} {e['home']} - {e['away']} ({e['durum']})")
 
     played = [f for f in fixtures if f.get("played")]
     analizli = sorted(int(x.stem) for x in analiz_dir(cfg["key"]).glob("*.json")

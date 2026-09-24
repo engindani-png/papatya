@@ -2,6 +2,8 @@
 """tbf_analiz testleri.  Calistirma:  python -m unittest scripts.test_tbf_analiz"""
 
 import datetime as dt
+import json
+import tempfile
 import pathlib
 import sys
 import unittest
@@ -395,3 +397,55 @@ class BosAnalizTest(unittest.TestCase):
 
     def test_tarihsiz_mac_denenir(self):
         self.assertTrue(self.ts.bos_analiz_tekrar_mi(self.BOS, {}, self.simdi))
+
+
+class EksikDefterTest(unittest.TestCase):
+    """Eksik analiz defteri: hangi mac hala bos, tek dosyada dursun.
+
+    Eksik kaldigini ancak veli sikayet edince ogreniyorduk.
+    """
+
+    def setUp(self):
+        import tbf_sync
+        self.ts = tbf_sync
+        self.dizin = pathlib.Path(tempfile.mkdtemp())
+        self.simdi = dt.datetime(2026, 9, 24, 23, 0, tzinfo=tbf_sync.TZ)
+
+    def _yaz(self, mid, analiz):
+        (self.dizin / f"{mid}.json").write_text(json.dumps(analiz), encoding="utf-8")
+
+    FIX = [
+        {"matchId": 1, "date": "2026-09-18", "home": "A", "away": "B", "played": True},
+        {"matchId": 2, "date": "2026-09-20", "home": "C", "away": "D", "played": True},
+        {"matchId": 3, "date": "2026-10-04", "home": "E", "away": "F", "played": False},
+    ]
+
+    def test_dolu_analiz_defterde_yok(self):
+        self._yaz(1, {"shots": {"home": [{"x": 1}], "away": []}, "players": {}})
+        self._yaz(2, {"shots": {"home": [{"x": 1}], "away": []}, "players": {}})
+        self.assertEqual(self.ts.eksik_analiz_defteri(self.dizin, self.FIX, self.simdi), [])
+
+    def test_bos_analiz_defterde(self):
+        self._yaz(1, {"shots": {"home": [], "away": []}, "players": {},
+                      "denendi": "2026-09-24T22:00:00+03:00"})
+        self._yaz(2, {"shots": {"home": [{"x": 1}], "away": []}, "players": {}})
+        d = self.ts.eksik_analiz_defteri(self.dizin, self.FIX, self.simdi)
+        self.assertEqual([e["matchId"] for e in d], [1])
+        self.assertEqual(d[0]["durum"], "bos")
+
+    def test_hic_uretilmemis_analiz_defterde(self):
+        d = self.ts.eksik_analiz_defteri(self.dizin, self.FIX, self.simdi)
+        self.assertEqual([e["durum"] for e in d], ["uretilmedi", "uretilmedi"])
+
+    def test_oynanmamis_mac_defterde_yok(self):
+        d = self.ts.eksik_analiz_defteri(self.dizin, self.FIX, self.simdi)
+        self.assertNotIn(3, [e["matchId"] for e in d])
+
+    def test_tarihe_gore_sirali(self):
+        d = self.ts.eksik_analiz_defteri(self.dizin, self.FIX, self.simdi)
+        self.assertEqual([e["date"] for e in d], ["2026-09-18", "2026-09-20"])
+
+    def test_bozuk_dosya_eksik_sayilir(self):
+        (self.dizin / "1.json").write_text("{bozuk", encoding="utf-8")
+        d = self.ts.eksik_analiz_defteri(self.dizin, self.FIX, self.simdi)
+        self.assertIn(1, [e["matchId"] for e in d])
