@@ -21,6 +21,7 @@
   var PUSH_STORE = "evolog.pushAges";
   var IOS_STORE = "evolog.iosHint";
   var DUYURU_STORE = "evolog.duyuruOkundu";   // okundu isaretlenen duyuru id'leri
+  var DUYURU_SIL_STORE = "evolog.duyuruSilindi";   // velinin kendi silmesi (mezar tasi)
 
   // localStorage gizli sekmede ya da kapali depolamada patlayabilir.
   function store(key, value) {
@@ -1459,7 +1460,7 @@
             '<button type="button" class="srow link" data-coach="yoklama">' +
               '<span>Antrenör paneli<span class="sdesc">Yoklama · program · oyuncu analizi' +
               "</span></span>" +
-              '<span class="dim">Şifreli ›</span></button>' +
+              '<span class="gir">Giriş</span></button>' +
             gorunumSatiri() +
           "</div>" +
         "</div>" +
@@ -1564,95 +1565,181 @@
   }
 
   /* --------------------------------------------------------------- duyurular */
-  /* Antrenorun duyurusu SQLite'ta duruyordu ama yalnizca antrenor panelinden
-     okunabiliyordu. Telefon bildirimi kesiyor (Android kapali bildirimde ~2
-     satir) ve bildirim kapatilinca metin veli icin tamamen kayboluyordu.
-     Burasi TAM metni herkese gosterir; bildirimdeki ?duyuru=1 katmani acar. */
-  var duyurular = [];
+  /* Iki kaynak birlestirilir:
+       SUNUCU  /api/duyuru  - antrenorun yazdigi duyurular, TAM metin, her
+                              cihazda ayni. Bildirimi kaciran veli de gorur.
+       YEREL   IndexedDB    - telefona GELEN her push (mac sonucu, saat
+                              degisikligi, antrenman programi...). Bunlarin
+                              sunucuda kaydi yok; bildirim kapatilinca
+                              metin tamamen kayboluyordu.
+     Ayni duyurunun iki kopyasi (sunucudaki tam metin + push'taki kisa ozet)
+     `etiket` uzerinden eslesir ve TEK kart gosterilir; sunucudaki kazanir.
+     Silme VELIYE OZELDIR: antrenorun duyurusunu kimse baskasi icin silemez,
+     silinen id telefonda mezar tasi olarak tutulur. */
+  var sunucuDuyurular = [];
+  var yerelDuyurular = [];
+  var sonSilinen = null;          // "Geri al" icin son silinen kayit
 
   function duyuruId(d) {
     return String(d && (d.id != null ? d.id : d.zaman) || "");
   }
 
-  function okunanlar() {
-    try { return JSON.parse(store(DUYURU_STORE) || "[]") || []; }
+  function depoListesi(anahtar) {
+    try { return JSON.parse(store(anahtar) || "[]") || []; }
     catch (e) { return []; }
   }
+
+  function okunanlar() { return depoListesi(DUYURU_STORE); }
+  function silinenler() { return depoListesi(DUYURU_SIL_STORE); }
 
   function okunduMu(d) { return okunanlar().indexOf(duyuruId(d)) !== -1; }
 
   /** Gorulen tum duyurulari okundu isaretler; liste son 50 ile sinirli tutulur. */
   function okunduIsaretle() {
-    var liste = okunanlar();
-    duyurular.forEach(function (d) {
+    var l = okunanlar();
+    duyurular().forEach(function (d) {
       var k = duyuruId(d);
-      if (k && liste.indexOf(k) === -1) liste.push(k);
+      if (k && l.indexOf(k) === -1) l.push(k);
     });
-    store(DUYURU_STORE, JSON.stringify(liste.slice(-50)));
+    store(DUYURU_STORE, JSON.stringify(l.slice(-50)));
     renderDuyuru();
   }
 
+  /** Iki kaynagi birlestirir, silinenleri duser, yeniden eskiye sirali doner. */
+  function duyurular() {
+    var olu = silinenler();
+    var sunucuEtiket = {};
+    sunucuDuyurular.forEach(function (d) { if (d.etiket) sunucuEtiket[d.etiket] = true; });
+
+    var hepsi = sunucuDuyurular.slice();
+    yerelDuyurular.forEach(function (y) {
+      // Sunucuda tam metni varsa push kopyasini atla.
+      if (y.etiket && sunucuEtiket[y.etiket]) return;
+      hepsi.push(y);
+    });
+
+    return hepsi.filter(function (d) {
+      if (olu.indexOf(duyuruId(d)) !== -1) return false;
+      return !(d.etiket && olu.indexOf("e:" + d.etiket) !== -1);
+    }).sort(function (a, b) {
+      return String(b.zaman || "").localeCompare(String(a.zaman || ""));
+    });
+  }
+
   function okunmamisSayisi() {
-    return duyurular.filter(function (d) { return !okunduMu(d); }).length;
+    return duyurular().filter(function (d) { return !okunduMu(d); }).length;
+  }
+
+  /** Veli kendi telefonundan siler. Sunucudaki kayda dokunmaz. */
+  function duyuruSil(id) {
+    var hedef = null;
+    duyurular().forEach(function (d) { if (duyuruId(d) === id) hedef = d; });
+    if (!hedef) return;
+
+    var olu = silinenler();
+    if (olu.indexOf(id) === -1) olu.push(id);
+    // Etiketi de goml: ayni duyurunun push kopyasi geride kalmasin.
+    if (hedef.etiket && olu.indexOf("e:" + hedef.etiket) === -1) olu.push("e:" + hedef.etiket);
+    store(DUYURU_SIL_STORE, JSON.stringify(olu.slice(-200)));
+
+    // Yerel arsivden gercekten sil: mezar tasi listesi sinirli, kayit degil.
+    if (window.EvologArsiv && hedef.etiket) {
+      window.EvologArsiv.etiketiSil(hedef.etiket)["catch"](function () { /* onemsiz */ });
+    }
+    sonSilinen = hedef;
+    yerelDuyurular = yerelDuyurular.filter(function (y) { return duyuruId(y) !== id; });
+    renderDuyuru();
+  }
+
+  function silmeyiGeriAl() {
+    if (!sonSilinen) return;
+    var d = sonSilinen, id = duyuruId(d);
+    store(DUYURU_SIL_STORE, JSON.stringify(silinenler().filter(function (k) {
+      return k !== id && k !== "e:" + d.etiket;
+    })));
+    sonSilinen = null;
+    // Sunucu kaydi bir sonraki yuklemede kendiliginden geri gelir; yerel
+    // kaydi ise arsivden silmistik, geri yazmak gerekiyor.
+    var geri = (d.kaynak === "yerel" && window.EvologArsiv)
+      ? window.EvologArsiv.yaz(d)["catch"](function () { return null; })
+      : Promise.resolve(null);
+    geri.then(loadDuyuru).then(function () { toast("Duyuru geri alındı"); });
   }
 
   /** Katmandaki tam kart. */
   function duyuruKart(d) {
     var z = String(d.zaman || "").replace("T", " ").slice(0, 16);
+    var kimden = d.kaynak === "yerel" ? "Bildirim" : "Antrenörden";
     return '<div class="duyuru' + (okunduMu(d) ? " okundu" : "") + '">' +
-      '<div class="ust"><span class="et">Antrenörden</span>' +
-      '<span class="z">' + esc(z) + "</span></div>" +
+      '<div class="ust"><span class="et">' + kimden + "</span>" +
+      '<span class="z">' + esc(z) + "</span>" +
+      '<button type="button" class="dsil" data-duyuru-sil="' + esc(duyuruId(d)) + '" ' +
+        'aria-label="Bu duyuruyu sil">✕</button></div>' +
       (d.baslik ? '<div class="b">' + esc(d.baslik) + "</div>" : "") +
       '<div class="m">' + esc(d.metin || "") + "</div></div>";
   }
 
   /* Ana ekranda duyurunun TAM metni duruyordu; uzun duyuru butun ekrani
      asagi itiyordu. Artik yalnizca okunmamis duyuru icin tek satirlik bir
-     seritvar; tam metin Duyurular katmaninda. Okundu denince serit kayboluyor,
+     serit var; tam metin Duyurular katmaninda. Okundu denince serit kayboluyor,
      duyuru katmanda kalmaya devam ediyor. */
   function renderDuyuru() {
+    var hepsi = duyurular();
     var slot = el("duyuruSlot");
     if (slot) {
-      var yeni = duyurular.filter(function (d) { return !okunduMu(d); });
+      var yeni = hepsi.filter(function (d) { return !okunduMu(d); });
       if (!yeni.length) {
         slot.innerHTML = "";
       } else {
         var d = yeni[0];
         var ozet = d.baslik || String(d.metin || "").replace(/\s+/g, " ").trim();
-        if (ozet.length > 70) ozet = ozet.slice(0, 70) + "…";
+        if (ozet.length > 70) ozet = ozet.slice(0, 70) + "\u2026";
         slot.innerHTML =
           '<div class="duyuru-serit">' +
             '<button type="button" class="ds-ac" data-duyuru-ac>' +
-              '<span class="ds-et">Antrenörden' +
-              (yeni.length > 1 ? " · " + yeni.length + " yeni" : "") + "</span>" +
+              '<span class="ds-et">Antren\u00f6rden' +
+              (yeni.length > 1 ? " \u00b7 " + yeni.length + " yeni" : "") + "</span>" +
               '<span class="ds-oz">' + esc(ozet) + "</span>" +
             "</button>" +
             '<button type="button" class="ds-ok" data-duyuru-okundu ' +
-              'aria-label="Okundu olarak işaretle">Okundu</button>' +
+              'aria-label="Okundu olarak i\u015faretle">Okundu</button>' +
           "</div>";
       }
     }
-    var liste = el("duyuruListe");
-    if (liste) {
-      liste.innerHTML = duyurular.length
-        ? duyurular.map(duyuruKart).join("") +
-          '<button type="button" class="dokundu" data-duyuru-okundu>Hepsini okundu işaretle</button>'
-        : '<p class="bos">Henüz duyuru yok.</p>';
+    var kutu = el("duyuruListe");
+    if (kutu) {
+      var geri = sonSilinen
+        ? '<div class="dgeri">Duyuru silindi' +
+            '<button type="button" data-duyuru-geri>Geri al</button></div>'
+        : "";
+      kutu.innerHTML = geri + (hepsi.length
+        ? hepsi.map(duyuruKart).join("") +
+          '<button type="button" class="dokundu" data-duyuru-okundu>Hepsini okundu i\u015faretle</button>'
+        : '<p class="bos">Hen\u00fcz duyuru yok.</p>');
     }
+    var n = okunmamisSayisi();
     var rozet = el("duyuruRozet");
     if (rozet) {
-      var n = okunmamisSayisi();
-      rozet.textContent = n ? String(n) : "";
+      rozet.textContent = n > 99 ? "99+" : String(n);
       rozet.hidden = !n;
+    }
+    var sekme = el("tab-duyuru");
+    if (sekme) {
+      sekme.classList.toggle("yeni", !!n);
+      sekme.setAttribute("aria-label", n ? "Duyurular \u00b7 " + n + " okunmam\u0131\u015f" : "Duyurular");
     }
   }
 
   function loadDuyuru() {
-    // Cevrimdisiyken sessizce bos kalir; duyuru kritik veri degil.
-    return fetch("/api/duyuru?age=" + age, { cache: "no-store" })
+    // Cevrimdisiyken sunucu kismi sessizce bos kalir; duyuru kritik veri degil.
+    var uzak = fetch("/api/duyuru?age=" + age, { cache: "no-store" })
       .then(function (r) { return r.ok ? r.json() : { duyurular: [] }; })
-      .then(function (res) { duyurular = res.duyurular || []; renderDuyuru(); })
-      .catch(function () { renderDuyuru(); });
+      .then(function (res) { sunucuDuyurular = res.duyurular || []; })
+      ["catch"](function () { /* sunucu yok: elimizdeki liste kalsin */ });
+    var yerel = (window.EvologArsiv ? window.EvologArsiv.hepsi() : Promise.resolve([]))
+      .then(function (l) { yerelDuyurular = l || []; })
+      ["catch"](function () { yerelDuyurular = []; });
+    return Promise.all([uzak, yerel]).then(renderDuyuru);
   }
 
   function openDuyuru() {
@@ -1668,8 +1755,16 @@
     if (!panel || panel.hidden) return;
     panel.hidden = true;
     document.body.classList.remove("locked");
+    sonSilinen = null;   // "Geri al" yalnizca panel acikken gecerli
     // Katmani acip kapatan veli tam metni gormustur; serit bir daha cikmasin.
     okunduIsaretle();
+  }
+
+  // Uygulama ACIKKEN bildirim gelirse liste ve rozet aninda tazelensin.
+  if (navigator.serviceWorker) {
+    navigator.serviceWorker.addEventListener("message", function (ev) {
+      if (ev.data && ev.data.tip === "duyuru-geldi") loadDuyuru();
+    });
   }
 
   function render() {
@@ -1708,6 +1803,9 @@
       toast("Duyurular okundu işaretlendi");
       return;
     }
+    var silBtn = ev.target.closest("[data-duyuru-sil]");
+    if (silBtn) { duyuruSil(silBtn.getAttribute("data-duyuru-sil")); return; }
+    if (ev.target.closest("[data-duyuru-geri]")) { silmeyiGeriAl(); return; }
     if (ev.target.closest("#duyuruClose")) { closeDuyuru(); return; }
   });
   document.addEventListener("keydown", function (ev) {
@@ -1717,6 +1815,7 @@
   document.querySelectorAll(".tabbar button").forEach(function (btn) {
     btn.addEventListener("click", function () {
       if (btn.id === "tab-takim") { openSheet(); return; }
+      if (btn.id === "tab-duyuru") { openDuyuru(); return; }
       if (!btn.dataset.panel) return;
       location.hash = btn.dataset.panel;
       showPanel(btn.dataset.panel);

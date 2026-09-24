@@ -2,11 +2,15 @@
 // v37: daha once v36 kullanilmisti, sonra bir surum v31e DUSURULDU.
 // Geriye gitmek karisiklik yaratiyor; bir daha ileri gidiyoruz ve
 // buradan sonra HEP artar.
-var CACHE = "evolog-v37";
+var CACHE = "evolog-v38";
+
+// Gelen bildirimleri telefonda saklayan katman. sw.js ile app.js AYNI
+// dosyayi kullanir; yazan ile okuyanin semasi ayrismasin diye.
+importScripts("./duyuru-arsiv.js");
 var SHELL = ["./", "./index.html", "./styles.css", "./skin.css", "./app.js", "./icon.svg", "./logo.png",
   "./icon-192.png", "./manifest.webmanifest",
   // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
-  "./panel.css", "./panel-auth.js",
+  "./panel.css", "./panel-auth.js", "./duyuru-arsiv.js",
   "./yonetim.html", "./yonetim.js", "./parser.js",
   "./yoklama.html", "./yoklama.js",
   "./oyuncular.html", "./oyuncular.js",
@@ -80,15 +84,41 @@ self.addEventListener("push", function (e) {
   // Bildirim, uygulamayi acmadan yeni surumu indirmek icin de bir firsat:
   // telefon zaten uyandi, sw.js'i tazeleyip guncellemeyi hazir ediyoruz.
   try { self.registration.update(); } catch (err) { /* onemsiz */ }
-  e.waitUntil(self.registration.showNotification(d.title || "Şerifali Spor Kulübü U14 Kız Siyah", {
+
+  var baslik = d.title || "Şerifali Spor Kulübü U14 Kız Siyah";
+  var goster = self.registration.showNotification(baslik, {
     body: d.body || "",
     tag: d.tag || "evolog",
     renotify: true,
     icon: "./icon-192.png",
     badge: "./icon-192.png",
     data: { url: d.url || "./" }
-  }));
+  });
+
+  // GELEN HER BILDIRIM ARSIVE. Bildirim kapatilinca metin kayboluyordu;
+  // mac sonucu / saat degisikligi / antrenman programi bildirimleri
+  // sunucuda hic tutulmuyor, tek kopyasi buydu. Arsive yazma BASARISIZ
+  // olsa bile bildirim gosterilmeli, o yuzden hata yutuluyor.
+  var arsivle = Promise.resolve();
+  if (self.EvologArsiv) {
+    arsivle = self.EvologArsiv
+      .yaz(self.EvologArsiv.kayitYap({ tag: d.tag, title: baslik, body: d.body, url: d.url }))
+      .then(haberVer)
+      .catch(function () { /* depolama kapali olabilir; bildirim yine gider */ });
+  }
+
+  e.waitUntil(Promise.all([goster, arsivle]));
 });
+
+/** Uygulama ACIKKEN gelen bildirim: liste ve rozet aninda tazelensin. */
+function haberVer() {
+  return self.clients.matchAll({ type: "window", includeUncontrolled: true })
+    .then(function (list) {
+      list.forEach(function (c) {
+        try { c.postMessage({ tip: "duyuru-geldi" }); } catch (err) { /* onemsiz */ }
+      });
+    });
+}
 
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();

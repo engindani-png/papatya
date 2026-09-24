@@ -369,7 +369,7 @@ table.tbl tr.ours td:last-child { color: var(--amber); }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
   height: calc(var(--tabbar) + var(--safe-b)); padding-bottom: var(--safe-b);
-  display: grid; grid-template-columns: repeat(4, 1fr) 4.6rem;
+  display: grid; grid-template-columns: repeat(5, 1fr) 4.2rem;
   background: var(--ink-2); border-top: 1px solid var(--line);
 }
 /* Yas secici: cubugun sag ucunda, ayirici cizgiyle ayrilmis. */
@@ -389,6 +389,13 @@ table.tbl tr.ours td:last-child { color: var(--amber); }
   gap: 5px; cursor: pointer; padding: 0; position: relative;
 }
 .tabbar button svg { display: none; }   /* tasarim: yalnizca etiket */
+/* Alti sutun: dar telefonda (360px) "ANTRENMAN" 11px ile tasiyordu.
+   Barlow Condensed zaten dar; harf araligini kisip bir punto indiriyoruz. */
+@media (max-width: 430px) {
+  .tabbar { grid-template-columns: repeat(5, 1fr) 3.6rem; }
+  .tabbar button { font-size: 10px; letter-spacing: .03em; gap: 3px; }
+  .agebadge { font-size: 12px; padding: 3px 6px; }
+}
 .tabbar button[aria-selected="true"] { color: var(--amber); }
 .tabbar button[aria-selected="true"]::before {
   content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--amber);
@@ -694,7 +701,7 @@ table.mlog td.mo span.l { background: var(--loss); }
 @media (min-width: 768px) {
   .wrap { max-width: 900px; }
   .tabbar {
-    grid-template-columns: repeat(4, minmax(0, 7rem)) 5rem;
+    grid-template-columns: repeat(5, minmax(0, 7rem)) 5rem;
     justify-content: center; gap: 0;
   }
   .tabbar button { font-size: 11px; }
@@ -1075,4 +1082,48 @@ button.event[aria-expanded] .ev-detay { color: var(--muted-deep); }
   background: none; border: 1px solid var(--line); color: var(--paper);
   font-family: var(--display); font-size: 12px; letter-spacing: .08em;
   text-transform: uppercase; cursor: pointer;
+}
+
+/* ------------------------------------------------- duyuru sekmesi (alt bar) */
+/* Duyurular bir panel degil, tam ekran katman; sekme onu acar. Rozet
+   okunmamis sayisini tasir - veli uygulamayi actiginda kacirdigi duyuruyu
+   ariyor olmamali. */
+.tabbar .duytab { position: relative; }
+.tabbar .duytab.yeni { color: var(--amber); }
+.dbadge {
+  position: absolute; top: 5px; right: 8px; left: auto;
+  min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--body); font-size: 10px; font-weight: 700; letter-spacing: 0;
+  line-height: 1; color: #14110b; background: var(--amber); border-radius: 9px;
+}
+.dbadge[hidden] { display: none; }
+
+/* Duyuru kartinda silme: veli KENDI telefonundan kaldirir, sunucudaki
+   kayda ve diger velilere dokunmaz. */
+.duyuru .dsil {
+  margin-left: 8px; background: none; border: 0; cursor: pointer;
+  color: var(--chalk-faint); font-size: 14px; line-height: 1;
+  padding: 2px 4px; border-radius: 4px;
+}
+.duyuru .dsil:hover, .duyuru .dsil:active { color: var(--amber); }
+.duyuru .ust { align-items: center; }
+.dlist .dgeri {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  padding: 9px 12px; border: 1px dashed var(--line);
+  font-size: 13px; color: var(--chalk-dim);
+}
+.dlist .dgeri button {
+  margin-left: auto; background: none; border: 0; cursor: pointer;
+  font-family: var(--display); font-weight: 600; font-size: 13px;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--amber);
+}
+
+/* Antrenor panelini acan satir: sagda "Sifreli >" yaziyordu, giris
+   yapilabilecegi anlasilmiyordu. Artik dugme gibi duruyor. */
+.srow .gir {
+  font-family: var(--display); font-weight: 600; font-size: 12px;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--amber); border: 1px solid var(--amber);
+  padding: 5px 12px; white-space: nowrap;
 }

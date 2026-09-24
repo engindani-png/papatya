@@ -8,7 +8,7 @@ ileride uyelik sisteminin de yeri olacak (bkz. docs/superpowers/specs).
 Tablolar:
     yoklama        (yas, tarih, saat) -> antrenmanin kendisi
     yoklama_kayit  (yas, tarih, saat, oyuncu) -> durum
-    duyuru         antrenorun gonderdigi bildirimlerin kaydi
+    duyuru         antrenorun gonderdigi bildirimlerin kaydi (etiket = push tag)
 
 Oyuncu anahtari TBF oyuncu numarasidir (`tbfPlayerId`); isim degisse de kayit
 bozulmaz. Numarasi olmayan oyuncu icin kucuk harfe indirilmis ad kullanilir.
@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS duyuru (
   baslik   TEXT,
   metin    TEXT,
   gonderim INTEGER,
-  zaman    TEXT
+  zaman    TEXT,
+  etiket   TEXT
 );
 """
 
@@ -77,7 +78,21 @@ def baglan(state_dir) -> sqlite3.Connection:
     con = sqlite3.connect(str(yol), timeout=10)
     con.row_factory = sqlite3.Row
     con.executescript(SEMA)
+    _sutun_ekle(con, "duyuru", "etiket", "TEXT")
     return con
+
+
+def _sutun_ekle(con: sqlite3.Connection, tablo: str, sutun: str, tip: str) -> None:
+    """Var olan tabloya eksik sutunu ekler.
+
+    CREATE TABLE IF NOT EXISTS yalnizca tablo YOKSA calisir; sema buyudugunde
+    eski veritabanindaki tablo oldugu gibi kalir. Sunucuda yillardir duran
+    evolog.db'ye yeni sutun ancak boyle girer.
+    """
+    var = {r["name"] for r in con.execute(f"PRAGMA table_info({tablo})")}
+    if sutun not in var:
+        with con:
+            con.execute(f"ALTER TABLE {tablo} ADD COLUMN {sutun} {tip}")
 
 
 def _json_tasi(state_dir, yas: str, con: sqlite3.Connection) -> int:
@@ -168,14 +183,22 @@ def kaydet(state_dir, yas: str, record: dict, con: sqlite3.Connection | None = N
     return record
 
 
-def duyuru_kaydet(state_dir, yas: str, baslik: str, metin: str, gonderim: int) -> None:
+def duyuru_kaydet(state_dir, yas: str, baslik: str, metin: str, gonderim: int,
+                  etiket: str = "") -> None:
+    """Gonderilen duyuruyu kaydeder.
+
+    `etiket` bildirimin `tag` alanidir ("duyuru-<imza>"). Telefon her gelen
+    push'u kendi yerel arsivine yaziyor; uygulama o yerel kaydi buradaki
+    sunucu kaydiyla ayni etiket uzerinden eslestirip TEK kart gosteriyor
+    (sunucudaki metin tam, push govdesi kisaltilmis ozet).
+    """
     con = baglan(state_dir)
     try:
         with con:
-            con.execute("INSERT INTO duyuru (yas, baslik, metin, gonderim, zaman) "
-                        "VALUES (?,?,?,?,?)",
+            con.execute("INSERT INTO duyuru (yas, baslik, metin, gonderim, zaman, etiket) "
+                        "VALUES (?,?,?,?,?,?)",
                         (yas, baslik, metin, gonderim,
-                         dt.datetime.now(TZ).isoformat(timespec="seconds")))
+                         dt.datetime.now(TZ).isoformat(timespec="seconds"), etiket))
     finally:
         con.close()
 
@@ -184,7 +207,7 @@ def duyurular(state_dir, yas: str, limit: int = 20) -> list:
     con = baglan(state_dir)
     try:
         return [dict(r) for r in con.execute(
-            "SELECT id, baslik, metin, gonderim, zaman FROM duyuru WHERE yas=? "
+            "SELECT id, baslik, metin, gonderim, zaman, etiket FROM duyuru WHERE yas=? "
             "ORDER BY id DESC LIMIT ?", (yas, limit))]
     finally:
         con.close()

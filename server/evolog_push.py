@@ -157,6 +157,18 @@ def training_by_day(program: dict) -> dict:
 DUYURU_TEKRAR_DK = 10
 
 
+def duyuru_etiketi(metin: str) -> str:
+    """Duyurunun bildirim etiketi (`tag`) ve olay kimligi.
+
+    Metnin ozetinden uretilir: ayni metin iki kez gonderilmez. Sunucu ayni
+    etiketi SQLite'a da yazar; telefonun yerel push arsivi ile sunucudaki
+    kayit bu etiket uzerinden eslesir. Iki taraf ayni formulu kullanmali,
+    o yuzden formul TEK yerde durur (bkz. test_duyuru.EtiketTest).
+    """
+    imza = hashlib.sha1(metin.strip()[:1000].encode("utf-8")).hexdigest()[:10]
+    return "duyuru-" + imza
+
+
 def duyuru_tekrar_mi(done: dict, olay_id: str, simdi: float | None = None,
                      pencere_dk: int = DUYURU_TEKRAR_DK) -> bool:
     """Ayni duyuru pencere icinde zaten gitti mi?
@@ -483,15 +495,15 @@ def main() -> int:
         if not metin:
             print("Bos duyuru gonderilmedi.")
             return 1
-        imza = hashlib.sha1(metin.encode("utf-8")).hexdigest()[:10]
+        etiket = duyuru_etiketi(metin)
         olay = {
-            "id": "duyuru-" + imza,
+            "id": etiket,
             "age": DEFAULT_AGE,
             "title": (args.baslik or "Antrenörden duyuru").strip()[:80],
             # Bildirimde OZET; tam metin uygulamada. url, veliyi dogrudan
             # Duyurular ekranina goturur (app.js ?duyuru=1'i yakalar).
             "body": bildirim_govdesi(metin),
-            "tag": "duyuru-" + imza,
+            "tag": etiket,
             "url": "./?duyuru=1",
         }
         done = read_json(NOTIFIED, {})

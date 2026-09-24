@@ -433,3 +433,24 @@ input:focus, select:focus, textarea:focus {
   background: rgba(186, 214, 247, .06); box-shadow: var(--edge-inset);
   color: var(--color-pure-white);
 }
+
+/* ---------- Duyuru sekmesi, silme ve giriş pili — AuthKit giydirmesi --- */
+/* Rozet dolgu violet üstünde beyaz: --amber burada violet-ink (#8b6cf7) ve
+   onun üstünde koyu metin okunmuyor. */
+.dbadge {
+  background: var(--color-void-violet);
+  color: #fff;
+  border-radius: var(--r-button);
+  box-shadow: 0 0 0 2px var(--surface-deep-glass);
+}
+.tabbar .duytab.yeni { color: var(--color-violet-ink); }
+.duyuru .dsil { color: var(--color-fog-veil); border-radius: var(--r-button); }
+.duyuru .dsil:hover, .duyuru .dsil:active { color: var(--color-violet-ink); }
+.dlist .dgeri { border: 1px dashed var(--hairline); border-radius: var(--r-card, 10px); }
+.dlist .dgeri button { color: var(--color-violet-ink); }
+.srow .gir {
+  color: var(--color-violet-ink);
+  border: 1px solid var(--amber-line);
+  border-radius: var(--r-button);
+  background: var(--amber-dim);
+}

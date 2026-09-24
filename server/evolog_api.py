@@ -32,6 +32,7 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import attendance  # noqa: E402
+import evolog_push  # noqa: E402  (yalnizca duyuru_etiketi icin; gonderim alt surecte)
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 STATE_DIR = pathlib.Path(os.environ.get("EVOLOG_STATE_DIR", "/var/lib/evolog"))
@@ -380,7 +381,12 @@ class Handler(BaseHTTPRequestHandler):
                 m = re.search(r"Duyuru: (\d+) gonderim", cikti)
                 if m:
                     gonderim = int(m.group(1))
-                attendance.duyuru_kaydet(STATE_DIR, age_of(self), baslik, metin, gonderim)
+                # Etiket, push'un `tag` alaniyla AYNI olmali: telefon her gelen
+                # bildirimi yerel arsivine yaziyor, uygulama o yerel kaydi
+                # buradaki sunucu kaydiyla etiket uzerinden eslestiriyor.
+                # Ayni duyuru iki kart olarak gorunmesin diye.
+                attendance.duyuru_kaydet(STATE_DIR, age_of(self), baslik, metin, gonderim,
+                                         etiket=evolog_push.duyuru_etiketi(metin))
                 return self.send_json(200, {"ok": True, "gonderim": gonderim,
                                             "cikti": cikti[-400:]})
 

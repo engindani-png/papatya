@@ -13,9 +13,11 @@ yolunda denenir; sifreli yol alt surec calistirip velilere bildirim
 gonderecegi icin teste alinmaz.
 """
 
+import hashlib
 import json
 import os
 import pathlib
+import sqlite3
 import sys
 import tempfile
 import threading
@@ -189,6 +191,113 @@ class SinirTest(unittest.TestCase):
     def test_clean_str_sinira_kadar_korur(self):
         metin = "a" * 1000
         self.assertEqual(len(evolog_api.clean_str(metin, evolog_api.DUYURU_MAX)), 1000)
+
+
+class EtiketTest(unittest.TestCase):
+    """Duyuru etiketi: sunucu kaydi ile telefondaki push kopyasini eslestirir.
+
+    NEDEN: telefon gelen HER bildirimi kendi IndexedDB arsivine yaziyor
+    (mac sonucu, saat degisikligi, antrenman programi -- bunlarin sunucuda
+    kaydi yok). Antrenorun duyurusu ise HEM sunucuda (tam metin) HEM de
+    arsivde (kisaltilmis push govdesi) bulunur. Uygulama ikisini `etiket`
+    uzerinden eslestirip tek kart gosteriyor. Etiket iki tarafta ayrisirsa
+    veli ayni duyuruyu iki kez gorur.
+    """
+
+    def setUp(self):
+        self.dizin = pathlib.Path(tempfile.mkdtemp())
+
+    def test_etiket_push_tagi_ile_ayni_formul(self):
+        etiket = evolog_push.duyuru_etiketi(UZUN)
+        self.assertTrue(etiket.startswith("duyuru-"), etiket)
+        beklenen = "duyuru-" + hashlib.sha1(UZUN.encode("utf-8")).hexdigest()[:10]
+        self.assertEqual(etiket, beklenen)
+
+    def test_ayni_metin_ayni_etiket(self):
+        self.assertEqual(evolog_push.duyuru_etiketi(UZUN),
+                         evolog_push.duyuru_etiketi(UZUN))
+
+    def test_farkli_metin_farkli_etiket(self):
+        self.assertNotEqual(evolog_push.duyuru_etiketi("Antrenman 20:00"),
+                            evolog_push.duyuru_etiketi("Antrenman 21:00"))
+
+    def test_bosluk_temizligi_etiketi_degistirmez(self):
+        """API metni clean_str ile, push ise .strip() ile aliyor; ayni kalmali."""
+        self.assertEqual(evolog_push.duyuru_etiketi("  Antrenman 20:00  "),
+                         evolog_push.duyuru_etiketi("Antrenman 20:00"))
+
+    def test_etiket_kaydedilir_ve_okunur(self):
+        etiket = evolog_push.duyuru_etiketi(UZUN)
+        attendance.duyuru_kaydet(self.dizin, "u14", "Baslik", UZUN, 3, etiket=etiket)
+        liste = attendance.duyurular(self.dizin, "u14")
+        self.assertEqual(liste[0]["etiket"], etiket)
+
+    def test_etiketsiz_kayit_da_calisir(self):
+        """Eski cagri bicimi (etiket verilmeden) kirilmamali."""
+        attendance.duyuru_kaydet(self.dizin, "u14", "Baslik", "Kisa duyuru", 1)
+        liste = attendance.duyurular(self.dizin, "u14")
+        self.assertEqual(liste[0]["metin"], "Kisa duyuru")
+        self.assertIn("etiket", liste[0])
+
+    def test_eski_veritabanina_sutun_eklenir(self):
+        """Sunucudaki evolog.db aylardir duruyor; CREATE TABLE IF NOT EXISTS
+        var olan tabloya dokunmaz. Gocun calistigini kanitlar."""
+        yol = attendance.db_path(self.dizin)
+        yol.parent.mkdir(parents=True, exist_ok=True)
+        eski = sqlite3.connect(str(yol))
+        eski.execute("CREATE TABLE duyuru (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                     "yas TEXT, baslik TEXT, metin TEXT, gonderim INTEGER, zaman TEXT)")
+        eski.execute("INSERT INTO duyuru (yas, baslik, metin, gonderim, zaman) "
+                     "VALUES ('u14','Eski','Eski duyuru',2,'2026-01-01T10:00:00')")
+        eski.commit()
+        eski.close()
+
+        liste = attendance.duyurular(self.dizin, "u14")
+        self.assertEqual(len(liste), 1, "eski kayit kaybolmamali")
+        self.assertEqual(liste[0]["metin"], "Eski duyuru")
+        self.assertIsNone(liste[0]["etiket"], "eski satirin etiketi bos olmali")
+
+        # Goc sonrasi yeni kayit etiketiyle yazilabilmeli.
+        attendance.duyuru_kaydet(self.dizin, "u14", "Yeni", "Yeni duyuru", 1,
+                                 etiket="duyuru-abc1234567")
+        liste = attendance.duyurular(self.dizin, "u14")
+        self.assertEqual(liste[0]["etiket"], "duyuru-abc1234567")
+
+    def test_api_push_ile_ayni_fonksiyonu_kullanir(self):
+        """Formul iki yere kopyalanmasin: API, push modulundekini cagiriyor."""
+        self.assertIs(evolog_api.evolog_push.duyuru_etiketi,
+                      evolog_push.duyuru_etiketi)
+
+
+class ArsivTest(unittest.TestCase):
+    """Telefondaki push arsivi (evolog/duyuru-arsiv.js) sozlesme testi.
+
+    JavaScript burada calistirilamiyor; sinanan sey, sunucunun gonderdigi
+    push govdesinin arsivin bekledigi alanlari TASIDIGI: tag, title, body.
+    Arsiv kaydinin kimligi `tag + "|" + zaman`; tag bos gelirse kayitlar
+    birbirinin uzerine yazilirdi.
+    """
+
+    def test_duyuru_olayinda_tag_var(self):
+        etiket = evolog_push.duyuru_etiketi("Yarin antrenman yok")
+        self.assertTrue(etiket)
+        self.assertNotIn("|", etiket, "kimlik ayraci etikette gecmemeli")
+
+    def test_mac_olaylarinin_tagi_bos_degil(self):
+        """build_events'in urettigi her olay arsivlenebilir olmali."""
+        lig = {
+            "season": "2026-2027",
+            "fixtures": [{
+                "id": "m1", "date": "2026-01-10", "time": "12:00",
+                "home": "Serifali", "away": "Rakip",
+                "homeScore": 50, "awayScore": 40, "played": True,
+            }],
+            "ourTeam": "Serifali",
+        }
+        for olay in evolog_push.build_events(lig, "u14"):
+            self.assertTrue(olay.get("tag"), f"tagsiz olay: {olay}")
+            self.assertTrue(olay.get("title"), f"basliksiz olay: {olay}")
+            self.assertNotIn("|", olay["tag"])
 
 
 if __name__ == "__main__":
