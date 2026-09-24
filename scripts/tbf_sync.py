@@ -42,7 +42,18 @@ DATA_DIR = ROOT / "data"
 
 # Saat basi senkronun uzamamasi icin bir calismada cekilecek yeni mac analizi
 # sayisi. Lig 132 mac; sezon boyunca birikerek tamamlanir.
+# Istanbul saati; analiz deneme damgalari bununla yazilir.
+TZ = dt.timezone(dt.timedelta(hours=3))
+
 ANALIZ_LIMIT = int(os.environ.get("EVOLOG_ANALIZ_LIMIT", "10"))
+# BOS analiz yeniden denenir: TBF atis haritasini ve oyun akisini bazen macin
+# ertesi gunu, bazen gunler sonra yayinliyor. Eskiden dosya bir kez yazilinca
+# bir daha uretilmiyordu; 18 Eylul Besiktas - Emlak Konut (B) macinin
+# analizi bu yuzden bos kaldi, oysa TBF'de 143 atis ve 581 olay duruyor.
+ANALIZ_BOS_TEKRAR_SAAT = int(os.environ.get("EVOLOG_ANALIZ_BOS_TEKRAR_SAAT", "12"))
+# Bu kadar gun sonra hala bos ise TBF o maci hic yayinlamamis demektir
+# (8-10 Eylul maclarinda durum bu). Sonsuza kadar istek atmayalim.
+ANALIZ_BOS_GUN = int(os.environ.get("EVOLOG_ANALIZ_BOS_GUN", "30"))
 
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -57,6 +68,45 @@ def league_path(key: str) -> pathlib.Path:
 
 def team_path(key: str) -> pathlib.Path:
     return DATA_DIR / key / "team.json"
+
+
+def analiz_bos_mu(analiz: dict) -> bool:
+    """Analizde gosterilecek hicbir sey yok mu?
+
+    Atis haritasi ve oyuncu dokumu bostsa ekranda bos bir sayfa cikar.
+    Skor ve takim adi her zaman dolu oldugu icin onlara bakmak yaniltir.
+    """
+    sh = analiz.get("shots") or {}
+    pl = analiz.get("players") or {}
+    return not (sh.get("home") or sh.get("away") or pl.get("home") or pl.get("away"))
+
+
+def bos_analiz_tekrar_mi(analiz: dict, fixture: dict, simdi=None) -> bool:
+    """Bos analiz yeniden denensin mi?
+
+    Iki sinir: son denemeden bu yana ANALIZ_BOS_TEKRAR_SAAT gecmis olmali ve
+    mac ANALIZ_BOS_GUN'den yeni olmali. Ikincisi olmazsa TBF'nin hic
+    yayinlamadigi eski maclar icin her calismada bosuna istek atariz.
+    """
+    simdi = simdi or dt.datetime.now(TZ)
+    tarih = fixture.get("date")
+    if tarih:
+        try:
+            oynandi = dt.datetime.fromisoformat(tarih).replace(tzinfo=TZ)
+            if (simdi - oynandi).days > ANALIZ_BOS_GUN:
+                return False
+        except ValueError:
+            pass
+    son = analiz.get("denendi")
+    if not son:
+        return True
+    try:
+        t = dt.datetime.fromisoformat(son)
+    except ValueError:
+        return True
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=TZ)
+    return (simdi - t) >= dt.timedelta(hours=ANALIZ_BOS_TEKRAR_SAAT)
 
 
 def analiz_dir(key: str) -> pathlib.Path:
@@ -583,7 +633,12 @@ def build(cfg: dict, want_details: bool) -> dict:
                     varolan = {}
                 # Bicim surumu eskiyse yeniden uret (yeni olcumler eklenmis).
                 if varolan.get("v", 1) >= tbf_analiz.ANALIZ_SURUM:
-                    continue
+                    # BOS analiz istisna: TBF istatistigi sonradan
+                    # yayinlayabiliyor, bir kere bos yazip birakmayalim.
+                    if not analiz_bos_mu(varolan):
+                        continue
+                    if not bos_analiz_tekrar_mi(varolan, f):
+                        continue
             if yeni_sayi >= ANALIZ_LIMIT:
                 break
             try:
@@ -599,11 +654,19 @@ def build(cfg: dict, want_details: bool) -> dict:
                 analiz = tbf_analiz.mac_analizi_notr(
                     zengin, shots, events, report,
                     box_home=kutu.get("home"), box_away=kutu.get("away"))
+                # Deneme damgasi: bos kalirsa ne zaman yeniden bakacagimizi
+                # bundan hesapliyoruz.
+                analiz["denendi"] = dt.datetime.now(TZ).isoformat(timespec="seconds")
                 hedef.mkdir(parents=True, exist_ok=True)
                 dosya.write_text(json.dumps(analiz, ensure_ascii=False), encoding="utf-8")
                 yeni_sayi += 1
-                print(f"  Analiz: {f.get('home')} - {f.get('away')} "
-                      f"({len(analiz['shots']['home']) + len(analiz['shots']['away'])} atis)")
+                atis = len(analiz["shots"]["home"]) + len(analiz["shots"]["away"])
+                if analiz_bos_mu(analiz):
+                    print(f"  Analiz BOS: {f.get('home')} - {f.get('away')} "
+                          f"({f.get('date')}) - TBF henuz yayinlamamis, "
+                          f"{ANALIZ_BOS_TEKRAR_SAAT} saat sonra tekrar bakilacak")
+                else:
+                    print(f"  Analiz: {f.get('home')} - {f.get('away')} ({atis} atis)")
             except Exception as exc:
                 errors.append(f"Mac {mid} analizi alinamadi: {exc}")
         if yeni_sayi:

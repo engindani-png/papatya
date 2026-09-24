@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """tbf_analiz testleri.  Calistirma:  python -m unittest scripts.test_tbf_analiz"""
 
+import datetime as dt
 import pathlib
 import sys
 import unittest
@@ -337,3 +338,60 @@ class IkinciSansTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BosAnalizTest(unittest.TestCase):
+    """Bos analiz yeniden denenmeli - TBF istatistigi sonradan yayinliyor.
+
+    NEDEN: analiz dosyasi bir kez yazilinca bir daha uretilmiyordu (surum
+    kontrolu disinda). 18 Eylul Besiktas - Emlak Konut Spor (B) macinin
+    analizi bu yuzden bos kaldi; oysa TBF'de 143 atis ve 581 olay duruyor.
+    Emlak Konut (B)'nin oynadigi iki macin biri buydu, digerini TBF hic
+    yayinlamadi - yani takimin sayfasi tamamen bos goruluyordu.
+    """
+
+    def setUp(self):
+        import tbf_sync
+        self.ts = tbf_sync
+        self.simdi = dt.datetime(2026, 9, 24, 23, 0, tzinfo=tbf_sync.TZ)
+
+    BOS = {"shots": {"home": [], "away": []}, "players": {"home": [], "away": []}}
+    DOLU = {"shots": {"home": [{"x": 1}], "away": []}, "players": {"home": [], "away": []}}
+
+    def test_bos_analiz_taninir(self):
+        self.assertTrue(self.ts.analiz_bos_mu(self.BOS))
+
+    def test_atisi_olan_analiz_bos_degil(self):
+        self.assertFalse(self.ts.analiz_bos_mu(self.DOLU))
+
+    def test_yalnizca_oyuncu_dokumu_varsa_bos_degil(self):
+        self.assertFalse(self.ts.analiz_bos_mu(
+            {"shots": {}, "players": {"home": [{"ad": "X"}], "away": []}}))
+
+    def test_hic_denenmemis_bos_analiz_denenir(self):
+        self.assertTrue(self.ts.bos_analiz_tekrar_mi(
+            self.BOS, {"date": "2026-09-18"}, self.simdi))
+
+    def test_az_once_denenmis_analiz_beklesin(self):
+        a = dict(self.BOS, denendi="2026-09-24T21:00:00+03:00")
+        self.assertFalse(self.ts.bos_analiz_tekrar_mi(a, {"date": "2026-09-18"},
+                                                      self.simdi))
+
+    def test_pencere_dolunca_tekrar_denenir(self):
+        a = dict(self.BOS, denendi="2026-09-24T08:00:00+03:00")
+        self.assertTrue(self.ts.bos_analiz_tekrar_mi(a, {"date": "2026-09-18"},
+                                                     self.simdi))
+
+    def test_cok_eski_mac_artik_denenmez(self):
+        """TBF 8-10 Eylul maclarini hic yayinlamadi; sonsuza kadar istek atma."""
+        a = dict(self.BOS, denendi="2026-01-01T08:00:00+03:00")
+        self.assertFalse(self.ts.bos_analiz_tekrar_mi(a, {"date": "2026-01-01"},
+                                                      self.simdi))
+
+    def test_bozuk_damga_denemeyi_engellemez(self):
+        a = dict(self.BOS, denendi="bozuk")
+        self.assertTrue(self.ts.bos_analiz_tekrar_mi(a, {"date": "2026-09-18"},
+                                                     self.simdi))
+
+    def test_tarihsiz_mac_denenir(self):
+        self.assertTrue(self.ts.bos_analiz_tekrar_mi(self.BOS, {}, self.simdi))
