@@ -5,3 +5,14 @@ __pycache__/
 # (nginx alias). Depodaki kopya ölü veri olur ve karışıklık yaratır; yalnızca
 # yerel geliştirme için tutulur.
 data/u14/training.json
+
+# Senkronun URETTIGI dosyalar. Depoda izlenirlerse her deploy
+# (git fetch + git reset --hard) canli veriyi committeki ESKI haline
+# donduruyor: 24 Eylul 2026'da tam bu oldu, 4 Ekim maci deploy'dan sonra
+# yeniden 8 Aralik gorundu - ustelik velilere 4 Ekim bildirimi gittikten
+# sonra. Bunlar kaynak degil cikti; elle tutulan overrides.json ve
+# venues.json izlenmeye devam eder.
+data/u14/league.json
+data/u14/team.json
+data/u14/drive_program.json
+data/u14/analiz/
