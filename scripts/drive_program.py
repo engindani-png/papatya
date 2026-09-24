@@ -404,10 +404,26 @@ def _govde_anahtari(ad: str) -> str:
 
 
 # Kulubun kendi adindan gelen, en az bu uzunluktaki kelime AYIRT EDICIDIR.
-# "SPOR", "KULUBU", "BELEDIYESI" gibi ortak kelimeler normalize() icinde
-# zaten atiliyor; geriye SERIFALI / EVOLOG / DACKA gibi tek bir kulube ait
-# kelimeler kaliyor.
 AYIRT_EDICI_UZUNLUK = 5
+
+# Hicbir kulube ait olmayan kelimeler. normalize() bunlarin cogunu zaten
+# atiyor ama "SPOR" tek basina kaliyor ve iki alakasiz adi birbirine
+# yaklastiriyordu: "SERIFALI SPOR" ile "EMLAK KONUT SPOR" benzerligi 0.459
+# cikip esigi (0.45) asmisti, yani rakibin maci bizim sayiliyordu.
+GENEL_KELIMELER = {"SPOR", "KULUP", "KULUBU", "KULUBE", "GENCLIK", "BELEDIYE",
+                   "BELEDIYESI", "OKULLARI", "OKUL", "BASKETBOL", "BASKET",
+                   "SK", "BLD", "ISTANBUL", "TAKIMI", "TAKIM"}
+
+
+def _ozgun(govde: str) -> str:
+    """Adin kulube OZGU kismi: genel kelimeler atilir.
+
+    "SERIFALI SPOR" -> "SERIFALI",  "EMLAK KONUT SPOR" -> "EMLAK KONUT".
+    Hepsi atilirsa geriye dokunulmamis govde birakilir (bos dize ile
+    karsilastirma anlamsiz olurdu).
+    """
+    kalan = [k for k in govde.split() if k not in GENEL_KELIMELER]
+    return " ".join(kalan) if kalan else govde
 
 
 def _bizim_mi(ad: str, bizim_govdeler: set, esik: float = 0.45) -> bool:
@@ -416,23 +432,32 @@ def _bizim_mi(ad: str, bizim_govdeler: set, esik: float = 0.45) -> bool:
     Ad her yerde ayni yazilmiyor ve zaman icinde degisiyor: TBF'nin takim
     fikstur listesi "EVOLOG DACKA SERIFALI", lig geneli akisi ayni takimi
     "EVOLOG DACKA SERIFALI (A)", federasyonun Drive tablosu haftadan haftaya
-    "SERIFALI SPOR" ya da "EVOLOG SERIFALI" yazabiliyor. Bu yuzden uc asamali
-    bakilir: birebir govde, benzerlik esigi, ayirt edici kelime.
+    "SERIFALI SPOR" ya da "EVOLOG SERIFALI" yazabiliyor.
 
-    Genis davranmak burada guvenli: U14A kiz liginde bu kelimeleri tasiyan
-    baska takim yok. Yanlis pozitifin bedeli de sinirli - eslesme yine
-    takim_haritasi ve sirali cift kontrolunden gecmek zorunda.
+    Karsilastirma adin OZGUN kismi uzerinden yapilir; "SPOR", "BELEDIYESI"
+    gibi herkese ait kelimeler once atilir. Uc asama: birebir govde,
+    ayirt edici kelime, benzerlik esigi.
+
+    Genis davranmak burada guvenli: U14A kiz liginde bize benzeyen baska
+    takim yok. Yine de ligdeki diger takimlarin bizim sayilmadigi testle
+    dogrulanir (bkz. test_drive_program.BizimMacimizTest).
     """
     g = _govde_anahtari(ad)
     if not g:
         return False
     if g in bizim_govdeler:
         return True
-    parcalar = set(g.split())
+    g_oz = _ozgun(g)
+    parcalar = set(g_oz.split())
     for b in bizim_govdeler:
-        if benzerlik(g, b) >= esik:
+        b_oz = _ozgun(b)
+        if g_oz == b_oz:
             return True
-        if any(k in parcalar for k in b.split() if len(k) >= AYIRT_EDICI_UZUNLUK):
+        # Ayirt edici kelime: SERIFALI / EVOLOG / DACKA. Bunlari tasiyan
+        # baska takim yok, adin gerisi nasil yazilirsa yazilsin bizimdir.
+        if any(k in parcalar for k in b_oz.split() if len(k) >= AYIRT_EDICI_UZUNLUK):
+            return True
+        if benzerlik(g_oz, b_oz) >= esik:
             return True
     return False
 

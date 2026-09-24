@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import json
 import pathlib
 import sys
 import unittest
@@ -199,7 +200,12 @@ class BizimMacimizTest(unittest.TestCase):
     hicbir maca uygulanmadi.
     """
 
-    BIZ = ["EVOLOG DAÇKA ŞERİFALİ", "DAÇKA ŞERİFALİ", "EVOLOG"]
+    # tbf_config.json icindeki gercek liste: test onunla kosuyor ki
+    # yapilandirmaya eklenen bir ad sessizce rakibi bizim yapmasin.
+    BIZ = json.loads(
+        (pathlib.Path(__file__).resolve().parent / "tbf_config.json")
+        .read_text(encoding="utf-8")
+    )["teams"][0]["drive"]["teamNames"]
     FIX = [{"matchId": 500, "date": "2026-10-04",
             "home": "EVOLOG DAÇKA ŞERİFALİ (A)", "away": "EMLAK KONUT SPOR (B)"}]
     SATIR = [{"tarih": "2026-10-04", "saat": "11:30", "salon": "BGM SALON C3",
@@ -223,6 +229,12 @@ class BizimMacimizTest(unittest.TestCase):
         "ŞERİFALİ SPOR KULÜBÜ", "ŞERİFALİ SPOR", "ŞERİFALİ",
         "EVOLOG ŞERİFALİ", "EVOLOG", "DAÇKA ŞERİFALİ",
     ]
+
+    def test_yapilandirmadaki_takim_u14(self):
+        """BIZ listesi gercekten u14 takiminin listesi olmali."""
+        cfg = json.loads((pathlib.Path(__file__).resolve().parent / "tbf_config.json")
+                         .read_text(encoding="utf-8"))
+        self.assertEqual(cfg["teams"][0]["key"], "u14")
 
     def test_adimizin_butun_halleri_bizim_sayilir(self):
         """Ad her yerde ayni yazilmiyor ve zaman icinde degisiyor.
