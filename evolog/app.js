@@ -580,8 +580,15 @@
       '<i class="hair"></i>' +
       '<span class="cnt"><b>' + kesinSayi + " kesin</b> · " + bekleyen + " bekliyor</span>";
 
-    el("upcomingList").innerHTML = sets.upcoming.length
-      ? sets.upcoming.map(function (f, i) { return fixtureRow(f, "u" + i); }).join("")
+    // Tarihi ESKIMIS mac (Drive o gune baska macimizi yazmis, TBF hala eski
+    // veriyi tutuyor) listede o gune oturmasin: veli ayni gun iki mac
+    // goruyordu. Satirda zaten "Tarih TBF tarafindan ilan edilmedi" yaziyor;
+    // burada yalnizca sirayi bozmasini engelliyoruz.
+    var yaklasan = sets.upcoming.slice().sort(function (a, b) {
+      return (a.dateStale ? 1 : 0) - (b.dateStale ? 1 : 0);
+    });
+    el("upcomingList").innerHTML = yaklasan.length
+      ? yaklasan.map(function (f, i) { return fixtureRow(f, "u" + i); }).join("")
       : '<div class="blank">Planlanmış maç görünmüyor.</div>';
 
     el("prevTitle").hidden = !oncekiler.length;
@@ -1626,6 +1633,16 @@
     });
   }
 
+  /** Yalnizca ACILAN duyuruyu okundu yapar.
+   *  Eskiden katman kapaninca HEPSI okundu sayiliyordu; veli tek bir
+   *  duyuruyu acip cikinca okumadiklari da rozetten dusuyordu. */
+  function birDuyuruyuOkunduYap(id) {
+    var l = okunanlar();
+    if (!id || l.indexOf(id) !== -1) return;
+    l.push(id);
+    store(DUYURU_STORE, JSON.stringify(l.slice(-50)));
+  }
+
   function okunmamisSayisi() {
     return duyurular().filter(function (d) { return !okunduMu(d); }).length;
   }
@@ -1666,17 +1683,62 @@
     geri.then(loadDuyuru).then(function () { toast("Duyuru geri alındı"); });
   }
 
-  /** Katmandaki tam kart. */
-  function duyuruKart(d) {
-    var z = String(d.zaman || "").replace("T", " ").slice(0, 16);
-    var kimden = d.kaynak === "yerel" ? "Bildirim" : "Antrenörden";
-    return '<div class="duyuru' + (okunduMu(d) ? " okundu" : "") + '">' +
-      '<div class="ust"><span class="et">' + kimden + "</span>" +
-      '<span class="z">' + esc(z) + "</span>" +
-      '<button type="button" class="dsil" data-duyuru-sil="' + esc(duyuruId(d)) + '" ' +
-        'aria-label="Bu duyuruyu sil">✕</button></div>' +
-      (d.baslik ? '<div class="b">' + esc(d.baslik) + "</div>" : "") +
-      '<div class="m">' + esc(d.metin || "") + "</div></div>";
+  /* Duyurunun TURU. Veli listeye bakinca neyin ne oldugunu ayirt etmeli:
+     mac bildirimi mi, kocun yazdigi duyuru mu, antrenman programi mi.
+     Sunucudan gelen kayit her zaman kocun duyurusudur (POST /api/duyuru);
+     yerel kayitlarda baslik ve etikete bakariz. */
+  function duyuruTuru(d) {
+    if (d.kaynak !== "yerel") return "Koç duyurusu";
+    var b = String(d.baslik || "");
+    var e = String(d.etiket || "");
+    if (b.indexOf("MAÇ DUYURUSU") !== -1) return "Maç duyurusu";
+    if (e.indexOf("antrenman-") === 0) return "Antrenman";
+    if (e.indexOf("duyuru-") === 0) return "Koç duyurusu";
+    if (e.indexOf("mac-") === 0) return "Maç duyurusu";
+    return "Bildirim";
+  }
+
+  var AYLAR = ["Oca", "Şub", "Mar", "Nis", "May", "Haz",
+               "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+
+  /** "24 Eyl 23:31" — listede tarih ve saat yan yana okunmali. */
+  function duyuruZamani(z) {
+    var t = new Date(z);
+    if (isNaN(t.getTime())) return String(z || "").replace("T", " ").slice(0, 16);
+    return t.getDate() + " " + AYLAR[t.getMonth()] + " " +
+      ("0" + t.getHours()).slice(-2) + ":" + ("0" + t.getMinutes()).slice(-2);
+  }
+
+  var acikDuyuru = null;   // katmanda hangi satirin metni acik
+
+  /* Katmandaki satir: TUR + TARIH SAAT; dokununca metin acilir.
+     Eskiden butun duyurularin tam metni alt alta basiliyordu, uc duyurudan
+     sonra ekran okunmuyordu ve hangisinin ne oldugu belli degildi. */
+  function duyuruSatiri(d) {
+    var id = duyuruId(d);
+    var okunmamis = !okunduMu(d);
+    var acik = acikDuyuru === id;
+    return '<div class="dsatir' + (okunmamis ? " yeni" : "") + (acik ? " acik" : "") + '">' +
+      '<button type="button" class="dbas" data-duyuru-ac-satir="' + esc(id) + '" ' +
+        'aria-expanded="' + (acik ? "true" : "false") + '">' +
+        '<span class="dnokta" aria-hidden="true"></span>' +
+        '<span class="dtur">' + esc(duyuruTuru(d)) + "</span>" +
+        '<span class="dzaman">' + esc(duyuruZamani(d.zaman)) + "</span>" +
+        '<span class="dok" aria-hidden="true">' + (acik ? "▾" : "›") + "</span>" +
+      "</button>" +
+      (acik
+        ? '<div class="dgovde">' +
+            // Baslik satirdaki turle ayniysa tekrar yazma ("MAÇ DUYURUSU"
+            // hem satirda hem govdede goruluyordu).
+            (d.baslik && d.baslik.toLocaleUpperCase("tr") !==
+                         duyuruTuru(d).toLocaleUpperCase("tr")
+              ? '<div class="b">' + esc(d.baslik) + "</div>" : "") +
+            '<div class="m">' + esc(d.metin || "") + "</div>" +
+            '<button type="button" class="dsil" data-duyuru-sil="' + esc(id) + '">' +
+              "Sil</button>" +
+          "</div>"
+        : "") +
+      "</div>";
   }
 
   /* Ana ekranda duyurunun TAM metni duruyordu; uzun duyuru butun ekrani
@@ -1713,7 +1775,7 @@
             '<button type="button" data-duyuru-geri>Geri al</button></div>'
         : "";
       kutu.innerHTML = geri + (hepsi.length
-        ? hepsi.map(duyuruKart).join("") +
+        ? hepsi.map(duyuruSatiri).join("") +
           '<button type="button" class="dokundu" data-duyuru-okundu>Hepsini okundu i\u015faretle</button>'
         : '<p class="bos">Hen\u00fcz duyuru yok.</p>');
     }
@@ -1756,8 +1818,10 @@
     panel.hidden = true;
     document.body.classList.remove("locked");
     sonSilinen = null;   // "Geri al" yalnizca panel acikken gecerli
-    // Katmani acip kapatan veli tam metni gormustur; serit bir daha cikmasin.
-    okunduIsaretle();
+    acikDuyuru = null;
+    // Katman artik LISTE: acilmayan duyuru okunmus sayilmaz, yoksa rozet
+    // yalan soyler. Okundu isareti satira dokununca konuyor.
+    renderDuyuru();
   }
 
   // Uygulama ACIKKEN bildirim gelirse liste ve rozet aninda tazelensin.
@@ -1801,6 +1865,15 @@
     if (ev.target.closest("[data-duyuru-okundu]")) {
       okunduIsaretle();
       toast("Duyurular okundu işaretlendi");
+      return;
+    }
+    var satirBtn = ev.target.closest("[data-duyuru-ac-satir]");
+    if (satirBtn) {
+      var sid = satirBtn.getAttribute("data-duyuru-ac-satir");
+      // Ayni satira tekrar dokunmak kapatir (akordeon).
+      acikDuyuru = acikDuyuru === sid ? null : sid;
+      if (acikDuyuru) birDuyuruyuOkunduYap(acikDuyuru);
+      renderDuyuru();
       return;
     }
     var silBtn = ev.target.closest("[data-duyuru-sil]");

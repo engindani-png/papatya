@@ -1127,3 +1127,43 @@ button.event[aria-expanded] .ev-detay { color: var(--muted-deep); }
   color: var(--amber); border: 1px solid var(--amber);
   padding: 5px 12px; white-space: nowrap;
 }
+
+/* ------------------------------------------------ duyuru listesi (katman) */
+/* Once butun duyurularin tam metni alt alta basiliyordu: uc duyurudan sonra
+   ekran okunmuyor, hangisinin ne oldugu anlasilmiyordu. Artik her duyuru tek
+   satir - TUR + TARIH SAAT - dokununca metni aciliyor. */
+.dsatir { border: 1px solid var(--line); border-left: 3px solid var(--line-dash);
+          margin-bottom: 8px; background: var(--ink-2); }
+.dsatir.yeni { border-left-color: var(--amber); }
+.dsatir .dbas {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  background: none; border: 0; cursor: pointer; text-align: left;
+  padding: 12px 12px; color: var(--chalk); min-height: 48px;
+}
+/* Okunmamis isareti: iPhone'daki gibi dolu nokta. Okunmus satirda yer
+   tutmaya devam eder, yoksa liste okundukca kayiyor. */
+.dsatir .dnokta {
+  flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%;
+  background: transparent;
+}
+.dsatir.yeni .dnokta { background: var(--amber); }
+.dsatir .dtur {
+  font-family: var(--display); font-weight: 600; font-size: 13px;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--chalk-dim);
+}
+.dsatir.yeni .dtur { color: var(--chalk); }
+.dsatir .dzaman { margin-left: auto; font-size: 12px; color: var(--chalk-faint);
+                  white-space: nowrap; }
+.dsatir .dok { flex: 0 0 auto; color: var(--chalk-faint); font-size: 14px; }
+.dsatir .dgovde { padding: 0 12px 12px 30px; }
+.dsatir .dgovde .b { font-weight: 600; margin-bottom: 4px; }
+.dsatir .dgovde .m { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.dsatir .dgovde .dsil {
+  margin-top: 12px; background: none; border: 1px solid var(--line);
+  color: var(--chalk-dim); cursor: pointer; padding: 7px 14px;
+  font-family: var(--display); font-weight: 600; font-size: 12px;
+  letter-spacing: .1em; text-transform: uppercase;
+}
+.dsatir .dgovde .dsil:hover, .dsatir .dgovde .dsil:active {
+  color: var(--amber); border-color: var(--amber);
+}

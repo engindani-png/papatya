@@ -196,6 +196,76 @@ class BaslikTest(unittest.TestCase):
         self.assertNotEqual("Antrenörden duyuru", evolog_push.MAC_BASLIK)
 
 
+class EskimisTarihTest(unittest.TestCase):
+    """Drive'in kesinlestirdigi gune dusen, Drive'da olmayan mac eskimistir.
+
+    Kullanici kurali (24 Eylul 2026): "Ayni gun 2 mac gozukuyorsa ve bu
+    google drive'da degilse TBF'nin diger sitesi guncellenmemis demektir."
+    4 Ekim 2026'da tam bu oldu: Drive 11:30 Emlak Konut (B) derken TBF ayni
+    gune bir de Galatasaray deplasmani koymustu.
+    """
+
+    DRIVE = {"346867": {"date": "2026-10-04", "time": "11:30",
+                        "venue": "BGM SALON C3", "source": "drive"}}
+
+    # Birimi DOGRUDAN sinariz: apply() dateConfirmed'i kendi hesapliyor
+    # (uretilmis dizi sezgisi), testte onu zorlamak sezgiyi test etmek olur.
+    def _isaretle(self, fixtures, drive=None):
+        lig = {"fixtures": fixtures}
+        local_edits._eskimis_tarihleri_isaretle(
+            lig, self.DRIVE if drive is None else drive)
+        return {f["matchId"]: f for f in fixtures}
+
+    def test_ayni_gune_dusen_ilan_edilmemis_mac_eskimis_sayilir(self):
+        f = self._isaretle([
+            _mac(matchId=346867, dateConfirmed=True),
+            _mac(matchId=346872, date="2026-10-04", time="18:30",
+                 home="GALATASARAY (A)", away="EVOLOG DAÇKA ŞERİFALİ",
+                 isHome=False, venue="Ülker Go Ahead Salonu (C2)",
+                 dateConfirmed=False),
+        ])
+        self.assertTrue(f[346872].get("dateStale"), "TBF'nin eski verisi isaretlenmeli")
+
+    def test_drive_macinin_kendisi_eskimis_sayilmaz(self):
+        f = self._isaretle([_mac(matchId=346867, dateConfirmed=True)])
+        self.assertIsNone(f[346867].get("dateStale"))
+
+    def test_tbfnin_ILAN_ETTIGI_mac_susturulmaz(self):
+        """Gercekten ayni gune iki mac konabilir; ilan edilmise karismayiz."""
+        f = self._isaretle([
+            _mac(matchId=346867, dateConfirmed=True),
+            _mac(matchId=346872, date="2026-10-04", time="18:30",
+                 home="GALATASARAY (A)", dateConfirmed=True),
+        ])
+        self.assertIsNone(f[346872].get("dateStale"))
+
+    def test_baska_gundeki_mac_etkilenmez(self):
+        f = self._isaretle([
+            _mac(matchId=346867, dateConfirmed=True),
+            _mac(matchId=346878, date="2026-10-13", dateConfirmed=False),
+        ])
+        self.assertIsNone(f[346878].get("dateStale"))
+
+    def test_oynanmis_mac_etkilenmez(self):
+        f = self._isaretle([
+            _mac(matchId=346867, dateConfirmed=True),
+            _mac(matchId=346880, date="2026-10-04", played=True,
+                 dateConfirmed=False),
+        ])
+        self.assertIsNone(f[346880].get("dateStale"))
+
+    def test_drive_bos_ise_hicbir_sey_isaretlenmez(self):
+        f = self._isaretle([_mac(matchId=346872, date="2026-10-04",
+                                 dateConfirmed=False)], drive={})
+        self.assertIsNone(f[346872].get("dateStale"))
+
+    def test_apply_icinden_de_calisir(self):
+        """Tam akista da cagriliyor olmali (baglanti testi)."""
+        lig = _lig([_mac(matchId=346867)])
+        sonuc = local_edits.apply(lig, GECICI / "yok.json", None, drive=self.DRIVE)
+        self.assertIn("unconfirmedCount", sonuc)
+
+
 class DegisiklikIzleriTest(unittest.TestCase):
     """local_edits salon degisikligini de isaretlemeli."""
 

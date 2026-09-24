@@ -454,3 +454,20 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--r-button);
   background: var(--amber-dim);
 }
+
+/* ---------- Duyuru listesi — AuthKit giydirmesi ----------------------- */
+.dsatir {
+  background: var(--surface-glass);
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--hairline);
+  border-radius: var(--r-card);
+}
+.dsatir.yeni { border-left-color: var(--color-void-violet); }
+.dsatir.yeni .dnokta { background: var(--color-void-violet); }
+.dsatir .dtur { color: var(--color-fog-veil); }
+.dsatir.yeni .dtur { color: var(--color-frost-glow); }
+.dsatir .dzaman, .dsatir .dok { color: var(--color-fog-veil); }
+.dsatir .dgovde .dsil {
+  border: 1px solid var(--amber-line); border-radius: var(--r-button);
+  color: var(--color-violet-ink); background: var(--amber-dim);
+}

@@ -74,6 +74,40 @@ def detect_generated(fixtures: list[dict]) -> set:
     return generated
 
 
+def _eskimis_tarihleri_isaretle(league: dict, drive: dict) -> None:
+    """Drive'in kesinlestirdigi bir gune dusen, Drive'da OLMAYAN macimizi
+    "TBF'nin eskimis verisi" diye isaretler.
+
+    Kullanici kurali (24 Eylul 2026): "Ayni gun 2 mac gozukuyorsa ve bu
+    google drive'da degilse TBF'nin diger sitesi guncellenmemis demektir.
+    Bu tip durumlarda guncel bilgi hep google drive baz alinmali."
+
+    Gercek ornek: 4 Ekim 2026'da Drive bizi 11:30'da Emlak Konut (B) ile
+    BGM Salon C3'te gosteriyordu; TBF ayni gune bir de Galatasaray (A)
+    deplasmani koymustu ve o tarih TBF'de zaten ilan edilmemisti
+    (dateConfirmed=false). Veli ayni gun iki mac goruyordu.
+
+    Isaret yalnizca TBF'nin ILAN ETMEDIGI maclara konur: ilan edilmis bir
+    mac gercekten ayni gune denk gelebilir (cift mac), onu susturmak
+    yanlis olur.
+    """
+    if not drive:
+        return
+    drive_gunleri = {p.get("date") for p in drive.values() if p.get("date")}
+    if not drive_gunleri:
+        return
+    drive_maclari = {str(mid) for mid in drive}
+    for fx in (league.get("fixtures") or []):
+        if not fx.get("isOurs") or fx.get("played"):
+            continue
+        if str(fx.get("matchId")) in drive_maclari:
+            continue                      # bu macin kaynagi zaten Drive
+        if fx.get("dateConfirmed") is not False:
+            continue                      # TBF ilan etmis; karismayiz
+        if fx.get("date") in drive_gunleri:
+            fx["dateStale"] = True
+
+
 def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = None,
           drive: dict | None = None) -> dict:
     """Elle duzeltmeleri uygular, uretilmis tarihleri isaretler, degisikligi yazar.
@@ -142,6 +176,8 @@ def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = No
                               "changedAt"):
                     if old.get(field) and not fx.get(field):
                         fx[field] = old[field]
+
+    _eskimis_tarihleri_isaretle(league, drive)
 
     unconfirmed = sum(1 for f in (league.get("fixtures") or [])
                       if f.get("dateConfirmed") is False)
