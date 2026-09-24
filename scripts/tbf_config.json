@@ -45,15 +45,10 @@
         "resourceKey": "0-MKTgAd4XnpTp7S5flJBKuA",
         "category": "U14KA",
         "weeksAhead": 1,
-        "teamNames": [
-          "EVOLOG DAÇKA ŞERİFALİ",
-          "DAÇKA ŞERİFALİ",
-          "EVOLOG",
-          "EVOLOG ŞERİFALİ",
-          "EVOLOG DAÇKA",
-          "ŞERİFALİ SPOR KULÜBÜ",
-          "ŞERİFALİ SPOR",
-          "ŞERİFALİ"
+        "teamKeywords": [
+          "DAÇKA",
+          "ŞERİFALİ",
+          "EVOLOG"
         ]
       }
     }

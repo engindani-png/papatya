@@ -384,85 +384,41 @@ def takim_haritasi(excel_adlari, tbf_adlari, esik: float = 0.45) -> dict:
 
 # ------------------------------------------------------------------------ birlestirme
 
-def _anahtar(ad: str) -> str:
-    govde, ek = ek_ayir(ad)
-    return f"{normalize(govde)}|{ek or ''}"
+# "Bu satir bizim macimiz mi?" sorusunun TEK olcutu: adda bu kelimelerden
+# biri geciyor mu. Kullanici kurali (24 Eylul 2026): "Dacka, Serifali, Evolog
+# kelimelerinden herhangi biri gecerse biziz u14a kadinlarda. baska bir sey
+# karsilastirma."
+#
+# Neden kelime, benzerlik degil: ad her yerde baska turlu yaziliyor ve zaman
+# icinde degisiyor - TBF takim fiksturu "EVOLOG DACKA SERIFALI", lig geneli
+# akisi "EVOLOG DACKA SERIFALI (A)", Drive tablosu "SERIFALI SPOR" ya da
+# "EVOLOG SERIFALI". Benzerlik olcusu hem bunlarin hepsini yakalayamiyor hem
+# de ortak kelimeler uzerinden rakibi bize benzetiyordu: "SERIFALI SPOR" ile
+# "EMLAK KONUT SPOR" benzerligi 0.459 cikip esigi asmis, rakibin maci bizim
+# sayilmisti. Kelime olcutu hem daha basit hem daha dogru.
+VARSAYILAN_ANAHTARLAR = ("DACKA", "SERIFALI", "EVOLOG")
 
 
-def _govde_anahtari(ad: str) -> str:
-    """Yalnizca govde - (A)/(B) eki ATILIR.
+def anahtar_kelimeler(cfg: dict) -> set:
+    """Yapilandirmadaki kelimeler, normalize edilmis kume olarak."""
+    ham = cfg.get("teamKeywords") or VARSAYILAN_ANAHTARLAR
+    return {k for ad in ham for k in normalize(ad).split() if k}
 
-    "Bu satir BIZIM macimiz mi?" sorusu icin kullanilir. Ek burada ayirt
-    edici degil: TBF lig geneli akisi 23 Eylul 2026'da bizi
-    "EVOLOG DACKA SERIFALI (A)" yazmaya basladi, takimin kendi fikstur
-    listesi ise eksiz tutuyor. Ek dahil karsilastirinca butun satirlarimiz
-    sessizce "bizim macimiz degil" sayildi ve federasyonun resmi programi
-    hicbir maca uygulanmadi. Kulubun ayni ligde iki takimi olursa ikisi de
-    bizimdir; yani ek atmak burada dogru.
+
+def _bizim_mi(ad: str, anahtarlar: set) -> bool:
+    """Adda anahtar kelimelerden biri geciyorsa bizimdir.
+
+    Kelime butun olarak aranir: "EVOLOGSPOR" gibi bitisik bir ad eslesmez,
+    "EVOLOG DACKA SERIFALI (A)" eslesir. Ek ((A)/(B)) onemsizdir - kulubun
+    ayni ligde iki takimi olursa ikisi de bizimdir.
     """
-    return normalize(ek_ayir(ad)[0])
-
-
-# Kulubun kendi adindan gelen, en az bu uzunluktaki kelime AYIRT EDICIDIR.
-AYIRT_EDICI_UZUNLUK = 5
-
-# Hicbir kulube ait olmayan kelimeler. normalize() bunlarin cogunu zaten
-# atiyor ama "SPOR" tek basina kaliyor ve iki alakasiz adi birbirine
-# yaklastiriyordu: "SERIFALI SPOR" ile "EMLAK KONUT SPOR" benzerligi 0.459
-# cikip esigi (0.45) asmisti, yani rakibin maci bizim sayiliyordu.
-GENEL_KELIMELER = {"SPOR", "KULUP", "KULUBU", "KULUBE", "GENCLIK", "BELEDIYE",
-                   "BELEDIYESI", "OKULLARI", "OKUL", "BASKETBOL", "BASKET",
-                   "SK", "BLD", "ISTANBUL", "TAKIMI", "TAKIM"}
-
-
-def _ozgun(govde: str) -> str:
-    """Adin kulube OZGU kismi: genel kelimeler atilir.
-
-    "SERIFALI SPOR" -> "SERIFALI",  "EMLAK KONUT SPOR" -> "EMLAK KONUT".
-    Hepsi atilirsa geriye dokunulmamis govde birakilir (bos dize ile
-    karsilastirma anlamsiz olurdu).
-    """
-    kalan = [k for k in govde.split() if k not in GENEL_KELIMELER]
-    return " ".join(kalan) if kalan else govde
-
-
-def _bizim_mi(ad: str, bizim_govdeler: set, esik: float = 0.45) -> bool:
-    """Bu takim adi BIZIM kulubumuz mu?
-
-    Ad her yerde ayni yazilmiyor ve zaman icinde degisiyor: TBF'nin takim
-    fikstur listesi "EVOLOG DACKA SERIFALI", lig geneli akisi ayni takimi
-    "EVOLOG DACKA SERIFALI (A)", federasyonun Drive tablosu haftadan haftaya
-    "SERIFALI SPOR" ya da "EVOLOG SERIFALI" yazabiliyor.
-
-    Karsilastirma adin OZGUN kismi uzerinden yapilir; "SPOR", "BELEDIYESI"
-    gibi herkese ait kelimeler once atilir. Uc asama: birebir govde,
-    ayirt edici kelime, benzerlik esigi.
-
-    Genis davranmak burada guvenli: U14A kiz liginde bize benzeyen baska
-    takim yok. Yine de ligdeki diger takimlarin bizim sayilmadigi testle
-    dogrulanir (bkz. test_drive_program.BizimMacimizTest).
-    """
-    g = _govde_anahtari(ad)
-    if not g:
+    if not ad:
         return False
-    if g in bizim_govdeler:
-        return True
-    g_oz = _ozgun(g)
-    parcalar = set(g_oz.split())
-    for b in bizim_govdeler:
-        b_oz = _ozgun(b)
-        if g_oz == b_oz:
-            return True
-        # Ayirt edici kelime: SERIFALI / EVOLOG / DACKA. Bunlari tasiyan
-        # baska takim yok, adin gerisi nasil yazilirsa yazilsin bizimdir.
-        if any(k in parcalar for k in b_oz.split() if len(k) >= AYIRT_EDICI_UZUNLUK):
-            return True
-        if benzerlik(g_oz, b_oz) >= esik:
-            return True
-    return False
+    return bool(set(normalize(ad).split()) & anahtarlar)
 
 
-def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]) -> tuple[dict, list]:
+def maclari_eslestir(program: list[dict], fixtures: list[dict],
+                     anahtarlar: set) -> tuple[dict, list]:
     """Drive satirlarini TBF matchId'lerine baglar.
 
     Eslesme olcutu: iki takim da ayni (birebir atanan adlarla) VE macin TBF'deki
@@ -473,7 +429,6 @@ def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]
     excel_adlari = sorted({m["ev"] for m in program} | {m["deplasman"] for m in program})
     harita = takim_haritasi(excel_adlari, tbf_adlari)
 
-    bizim_norm = {_govde_anahtari(b) for b in bizim}
     sonuc, eslesmeyen = {}, []
 
     for m in program:
@@ -481,7 +436,7 @@ def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]
         if not ev_t or not dep_t:
             eslesmeyen.append({**m, "neden": "takim adi eslesmedi"})
             continue
-        if not _bizim_mi(ev_t, bizim_norm) and not _bizim_mi(dep_t, bizim_norm):
+        if not _bizim_mi(ev_t, anahtarlar) and not _bizim_mi(dep_t, anahtarlar):
             continue                        # bizim macimiz degil
         # SIRALI cift: ev sahibi ve deplasman birlikte. Cift devreli ligde
         # ayni rakiple iki kez oynanir ama biri evde biri deplasmanda, yani
@@ -597,7 +552,8 @@ def guncelle(cfg: dict, fixtures: list[dict], onceki: dict | None,
                 yeni_maclar.update(onceki_d.get("matches") or {})
             continue
 
-        maclar, eslesmeyen = maclari_eslestir(program, fixtures, cfg.get("teamNames", []))
+        maclar, eslesmeyen = maclari_eslestir(program, fixtures,
+                                              anahtar_kelimeler(cfg))
         ozet = hashlib.sha256(
             json.dumps(maclar, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
         if ozet != onceki_d.get("ozet"):
@@ -618,13 +574,13 @@ def guncelle(cfg: dict, fixtures: list[dict], onceki: dict | None,
     # Artik islenmeyen (gecmis) hafta dosyalarini durumdan dusur.
     gecerli = {h["id"] for h in secili}
     durum["files"] = {k: v for k, v in durum["files"].items() if k in gecerli}
-    bizim_govde = {_govde_anahtari(b) for b in (cfg.get("teamNames") or [])}
+    anahtarlar = anahtar_kelimeler(cfg)
     for e in yeni_eslesmeyen:
         # Eslesmeyen satir BIZIM macimizsa ayri seslen: kaybolan sey resmi
         # salon ve saat bilgisi, yani velinin yanlis salona gitmesi demek.
         satir = f"{e['neden']} -> {e['ev']} - {e['deplasman']} ({e['tarih']})"
-        bizimki = (_bizim_mi(e["ev"], bizim_govde)
-                   or _bizim_mi(e["deplasman"], bizim_govde))
+        bizimki = (_bizim_mi(e["ev"], anahtarlar)
+                   or _bizim_mi(e["deplasman"], anahtarlar))
         gunluk(f"  drive {'DIKKAT BIZIM MACIMIZ' if bizimki else 'UYARI'}: {satir}")
     return durum
 

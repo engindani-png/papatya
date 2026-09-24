@@ -200,20 +200,57 @@ class BizimMacimizTest(unittest.TestCase):
     hicbir maca uygulanmadi.
     """
 
-    # tbf_config.json icindeki gercek liste: test onunla kosuyor ki
-    # yapilandirmaya eklenen bir ad sessizce rakibi bizim yapmasin.
-    BIZ = json.loads(
+    # Kural (kullanici, 24 Eylul 2026): "Dacka, Serifali, Evolog
+    # kelimelerinden herhangi biri gecerse biziz u14a kadinlarda. baska bir
+    # sey karsilastirma." Test yapilandirmadaki GERCEK kelimelerle kosar ki
+    # oraya eklenen bir kelime sessizce rakibi bizim yapmasin.
+    CFG = json.loads(
         (pathlib.Path(__file__).resolve().parent / "tbf_config.json")
-        .read_text(encoding="utf-8")
-    )["teams"][0]["drive"]["teamNames"]
+        .read_text(encoding="utf-8"))["teams"][0]["drive"]
+    ANAHTAR = dp.anahtar_kelimeler(CFG)
+
     FIX = [{"matchId": 500, "date": "2026-10-04",
             "home": "EVOLOG DAÇKA ŞERİFALİ (A)", "away": "EMLAK KONUT SPOR (B)"}]
     SATIR = [{"tarih": "2026-10-04", "saat": "11:30", "salon": "BGM SALON C3",
               "ev": "EVOLOG DAÇKA ŞERİFALİ (A)", "deplasman": "EMLAK KONUT (B)",
               "grup": "SERİ A"}]
 
+    ADIMIZIN_HALLERI = [
+        "EVOLOG DAÇKA ŞERİFALİ", "EVOLOG DAÇKA ŞERİFALİ (A)",
+        "ŞERİFALİ SPOR KULÜBÜ", "ŞERİFALİ SPOR", "ŞERİFALİ",
+        "EVOLOG ŞERİFALİ", "EVOLOG", "DAÇKA ŞERİFALİ", "DAÇKA",
+        "Şerifali Spor Kulübü", "EVOLOG U14A", "ŞERİFALİ U14 A",
+    ]
+
+    def test_yapilandirmada_u14_takimi(self):
+        cfg = json.loads((pathlib.Path(__file__).resolve().parent / "tbf_config.json")
+                         .read_text(encoding="utf-8"))
+        self.assertEqual(cfg["teams"][0]["key"], "u14")
+        self.assertEqual(set(cfg["teams"][0]["drive"]["teamKeywords"]),
+                         {"DAÇKA", "ŞERİFALİ", "EVOLOG"})
+
+    def test_adimizin_butun_halleri_bizim_sayilir(self):
+        for ad in self.ADIMIZIN_HALLERI:
+            self.assertTrue(dp._bizim_mi(ad, self.ANAHTAR), f"bizim sayilmali: {ad}")
+
+    def test_ligdeki_diger_takimlar_bizim_sayilmaz(self):
+        for ad in ["GALATASARAY (A)", "FENERBAHÇE (B)", "BEŞİKTAŞ",
+                   "EMLAK KONUT SPOR (A)", "EMLAK KONUT SPOR (B)",
+                   "EYÜPSULTAN BELEDİYESİ", "ÜMRANİYE BELEDİYESİ SK",
+                   "ALLSTARS", "ALLSTARS İSTANBUL", "AÇI OKULLARI"]:
+            self.assertFalse(dp._bizim_mi(ad, self.ANAHTAR), f"bizim sayilmamali: {ad}")
+
+    def test_bos_ad_bizim_sayilmaz(self):
+        for ad in ["", "   ", "(A)", None]:
+            self.assertFalse(dp._bizim_mi(ad or "", self.ANAHTAR), repr(ad))
+
+    def test_kelime_butun_olarak_aranir(self):
+        """Bitisik yazim eslesmemeli; yoksa rastgele adlar bizim olur."""
+        self.assertFalse(dp._bizim_mi("EVOLOGSPOR", self.ANAHTAR))
+        self.assertFalse(dp._bizim_mi("SERIFALILAR", self.ANAHTAR))
+
     def test_tbf_ekli_yazsa_da_bizim_macimiz(self):
-        sonuc, esle = dp.maclari_eslestir(self.SATIR, self.FIX, self.BIZ)
+        sonuc, esle = dp.maclari_eslestir(self.SATIR, self.FIX, self.ANAHTAR)
         self.assertEqual(esle, [])
         self.assertIn("500", sonuc)
         self.assertEqual(sonuc["500"]["venue"], "BGM SALON C3")
@@ -221,51 +258,15 @@ class BizimMacimizTest(unittest.TestCase):
 
     def test_excel_eksiz_tbf_ekliyken_de_bulunur(self):
         satir = [dict(self.SATIR[0], ev="EVOLOG DAÇKA ŞERİFALİ")]
-        sonuc, esle = dp.maclari_eslestir(satir, self.FIX, self.BIZ)
+        sonuc, esle = dp.maclari_eslestir(satir, self.FIX, self.ANAHTAR)
         self.assertIn("500", sonuc, f"eslesmedi: {esle}")
-
-    ADIMIZIN_HALLERI = [
-        "EVOLOG DAÇKA ŞERİFALİ", "EVOLOG DAÇKA ŞERİFALİ (A)",
-        "ŞERİFALİ SPOR KULÜBÜ", "ŞERİFALİ SPOR", "ŞERİFALİ",
-        "EVOLOG ŞERİFALİ", "EVOLOG", "DAÇKA ŞERİFALİ",
-    ]
-
-    def test_yapilandirmadaki_takim_u14(self):
-        """BIZ listesi gercekten u14 takiminin listesi olmali."""
-        cfg = json.loads((pathlib.Path(__file__).resolve().parent / "tbf_config.json")
-                         .read_text(encoding="utf-8"))
-        self.assertEqual(cfg["teams"][0]["key"], "u14")
-
-    def test_adimizin_butun_halleri_bizim_sayilir(self):
-        """Ad her yerde ayni yazilmiyor ve zaman icinde degisiyor.
-
-        TBF takim fiksturu "EVOLOG DAÇKA ŞERİFALİ", lig geneli akisi
-        "... (A)", Drive tablosu haftadan haftaya baska bir hali yazabiliyor.
-        U14A kiz liginde bu kelimeleri tasiyan baska takim yok; genis
-        davranmak guvenli.
-        """
-        bizim = {dp._govde_anahtari(b) for b in self.BIZ}
-        for ad in self.ADIMIZIN_HALLERI:
-            self.assertTrue(dp._bizim_mi(ad, bizim), f"bizim sayilmali: {ad}")
-
-    def test_ligdeki_diger_takimlar_bizim_sayilmaz(self):
-        bizim = {dp._govde_anahtari(b) for b in self.BIZ}
-        for ad in ["GALATASARAY (A)", "FENERBAHÇE (B)", "BEŞİKTAŞ",
-                   "EMLAK KONUT SPOR (A)", "EYÜPSULTAN BELEDİYESİ",
-                   "ÜMRANİYE BELEDİYESİ SK", "ALLSTARS", "AÇI OKULLARI"]:
-            self.assertFalse(dp._bizim_mi(ad, bizim), f"bizim sayilmamali: {ad}")
-
-    def test_bos_ad_bizim_sayilmaz(self):
-        bizim = {dp._govde_anahtari(b) for b in self.BIZ}
-        for ad in ["", "   ", "(A)"]:
-            self.assertFalse(dp._bizim_mi(ad, bizim), repr(ad))
 
     def test_baskasinin_maci_bizim_sayilmaz(self):
         satir = [{"tarih": "2026-10-04", "saat": "11:30", "salon": "X",
                   "ev": "GALATASARAY (A)", "deplasman": "BEŞİKTAŞ", "grup": "A"}]
         fix = [{"matchId": 501, "date": "2026-10-04",
                 "home": "GALATASARAY (A)", "away": "BEŞİKTAŞ"}]
-        sonuc, esle = dp.maclari_eslestir(satir, fix, self.BIZ)
+        sonuc, esle = dp.maclari_eslestir(satir, fix, self.ANAHTAR)
         self.assertEqual(sonuc, {}, "baskasinin maci kaydedilmemeli")
         self.assertEqual(esle, [], "baskasinin maci uyari da uretmemeli")
 
@@ -274,7 +275,7 @@ class BizimMacimizTest(unittest.TestCase):
         reddediyordu (4 Ekim maci TBF'de 8 Aralik goruluyordu)."""
         fix = [{"matchId": 502, "date": "2026-12-08",
                 "home": "EVOLOG DAÇKA ŞERİFALİ (A)", "away": "EMLAK KONUT SPOR (B)"}]
-        sonuc, esle = dp.maclari_eslestir(self.SATIR, fix, self.BIZ)
+        sonuc, esle = dp.maclari_eslestir(self.SATIR, fix, self.ANAHTAR)
         self.assertIn("502", sonuc, f"eslesmedi: {esle}")
         self.assertEqual(sonuc["502"]["date"], "2026-10-04", "Drive tarihi kazanmali")
 
@@ -322,7 +323,7 @@ FIXTURES = [
     {"matchId": 346860, "date": "2026-09-24", "time": "20:00",
      "home": "GALATASARAY (A)", "away": "BEŞİKTAŞ"},
 ]
-BIZIM = ["EVOLOG DAÇKA ŞERİFALİ", "DAÇKA ŞERİFALİ"]
+BIZIM = dp.anahtar_kelimeler({"teamKeywords": ["DAÇKA", "ŞERİFALİ", "EVOLOG"]})
 
 
 class Birlestirme(unittest.TestCase):
