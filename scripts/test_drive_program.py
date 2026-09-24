@@ -104,10 +104,54 @@ class TakimEslestirme(unittest.TestCase):
         self.assertEqual(h["EMLAK KONUT (A)"], "EMLAK KONUT SPOR (A)")
         self.assertEqual(h["EMLAK KONUT (B)"], "EMLAK KONUT SPOR (B)")
 
-    def test_ek_yoksa_ekli_takima_eslesmez(self):
-        # (A)/(B) KATI kisit: eksiz ad ekli ada baglanmamali.
-        h = dp.takim_haritasi(["GALATASARAY"], ["GALATASARAY (A)"])
+    def test_ek_belirsizken_eslesmez(self):
+        """(A)/(B) korumasi: iki aday varken ek farki YUTULMAZ.
+
+        Asil tehlike bu. Excel "GALATASARAY" derken TBF'de hem (A) hem (B)
+        varsa hangisi oldugu bilinemez; yanlis takima baglanan mac, veliyi
+        yanlis salona gonderir. Bilgi vermemek yanlis bilgi vermekten iyidir.
+        """
+        h = dp.takim_haritasi(["GALATASARAY"],
+                              ["GALATASARAY (A)", "GALATASARAY (B)"])
         self.assertEqual(h, {})
+
+    def test_tek_aday_varken_ek_farki_yutulur(self):
+        """Ek tek tarafta ve govdeye uyan TEK takim varsa eslesme kurulur.
+
+        Federasyon 5. hafta tablosunda (28 Eylul 2026) bizi
+        "EVOLOG DACKA SERIFALI (A)" yazdi, TBF ise eksiz tutuyor. Kati kural
+        yuzunden 4 Ekim macinin resmi saati (11:30) ve salonu (BGM C3)
+        uygulamaya hic gelmiyordu; veliler TBF'nin dolgu verisini goruyordu.
+        """
+        h = dp.takim_haritasi(["EVOLOG DAÇKA ŞERİFALİ (A)"],
+                              ["EVOLOG DAÇKA ŞERİFALİ"])
+        self.assertEqual(h.get("EVOLOG DAÇKA ŞERİFALİ (A)"),
+                         "EVOLOG DAÇKA ŞERİFALİ")
+
+    def test_ek_farki_iki_yonde_de_yutulur(self):
+        """Eksik ek hangi tarafta olursa olsun, tek aday varsa guvenli."""
+        h = dp.takim_haritasi(["GALATASARAY"], ["GALATASARAY (A)"])
+        self.assertEqual(h.get("GALATASARAY"), "GALATASARAY (A)")
+
+    def test_gercek_lig_tablosunda_ekli_adimiz_dogru_baglanir(self):
+        """Tam lig listesiyle: (A) ekli adimiz dogru baglanmali VE
+        EMLAK KONUT / GALATASARAY A-B ayrimi bozulmamali."""
+        xls = list(self.XLS)
+        xls[xls.index("EVOLOG DAÇKA ŞERİFALİ")] = "EVOLOG DAÇKA ŞERİFALİ (A)"
+        h = dp.takim_haritasi(xls, self.TBF)
+        self.assertEqual(h.get("EVOLOG DAÇKA ŞERİFALİ (A)"), "EVOLOG DAÇKA ŞERİFALİ")
+        self.assertEqual(h["GALATASARAY (A)"], "GALATASARAY (A)")
+        self.assertEqual(h["GALATASARAY (B)"], "GALATASARAY (B)")
+        self.assertEqual(h["EMLAK KONUT (A)"], "EMLAK KONUT SPOR (A)")
+        self.assertEqual(h["EMLAK KONUT (B)"], "EMLAK KONUT SPOR (B)")
+        self.assertEqual(len(set(h.values())), len(h), "bir TBF takimi iki kez eslesmis")
+
+    def test_kademe1_kademe0in_adayini_calamaz(self):
+        """Ek farkiyla kurulan eslesme, birebir ek tutan eslesmeyi bozmamali."""
+        h = dp.takim_haritasi(["FENERBAHÇE", "FENERBAHÇE (A)"],
+                              ["FENERBAHÇE (A)"])
+        self.assertEqual(h.get("FENERBAHÇE (A)"), "FENERBAHÇE (A)")
+        self.assertIsNone(h.get("FENERBAHÇE"), "tek TBF takimi iki kez eslesemez")
 
     def test_kulup_eki_farkliligi(self):
         h = dp.takim_haritasi(["ŞERİFALİ SPOR KULÜBÜ"], ["EVOLOG DAÇKA ŞERİFALİ"])

@@ -335,24 +335,47 @@ def benzerlik(a: str, b: str) -> float:
 
 
 def takim_haritasi(excel_adlari, tbf_adlari, esik: float = 0.45) -> dict:
-    """Excel adi -> TBF adi. Birebir atama; (A)/(B) eki birebir tutmak ZORUNDA.
+    """Excel adi -> TBF adi. Birebir atama, iki kademeli.
 
-    Tek tek en yakini secmek yerine tum ciftler skora gore siralanip birebir
-    atanir; boylece bir TBF takimi iki Excel adina eslesemez.
+    Tek tek en yakini secmek yerine tum ciftler siralanip birebir atanir;
+    boylece bir TBF takimi iki Excel adina eslesemez.
+
+    KADEME 0 - (A)/(B) eki birebir tutar. Asil kural budur: TBF'de hem
+    "EMLAK KONUT SPOR (A)" hem "(B)" var; ek yanlis tutarsa mac yanlis
+    takima baglanir ve veliler yanlis salona gider.
+
+    KADEME 1 - ek yalnizca BIR tarafta var VE govdeye uyan tek bir TBF takimi
+    kaldi. Federasyonun Drive tablosu 5. haftada (28 Eylul 2026) bizi
+    "EVOLOG DACKA SERIFALI (A)" diye yazdi, TBF ise eksiz tutuyor. Kati kural
+    yuzunden 4 Ekim macinin resmi saati ve salonu uygulamaya HIC gelmiyordu.
+    Belirsizlik varsa - yani govdeye uyan birden fazla TBF takimi varsa -
+    bu kademe kapalidir: yanlis salon, salon bilgisi olmamasindan kotudur.
     """
     ciftler = []
     for x in excel_adlari:
         x_govde, x_ek = ek_ayir(x)
+        # Govdeye uyan TBF takimi TEK ise ek farki guvenle gorulebilir.
+        uyanlar = [t for t in tbf_adlari
+                   if benzerlik(x_govde, ek_ayir(t)[0]) >= esik]
+        tekil = len(uyanlar) == 1
         for t in tbf_adlari:
             t_govde, t_ek = ek_ayir(t)
-            if x_ek != t_ek:
-                continue                   # KATI: (A)/(B)/yok birebir tutmali
-            ciftler.append((benzerlik(x_govde, t_govde), x, t))
-    ciftler.sort(key=lambda c: -c[0])
+            skor = benzerlik(x_govde, t_govde)
+            if skor < esik:
+                continue
+            if x_ek == t_ek:
+                kademe = 0
+            elif tekil:
+                kademe = 1
+            else:
+                continue
+            ciftler.append((kademe, -skor, x, t))
+    # Once kademe 0, sonra yuksek skor: kademe 1 asla kademe 0'in adayini calamaz.
+    ciftler.sort()
 
     harita, kullanilan = {}, set()
-    for skor, x, t in ciftler:
-        if x in harita or t in kullanilan or skor < esik:
+    for _kademe, _eksi_skor, x, t in ciftler:
+        if x in harita or t in kullanilan:
             continue
         harita[x] = t
         kullanilan.add(t)
@@ -387,21 +410,40 @@ def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]
             continue
         if _anahtar(ev_t) not in bizim_norm and _anahtar(dep_t) not in bizim_norm:
             continue                        # bizim macimiz degil
-        aday = None
-        for f in fixtures:
-            if f.get("home") != ev_t or f.get("away") != dep_t:
-                continue
-            try:
-                fark = abs((dt.date.fromisoformat(f["date"])
-                            - dt.date.fromisoformat(m["tarih"])).days)
-            except (KeyError, TypeError, ValueError):
-                continue
-            if fark <= 10 and (aday is None or fark < aday[0]):
-                aday = (fark, f)
-        if aday is None:
+        # SIRALI cift: ev sahibi ve deplasman birlikte. Cift devreli ligde
+        # ayni rakiple iki kez oynanir ama biri evde biri deplasmanda, yani
+        # sirali cift normalde TEK bir maca karsilik gelir.
+        adaylar = [f for f in fixtures
+                   if f.get("home") == ev_t and f.get("away") == dep_t]
+        if not adaylar:
             eslesmeyen.append({**m, "neden": "TBF fiksturunde karsiligi yok"})
             continue
-        sonuc[str(aday[1]["matchId"])] = {
+
+        if len(adaylar) == 1:
+            # TEK aday: tarih penceresi UYGULANMAZ. Sebep: TBF ilan edilmemis
+            # maclar icin uretilmis dolgu tarih donuyor ve o tarih aylarca
+            # uzakta olabiliyor (4 Ekim maci TBF'de 8 Aralik goruluyordu).
+            # Pencere sart kosulunca federasyonun RESMI programi kendi
+            # duzeltmesi gereken veriyi asla duzeltemiyordu.
+            secilen = adaylar[0]
+        else:
+            # Birden fazla aday (ayni sirali cift birden cok kez) varsa tarih
+            # ayirt edici olur; 10 gunden uzaksa karar verilemez.
+            aday = None
+            for f in adaylar:
+                try:
+                    fark = abs((dt.date.fromisoformat(f["date"])
+                                - dt.date.fromisoformat(m["tarih"])).days)
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if fark <= 10 and (aday is None or fark < aday[0]):
+                    aday = (fark, f)
+            if aday is None:
+                eslesmeyen.append({**m, "neden": "hangi mac oldugu ayirt edilemedi"})
+                continue
+            secilen = aday[1]
+
+        sonuc[str(secilen["matchId"])] = {
             "date": m["tarih"], "time": m["saat"], "venue": m["salon"] or None,
             "source": "drive",
         }
@@ -503,8 +545,14 @@ def guncelle(cfg: dict, fixtures: list[dict], onceki: dict | None,
     # Artik islenmeyen (gecmis) hafta dosyalarini durumdan dusur.
     gecerli = {h["id"] for h in secili}
     durum["files"] = {k: v for k, v in durum["files"].items() if k in gecerli}
+    bizim_govde = {normalize(ek_ayir(b)[0]) for b in (cfg.get("teamNames") or [])}
     for e in yeni_eslesmeyen:
-        gunluk(f"  drive UYARI: {e['neden']} -> {e['ev']} - {e['deplasman']} ({e['tarih']})")
+        # Eslesmeyen satir BIZIM macimizsa ayri seslen: kaybolan sey resmi
+        # salon ve saat bilgisi, yani velinin yanlis salona gitmesi demek.
+        satir = f"{e['neden']} -> {e['ev']} - {e['deplasman']} ({e['tarih']})"
+        bizimki = any(g and g in normalize(f"{e['ev']} {e['deplasman']}")
+                      for g in bizim_govde)
+        gunluk(f"  drive {'DIKKAT BIZIM MACIMIZ' if bizimki else 'UYARI'}: {satir}")
     return durum
 
 

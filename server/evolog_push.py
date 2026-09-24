@@ -5,7 +5,7 @@ Senkronizasyondan hemen sonra calisir. Iki tur bildirim uretir:
 
   * hatirlatma — kendi macimizin baslamasina 4 saatten az kaldiysa
   * sonuc      — mac oynanmis olarak isaretlendiginde, skorla birlikte
-  * degisiklik — macin gun/saati degistiginde
+  * degisiklik — macin gunu, saati ya da SALONU degistiginde
   * antrenman  — haftalik antrenman programi degistiginde
 
 Ayni olay icin bir kez gonderilir; gonderilenler notified.json'da tutulur.
@@ -157,6 +157,52 @@ def training_by_day(program: dict) -> dict:
 DUYURU_TEKRAR_DK = 10
 
 
+SESSIZ_BAS = int(os.environ.get("EVOLOG_SESSIZ_BAS", "22"))   # dahil
+SESSIZ_BIT = int(os.environ.get("EVOLOG_SESSIZ_BIT", "7"))    # haric
+
+
+# Mac bildirimleri tek bir baslik altinda toplanir; telefonda bildirimin ilk
+# satiri baslik, ikincisi govdedir - "MAC DUYURUSU" gorununce veli neyle
+# karsilasacagini biliyor. Antrenorun yazdigi duyuru AYRI baslikla gider.
+MAC_BASLIK = "MAÇ DUYURUSU"
+
+
+def _gecmis(f: dict, simdi) -> bool:
+    """Macin baslama ani gecti mi? (Tarih okunamazsa gecmis SAYILMAZ.)"""
+    try:
+        bas = dt.datetime.strptime(f"{f['date']} {f.get('time') or '00:00'}",
+                                   "%Y-%m-%d %H:%M").replace(tzinfo=TZ)
+    except (KeyError, TypeError, ValueError):
+        return False
+    return bas < simdi
+
+
+def _govde(label: str, metin: str) -> str:
+    """Tek yas grubu varken etiket gurultu; birden fazlaysa hangi takim
+    oldugu govdede yazmali (baslik artik takimi soylemiyor)."""
+    return f"{label} · {metin}" if len(AGES) > 1 else metin
+
+
+def sessiz_saat(simdi=None) -> bool:
+    """Gece bildirim gonderilmemeli (varsayilan 22:00-07:00).
+
+    Bildirimler cocuk velilerinin telefonuna gidiyor; gece yarisi mac saati
+    degisikligi gondermek kabul edilemez. Sessiz saatte olay GONDERILMEZ ve
+    "gonderildi" diye ISARETLENMEZ: saat basi calisan senkron, pencere
+    bittikten sonraki ilk turda (07:30) kendiliginden gonderir.
+
+    Antrenorun elle yazdigi duyuru (--duyuru) bu kurala tabi degildir:
+    orada gonderme kararini bir insan veriyor.
+    """
+    simdi = simdi or dt.datetime.now(TZ)
+    saat = simdi.hour
+    if SESSIZ_BAS == SESSIZ_BIT:
+        return False
+    if SESSIZ_BAS < SESSIZ_BIT:                 # ornegin 01-07
+        return SESSIZ_BAS <= saat < SESSIZ_BIT
+    return saat >= SESSIZ_BAS or saat < SESSIZ_BIT   # gece yarisini asan pencere
+
+
 def duyuru_etiketi(metin: str) -> str:
     """Duyurunun bildirim etiketi (`tag`) ve olay kimligi.
 
@@ -305,8 +351,9 @@ def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
             events.append({
                 "id": f"result-{mid}",
                 "age": age,
-                "title": f"{label} · {title}",
-                "body": f"{home} {f['homeScore']} - {f['awayScore']} {away}",
+                "title": MAC_BASLIK,
+                "body": _govde(label, f"{title} · {home} {f['homeScore']} - "
+                                      f"{f['awayScore']} {away}"),
                 "tag": f"mac-{mid}",
             })
             continue
@@ -317,16 +364,41 @@ def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
         # Gun/saat degisikligi: velilerin hemen ogrenmesi gereken tek sey bu.
         # Olay kimligi yeni tarih+saati icerir, boylece her degisiklik bir kez
         # gider; ayni degisiklik tekrar tekrar bildirilmez.
-        if f.get("changedAt") and f.get("previousDate"):
+        # GECMIS mac icin degisiklik bildirimi gonderilmez. Olay kimligi
+        # tarih+saat+salon icerdigi icin, gecmis bir macin kaydi sonradan
+        # duzeltilince YENI bir kimlik olusuyor ve veliye "maci sali 18:30
+        # oynayacaksiniz" diye gecmis bir bildirim gidiyordu.
+        if f.get("changedAt") and f.get("previousDate") and not _gecmis(f, now):
             eski = fmt_gun(f.get("previousDate"), f.get("previousTime"))
             yeni = fmt_gun(f.get("date"), f.get("time"))
-            if eski != yeni:
+            eski_salon = (f.get("previousVenue") or "").strip()
+            yeni_salon = (f.get("venue") or "").strip()
+            zaman_degisti = eski != yeni
+            salon_degisti = bool(yeni_salon) and eski_salon != yeni_salon
+            # SALON DA SAYILIR: federasyonun haftalik programi gun ve saati
+            # birakip yalnizca salonu duzeltebiliyor. Eskiden bu sessizce
+            # geciyordu, yani veli yanlis salona gidiyordu.
+            if zaman_degisti or salon_degisti:
+                if zaman_degisti and salon_degisti:
+                    basd = "Maç saati ve salonu değişti"
+                elif zaman_degisti:
+                    basd = "Maç saati değişti"
+                else:
+                    basd = "Maç salonu değişti"
+                govde = (f"{opp} maçı {yeni} oynanacak"
+                         + (f" (önceki: {eski})" if zaman_degisti else ""))
+                if yeni_salon:
+                    govde += f" · {yeni_salon}"
+                    if salon_degisti and eski_salon:
+                        govde += f" (önceki salon: {eski_salon})"
+                # Olay kimligi salonu da icerir: yalnizca salon degistiginde
+                # de yeni bir kimlik olusur, yoksa bildirim hic gitmezdi.
+                salon_imza = hashlib.sha1(yeni_salon.encode("utf-8")).hexdigest()[:6]
                 events.append({
-                    "id": f"change-{mid}-{f.get('date')}-{f.get('time')}",
+                    "id": f"change-{mid}-{f.get('date')}-{f.get('time')}-{salon_imza}",
                     "age": age,
-                    "title": f"{label} · Maç saati değişti",
-                    "body": (f"{opp} maçı {yeni} oynanacak (önceki: {eski})"
-                             + (f" · {f.get('venue')}" if f.get("venue") else "")),
+                    "title": MAC_BASLIK,
+                    "body": _govde(label, f"{basd} · {govde}"),
                     "tag": f"mac-{mid}",
                 })
 
@@ -343,9 +415,10 @@ def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
             events.append({
                 "id": f"reminder-{mid}",
                 "age": age,
-                "title": f"{label} · Bugün {when} · {opp}",
-                "body": ("Maça yaklaşık " + str(int(round(hours_left))) + " saat kaldı"
-                         + (f" · {where}" if where else "")),
+                "title": MAC_BASLIK,
+                "body": _govde(label, f"Bugün {when} · {opp} · maça yaklaşık "
+                                      + str(int(round(hours_left))) + " saat kaldı"
+                                      + (f" · {where}" if where else "")),
                 "tag": f"mac-{mid}",
             })
 
@@ -476,6 +549,9 @@ def main() -> int:
                     help="antrenorden velilere serbest metin bildirimi gonder")
     ap.add_argument("--baslik", metavar="METIN", default="Antrenörden duyuru",
                     help="--duyuru ile gonderilecek bildirimin basligi")
+    ap.add_argument("--sessizi-atla", action="store_true",
+                    help="sessiz saatte de gonder (insan karari; otomatik "
+                         "senkron BU BAYRAGI KULLANMAZ)")
     ap.add_argument("--status", action="store_true",
                     help="abone sayisi, bekleyen olaylar ve kurulum durumunu yaz")
     args = ap.parse_args()
@@ -551,6 +627,14 @@ def main() -> int:
             if not ids:                      # ilk kayit: sessizce sakla
                 write_json(training_seen_path(age), program)
         print("Yeni bildirim yok.")
+        return 0
+
+    if not args.dry_run and not args.sessizi_atla and sessiz_saat():
+        # Olaylar isaretlenmiyor; pencere bitince ilk turda gidecekler.
+        print(f"Sessiz saat ({SESSIZ_BAS:02d}:00-{SESSIZ_BIT:02d}:00): "
+              f"{len(events)} olay ertelendi, sabah gonderilecek.")
+        for e in events:
+            print(f"   - {e['title']} | {e['body']}")
         return 0
 
     sent, delivered = send_all(events, args.dry_run)

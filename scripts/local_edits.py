@@ -124,16 +124,22 @@ def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = No
             else:
                 fx["dateConfirmed"] = mid not in generated
 
-            # Tarih/saat bir onceki veriye gore degistiyse isaretle.
+            # Tarih/saat/SALON bir onceki veriye gore degistiyse isaretle.
+            # Salon da sayilir: federasyonun haftalik programi ayni gun ve
+            # saati birakip yalnizca salonu duzeltebiliyor ve veli o zaman
+            # yanlis salona gidiyordu (bkz. drive_program.py basligi).
             changed = (old and (old.get("date") != fx.get("date")
-                                or old.get("time") != fx.get("time")))
+                                or old.get("time") != fx.get("time")
+                                or old.get("venue") != fx.get("venue")))
             if changed and old.get("date"):
                 fx["previousDate"] = old.get("date")
                 fx["previousTime"] = old.get("time")
+                fx["previousVenue"] = old.get("venue")
                 fx["changedAt"] = now
             else:
                 # Onceki calismada isaretlenmis degisiklik bilgisini koru.
-                for field in ("previousDate", "previousTime", "changedAt"):
+                for field in ("previousDate", "previousTime", "previousVenue",
+                              "changedAt"):
                     if old.get(field) and not fx.get(field):
                         fx[field] = old[field]
 
