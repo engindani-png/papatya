@@ -102,9 +102,28 @@ class UcTest(unittest.TestCase):
     def url(self, yol):
         return f"http://127.0.0.1:{self.port}{yol}"
 
+    def ac(self, yol, yontem="GET", govde=None):
+        """Tek yerden istek kurar; her istek kendi baglantisini kullanir.
+
+        NOT: bu testin bir donem kirilgan olmasinin sebebi keep-alive DEGIL,
+        gercek bir sunucu kusuruydu: do_POST yetkisizken 401 donuyor ama
+        istek GOVDESINI hic okumuyordu; sokette kalan okunmamis baytlar
+        yuzunden Windows baglantiyi RST ile kapatiyordu. Kusur
+        evolog_api.govdeyi_tuket() ile giderildi. `Connection: close` yine de
+        duruyor: testin yalitimini artiriyor, zarari yok.
+        """
+        basliklar = {"Connection": "close"}
+        veri = None
+        if govde is not None:
+            veri = json.dumps(govde).encode()
+            basliklar["Content-Type"] = "application/json"
+        istek = urllib.request.Request(self.url(yol), method=yontem,
+                                       data=veri, headers=basliklar)
+        return urllib.request.urlopen(istek, timeout=5)
+
     def test_get_duyuru_sifresiz_acik(self):
         """Velinin duyuruyu okuyabilmesi icin GET herkese acik olmali."""
-        with urllib.request.urlopen(self.url("/api/duyuru?age=u14"), timeout=5) as r:
+        with self.ac("/api/duyuru?age=u14") as r:
             self.assertEqual(r.status, 200)
             veri = json.loads(r.read())
         self.assertIn("duyurular", veri)
@@ -112,24 +131,21 @@ class UcTest(unittest.TestCase):
 
     def test_get_duyuru_tam_metni_dondurur(self):
         """Uygulamada TAM metin okunacak; uc kisaltmamali."""
-        with urllib.request.urlopen(self.url("/api/duyuru?age=u14"), timeout=5) as r:
+        with self.ac("/api/duyuru?age=u14") as r:
             veri = json.loads(r.read())
         self.assertEqual(veri["duyurular"][0]["metin"], UZUN)
 
     def test_post_duyuru_sifresiz_reddedilir(self):
         """Gonderme yetkisi SADECE antrenorde kalmali (bu yol push tetiklemez)."""
-        istek = urllib.request.Request(
-            self.url("/api/duyuru?age=u14"), method="POST",
-            data=json.dumps({"title": "Deneme", "body": "Deneme metni"}).encode(),
-            headers={"Content-Type": "application/json"})
         with self.assertRaises(urllib.error.HTTPError) as c:
-            urllib.request.urlopen(istek, timeout=5)
+            self.ac("/api/duyuru?age=u14", "POST",
+                    {"title": "Deneme", "body": "Deneme metni"})
         self.assertEqual(c.exception.code, 401)
 
     def test_yoklama_hala_sifreli(self):
         """Duyuruyu acarken kisisel veri ucunu yanlislikla acmadigimizi dogrular."""
         with self.assertRaises(urllib.error.HTTPError) as c:
-            urllib.request.urlopen(self.url("/api/attendance/summary?age=u14"), timeout=5)
+            self.ac("/api/attendance/summary?age=u14")
         self.assertEqual(c.exception.code, 401)
 
 

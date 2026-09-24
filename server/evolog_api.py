@@ -240,7 +240,33 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):  # nginx zaten kaydediyor
         pass
 
+    def govdeyi_tuket(self) -> None:
+        """Okunmamis istek govdesini soketten temizler.
+
+        POST yollarinin cogu yetki/dogrulama basarisiz olunca govdeyi HIC
+        okumadan yanit donuyordu. Okunmamis baytlar sokette kalinca Windows
+        baglantiyi RST ile kapatiyor: istemci temiz bir 401 yerine
+        ConnectionReset goruyor. Yani yanlis sifreyle duyuru gonderen antrenor
+        "Sifre hatali" yerine ag hatasi aliyordu.
+        """
+        if getattr(self, "_govde_okundu", False):
+            return
+        self._govde_okundu = True
+        try:
+            uzunluk = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return
+        if uzunluk <= 0:
+            return
+        kalan = min(uzunluk, MAX_BODY)
+        while kalan > 0:
+            parca = self.rfile.read(min(65536, kalan))
+            if not parca:
+                break
+            kalan -= len(parca)
+
     def send_json(self, code: int, payload) -> None:
+        self.govdeyi_tuket()
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -251,6 +277,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def body_json(self):
         length = int(self.headers.get("Content-Length") or 0)
+        # Govde burada okunuyor; send_json bir daha okumaya calismasin.
+        self._govde_okundu = True
         if length <= 0 or length > MAX_BODY:
             raise ValueError("Gecersiz govde boyutu")
         return json.loads(self.rfile.read(length).decode("utf-8"))
