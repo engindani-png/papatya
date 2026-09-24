@@ -280,7 +280,9 @@
     var a = durum.analiz;
     if (!a) { el("icerik").innerHTML = ""; return; }
     var biz = a.team.biz, rakip = a.team.rakip;
-    var bizAd = a.isHome ? "Evolog" : "Evolog";
+    // Kulübün resmî adı. TBF "EVOLOG" / "DAÇKA ŞERİFALİ" gibi karışık
+    // yazımlar kullanıyor; uygulamada her yerde bu ad görünür.
+    var bizAd = "Şerifali Spor Kulübü";
     var harita = atisHaritasi(a.shots, durum.oyuncu);
 
     var oyuncular = {};

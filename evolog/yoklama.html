@@ -4,11 +4,15 @@
 <meta charset="utf-8">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Evolog · Yoklama</title>
+<title>Şerifali · Yoklama</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="panel.css">
+<!-- Güncel görünüm katmanı. panel.css kendi (eski yeşil) token setini
+     tanımlıyordu ve antrenör ekranları ana uygulamanın gece temasından
+     geride kalmıştı. skin.css SONRA yüklenir ki :root tokenlarını ezsin. -->
+<link rel="stylesheet" href="skin.css">
 <style>
 /* --- seans şeridi ---------------------------------------------------- */
 .seans{display:flex;gap:.45rem;overflow-x:auto;padding:.15rem .15rem .5rem;

@@ -1,5 +1,8 @@
 /* Basit çevrimdışı önbellek: kabuk dosyaları önbellekten, veri dosyaları önce ağdan. */
-var CACHE = "evolog-v31";
+// v37: daha once v36 kullanilmisti, sonra bir surum v31e DUSURULDU.
+// Geriye gitmek karisiklik yaratiyor; bir daha ileri gidiyoruz ve
+// buradan sonra HEP artar.
+var CACHE = "evolog-v37";
 var SHELL = ["./", "./index.html", "./styles.css", "./skin.css", "./app.js", "./icon.svg", "./logo.png",
   "./icon-192.png", "./manifest.webmanifest",
   // Antrenor paneli: salonda sinyal zayif olabiliyor, o da cevrimdisi acilsin.
@@ -77,7 +80,7 @@ self.addEventListener("push", function (e) {
   // Bildirim, uygulamayi acmadan yeni surumu indirmek icin de bir firsat:
   // telefon zaten uyandi, sw.js'i tazeleyip guncellemeyi hazir ediyoruz.
   try { self.registration.update(); } catch (err) { /* onemsiz */ }
-  e.waitUntil(self.registration.showNotification(d.title || "Evolog U14 Kız Siyah", {
+  e.waitUntil(self.registration.showNotification(d.title || "Şerifali Spor Kulübü U14 Kız Siyah", {
     body: d.body || "",
     tag: d.tag || "evolog",
     renotify: true,

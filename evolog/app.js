@@ -119,11 +119,28 @@
     return timeStr ? out + " " + timeStr : out;
   }
 
+  /**
+   * Kulübün RESMİ adı. TBF'de ve TBF'nin Drive'ında "EVOLOG",
+   * "DAÇKA ŞERİFALİ", "EVOLOG DAÇKA ŞERİFALİ" gibi karışık yazımlar dolaşıyor.
+   * Uygulamada her yerde bu ad görünür.
+   *
+   * Düzeltme neden veri dosyasında değil BURADA: senkron `data/` altını saat
+   * başı TBF'den yeniden yazıyor (ve git reset --hard ile eziyor), yani veriye
+   * yazılan her düzeltme bir saat içinde kaybolur. Görüntüleme katmanı kalıcı.
+   */
+  var KULUP_ADI = "Şerifali Spor Kulübü";
+
   function isOurTeam(name) {
-    var aliases = ["evolog"];
+    // TBF yazımlarının hepsi: "EVOLOG", "DAÇKA ŞERİFALİ", ikisinin birleşimi.
+    var aliases = ["evolog", "serifali", "dacka"];
     if (state.team && state.team.club) aliases.push(norm(state.team.club));
     var n = norm(name);
     return aliases.some(function (a) { return a && n.indexOf(a) !== -1; });
+  }
+
+  /** Ekrana yazılacak takım adı: bizim takımsa resmî ada çevrilir. */
+  function takimAdi(ad) {
+    return isOurTeam(ad) ? KULUP_ADI : (ad || "");
   }
 
   // ------------------------------------------------------------- veri
@@ -258,8 +275,9 @@
 
   function teamTitle() {
     var lg = state.league || {}, tm = state.team || {};
-    var parts = [tm.club, tm.team].filter(Boolean).join(" ");
-    return lg.teamName || parts || ("Evolog " + ageInfo().title);
+    // TBF'nin adı ne olursa olsun kulüp RESMİ adıyla görünür; yaş grubu ekli.
+    var yas = (tm && tm.team) || ageInfo().title;
+    return (KULUP_ADI + " " + (yas || "")).trim();
   }
 
   function renderIdentity() {
@@ -351,8 +369,8 @@
       slot.innerHTML =
         '<div class="sec"><span class="label">Sıradaki maç</span><i class="hair"></i></div>' +
         '<article class="event event--tbd">' +
-          '<div class="ev-body"><div class="ev-team">' + esc(next.home) + "</div>" +
-          '<div class="ev-team">' + esc(next.away) + "</div>" +
+          '<div class="ev-body"><div class="ev-team">' + esc(takimAdi(next.home)) + "</div>" +
+          '<div class="ev-team">' + esc(takimAdi(next.away)) + "</div>" +
           '<div class="ev-sub">Tarih TBF tarafından ilan edilmedi' +
           (next.week ? " · " + esc(next.week) + ". hafta" : "") + "</div></div></article>";
       return;
@@ -363,10 +381,10 @@
         (next.week ? " · " + esc(next.week) + ". hafta" : "") + '</span><i class="hair"></i></div>' +
       '<section class="nextcard">' +
         '<div class="nc-teams">' +
-          '<div class="nc-side"><div class="nc-tn">' + esc(next.home) + "</div>" +
+          '<div class="nc-side"><div class="nc-tn">' + esc(takimAdi(next.home)) + "</div>" +
             '<div class="unit">Ev sahibi</div></div>' +
           '<div class="nc-vs">VS</div>' +
-          '<div class="nc-side right"><div class="nc-tn">' + esc(next.away) + "</div>" +
+          '<div class="nc-side right"><div class="nc-tn">' + esc(takimAdi(next.away)) + "</div>" +
             '<div class="unit">Deplasman</div></div>' +
         "</div>" +
         '<div class="nc-meta">' +
@@ -486,11 +504,11 @@
 
     var takimlar = played
       ? '<div class="ev-score"><span class="ev-team ' + (homeWin ? "won" : awayWin ? "lost" : "") +
-          '">' + esc(f.home) + '</span><span class="sc">' + esc(f.homeScore) + "</span></div>" +
+          '">' + esc(takimAdi(f.home)) + '</span><span class="sc">' + esc(f.homeScore) + "</span></div>" +
         '<div class="ev-score"><span class="ev-team ' + (awayWin ? "won" : homeWin ? "lost" : "") +
-          '">' + esc(f.away) + '</span><span class="sc">' + esc(f.awayScore) + "</span></div>"
-      : '<div class="ev-team">' + esc(f.home) + "</div>" +
-        '<div class="ev-team">' + esc(f.away) + "</div>";
+          '">' + esc(takimAdi(f.away)) + '</span><span class="sc">' + esc(f.awayScore) + "</span></div>"
+      : '<div class="ev-team">' + esc(takimAdi(f.home)) + "</div>" +
+        '<div class="ev-team">' + esc(takimAdi(f.away)) + "</div>";
 
     var alt;
     if (!belli) {
@@ -658,7 +676,7 @@
           var ours = r.isOurs != null ? r.isOurs : isOurTeam(r.team);
           return '<div class="strow' + (ours ? " ours" : "") + '">' +
             '<span class="rk">' + (r.rank != null ? esc(r.rank) : i + 1) + "</span>" +
-            '<span class="tm">' + esc(r.team) + "</span>" +
+            '<span class="tm">' + esc(takimAdi(r.team)) + "</span>" +
             "<span>" + v(r.played) + "</span><span>" + v(r.won) + "</span><span>" + v(r.lost) + "</span>" +
             '<span class="av">' + (r.diff == null ? "–" : (r.diff > 0 ? "+" : "") + esc(r.diff)) + "</span>" +
             '<span class="pt">' + v(r.points) + "</span></div>";

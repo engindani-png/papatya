@@ -72,10 +72,23 @@
         var biz = (durum.lig.teamName || "").toLowerCase();
         durum.takimlar.sort(function (a, b) {
           var ao = a === durum.siradakiRakip ? 0 : 1, bo = b === durum.siradakiRakip ? 0 : 1;
-          var ab = /evolog|daçka|dacka/i.test(a) ? 1 : 0, bb = /evolog|daçka|dacka/i.test(b) ? 1 : 0;
+          var ab = BIZ_KALIBI.test(a) ? 1 : 0, bb = BIZ_KALIBI.test(b) ? 1 : 0;
           return (ab - bb) || (ao - bo) || a.localeCompare(b, "tr");
         });
       });
+  }
+
+  /**
+   * Kulübün resmî adı. TBF'de "EVOLOG", "DAÇKA ŞERİFALİ" ve birleşimleri
+   * dolaşıyor; ekranda her yerde bu ad görünür. Senkron veriyi saat başı
+   * ezdiği için düzeltme görüntüleme katmanında.
+   */
+  var KULUP_ADI = "Şerifali Spor Kulübü";
+  var BIZ_KALIBI = /evolog|daçka|dacka|şerifali|serifali/i;
+
+  /** Ekrana yazılacak takım adı: bizim takımsa resmî ada çevrilir. */
+  function takimAdi(ad) {
+    return BIZ_KALIBI.test(String(ad || "")) ? KULUP_ADI : (ad || "");
   }
 
   /**
@@ -667,7 +680,7 @@
       var sira = durum.siradakiRakip === ad;
       return '<button type="button" data-takim="' + esc(ad) + '" class="' +
         (sira ? "siradaki" : "") + '" aria-pressed="' + (on ? "true" : "false") + '">' +
-        esc(ad) + (sira ? " ·  sıradaki" : "") + "</button>";
+        esc(takimAdi(ad)) + (sira ? " ·  sıradaki" : "") + "</button>";
     }).join("");
   }
 
@@ -675,7 +688,7 @@
     var analizler = durum.analizler;
     var ad = durum.secili;
     if (!analizler.length) {
-      el("icerik").innerHTML = '<div class="note"><div><b>' + esc(ad) + "</b> için analiz " +
+      el("icerik").innerHTML = '<div class="note"><div><b>' + esc(takimAdi(ad)) + "</b> için analiz " +
         "edilmiş maç yok. TBF maç raporunu yayımladıkça burası dolacak.</div></div>";
       return;
     }
@@ -696,7 +709,7 @@
     }));
 
     el("icerik").innerHTML =
-      '<div class="kunye"><h3>' + esc(ad) + "</h3>" +
+      '<div class="kunye"><h3>' + esc(takimAdi(ad)) + "</h3>" +
         '<div class="alt">' + analizler.length + " maç analiz edildi · " +
         galibiyet + " galibiyet, " + (analizler.length - galibiyet) + " mağlubiyet</div></div>" +
 
@@ -756,7 +769,7 @@
       "<h2>Maçları</h2><div class=\"maclist\">" + takiminMaclari(durum.secili).map(function (a) {
         var kazandi = a.score[0] > a.score[1];
         var ic = '<span class="t">' + esc(gunAy(a.date)) + "</span>" +
-          "<span>" + esc(a.rakip) + (a.evMi ? "" : " (deplasman)") + "</span>" +
+          "<span>" + esc(takimAdi(a.rakip)) + (a.evMi ? "" : " (deplasman)") + "</span>" +
           '<span class="s ' + (kazandi ? "g" : "m") + '">' + a.score[0] + "-" + a.score[1] +
           "</span>";
         // Analizi olmayan maçın skoru yine görünür ama tıklanamaz: koç
@@ -777,7 +790,7 @@
     });
     el("macDetay").innerHTML =
       '<div class="kunye" style="margin-top:.8rem"><h3>' + esc(gunAy(a.date)) + " · " +
-        esc(a.rakip) + "</h3>" +
+        esc(takimAdi(a.rakip)) + "</h3>" +
         '<div class="alt">' + a.score[0] + " – " + a.score[1] +
         (a.evMi ? " (ev sahibi)" : " (deplasman)") +
         " · çeyrekler " + a.quarters.map(function (q) {
