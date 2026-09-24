@@ -99,6 +99,20 @@
 .okuma div:last-child{border-bottom:0}
 .okuma b{color:var(--chalk);font-family:var(--display);font-weight:600}
 .okuma .im{color:var(--amber);flex:0 0 auto}
+/* Şut dökümü: grafik değil stat kutucuğu — her tip için tek manşet sayı. */
+.sutdok{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin:.2rem 0 1rem}
+@media(max-width:26rem){.sutdok{grid-template-columns:1fr}}
+.sd{border:1px solid var(--line);border-left:3px solid var(--amber);
+  border-radius:10px;padding:.65rem .75rem}
+.sd-b{font-family:var(--display);font-size:.72rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--chalk-faint)}
+.sd-v{font-family:var(--display);font-weight:700;font-size:1.6rem;line-height:1.15;
+  font-variant-numeric:tabular-nums;margin-top:.15rem}
+.sd-v span{font-size:1rem;font-weight:600;color:var(--chalk-dim)}
+.sd-y{font-family:var(--display);font-weight:600;font-size:1rem;color:var(--chalk-dim);
+  font-variant-numeric:tabular-nums}
+.sd-r{font-size:.75rem;color:var(--chalk-faint);margin-top:.3rem;
+  font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>

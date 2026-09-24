@@ -197,6 +197,32 @@
     };
   }
 
+  /** Şut dökümü: ikilik / üçlük / serbest atış, tek bakışta.
+   *
+   * Bu sayılar karşılaştırma tablosunda da var ama 12 satırın ortasında
+   * gömülüydü; koç "kaç ikilik attık, kaçı girdi" sorusunu oradan okumuyordu.
+   * Form olarak grafik DEĞİL stat kutucuğu doğrusu: her tip için tek manşet
+   * sayı (isabet/deneme) ve yüzdesi. Kimlik renkle değil ETİKETLE taşınıyor.
+   */
+  function sutDokumu(biz, rakip) {
+    var tipler = [
+      ["İkilik", biz.iki, rakip.iki],
+      ["Üçlük", biz.uc, rakip.uc],
+      ["Serbest atış", biz.sa, rakip.sa]
+    ];
+    return '<div class="sutdok">' + tipler.map(function (t) {
+      var b = t[1] || [0, 0], r = t[2] || [0, 0];
+      var bd = b[1] || 0, rd = r[1] || 0;
+      return '<div class="sd">' +
+        '<div class="sd-b">' + esc(t[0]) + "</div>" +
+        '<div class="sd-v">' + (b[0] || 0) + "<span>/" + bd + "</span></div>" +
+        '<div class="sd-y">' + (bd ? "%" + yuzde(b[0] || 0, bd) : "—") + "</div>" +
+        '<div class="sd-r">rakip ' + (r[0] || 0) + "/" + rd +
+          (rd ? " · %" + yuzde(r[0] || 0, rd) : "") + "</div>" +
+        "</div>";
+    }).join("") + "</div>";
+  }
+
   /** Karsilastirma tablosu. Onceki surumde deger-etiket-deger tek satirda
    *  akiyordu ve sayilar metne karisiyordu; sutunlu tablo tek bakista okunuyor. */
   function karsilastirma(biz, rakip) {
@@ -281,6 +307,8 @@
 
       '<div class="grafik"><div class="bas"><h4>Skor farkı</h4>' +
         "<span>sıfır çizgisinin üstü önde</span></div>" + farkGrafigi(a.flow) + "</div>" +
+
+      "<h2>Şut dökümü</h2>" + sutDokumu(biz, rakip) +
 
       "<h2>Karşılaştırma</h2>" + karsilastirma(biz, rakip) +
 

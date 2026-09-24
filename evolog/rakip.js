@@ -78,6 +78,32 @@
       });
   }
 
+  /**
+   * Seçilen takımın ligde oynadığı BÜTÜN maçlar — analizi olsun olmasın.
+   *
+   * Eskiden "Maçları" listesi yalnız analizi ÜRETİLMİŞ maçları gösteriyordu.
+   * Sonuç: ligde oynanmış ama henüz analiz dosyası çıkmamış maçlar koç için
+   * yok hükmündeydi (canlıda 9 oynanmış maçın 2'si böyleydi). Skor zaten
+   * league.json'da duruyor; gizlemenin sebebi yoktu.
+   */
+  function takiminMaclari(ad) {
+    var analizli = (durum.lig.analiz || []);
+    return (durum.lig.leagueFixtures || []).filter(function (f) {
+      return f.played && (f.home === ad || f.away === ad);
+    }).sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); })
+      .map(function (f) {
+        var evMi = f.home === ad;
+        return {
+          matchId: f.matchId,
+          date: f.date,
+          rakip: evMi ? f.away : f.home,
+          evMi: evMi,
+          score: evMi ? [f.homeScore, f.awayScore] : [f.awayScore, f.homeScore],
+          analizVar: analizli.indexOf(f.matchId) !== -1,
+        };
+      });
+  }
+
   /** Seçilen takımın oynadığı, analizi olan bütün maçlar. */
   function takimAnalizleri(ad) {
     var analizli = (durum.lig.analiz || []);
@@ -727,13 +753,18 @@
           (o.sut ? " · %" + yuzde(o.isabet || 0, o.sut) : "") + "</td></tr>";
       }).join("") + "</tbody></table>" +
 
-      "<h2>Maçları</h2><div class=\"maclist\">" + analizler.map(function (a) {
+      "<h2>Maçları</h2><div class=\"maclist\">" + takiminMaclari(durum.secili).map(function (a) {
         var kazandi = a.score[0] > a.score[1];
-        return '<button type="button" data-mac="' + a.matchId + '">' +
-          '<span class="t">' + esc(gunAy(a.date)) + "</span>" +
+        var ic = '<span class="t">' + esc(gunAy(a.date)) + "</span>" +
           "<span>" + esc(a.rakip) + (a.evMi ? "" : " (deplasman)") + "</span>" +
           '<span class="s ' + (kazandi ? "g" : "m") + '">' + a.score[0] + "-" + a.score[1] +
-          "</span></button>";
+          "</span>";
+        // Analizi olmayan maçın skoru yine görünür ama tıklanamaz: koç
+        // "burada bir şey vardı ama açılmadı" diye düşünmesin, sebebi yazsın.
+        return a.analizVar
+          ? '<button type="button" data-mac="' + a.matchId + '">' + ic + "</button>"
+          : '<div class="yok" title="Bu maçın ayrıntılı analizi henüz üretilmedi">' +
+            ic + '<span class="nt">analiz yok</span></div>';
       }).join("") + "</div>" +
       '<div id="macDetay"></div>';
   }
