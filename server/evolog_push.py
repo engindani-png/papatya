@@ -549,6 +549,12 @@ def main() -> int:
                     help="antrenorden velilere serbest metin bildirimi gonder")
     ap.add_argument("--baslik", metavar="METIN", default="Antrenörden duyuru",
                     help="--duyuru ile gonderilecek bildirimin basligi")
+    ap.add_argument("--mac-duyurusu", metavar="METIN",
+                    help="MAÇ DUYURUSU basligiyla elle bildirim gonder "
+                         "(tarih/saat/salon metni sizin yazdiginiz gibi gider)")
+    ap.add_argument("--mac-id", metavar="ID", default="",
+                    help="--mac-duyurusu ile: bildirim etiketi mac-<ID> olur, "
+                         "boylece telefonda ayni macin onceki bildirimini degistirir")
     ap.add_argument("--sessizi-atla", action="store_true",
                     help="sessiz saatte de gonder (insan karari; otomatik "
                          "senkron BU BAYRAGI KULLANMAZ)")
@@ -562,6 +568,37 @@ def main() -> int:
     keys = ensure_keys()
     if args.keys:
         print("VAPID public key:", keys["publicKey"])
+        return 0
+
+    if args.mac_duyurusu:
+        # Elle MAC DUYURUSU. Otomatik "degisti" bildiriminden farki: metni
+        # insan yaziyor ve haber verme bicimi "su degisti" degil "mac su
+        # gun, su saatte, su salonda". Federasyon programi ilk kez bir maci
+        # kesinlestirdiginde veliye bunu duz haber olarak vermek istiyoruz.
+        metin = args.mac_duyurusu.strip()[:500]
+        if not metin:
+            print("Bos mac duyurusu gonderilmedi.")
+            return 1
+        imza = hashlib.sha1(metin.encode("utf-8")).hexdigest()[:10]
+        olay = {
+            "id": "macduyuru-" + imza,
+            "age": DEFAULT_AGE,
+            "title": MAC_BASLIK,
+            "body": metin,
+            # Etiket mac-<ID> olursa telefon ayni macin onceki bildiriminin
+            # yerine bunu koyar; yoksa kendi basina durur.
+            "tag": f"mac-{args.mac_id}" if args.mac_id else "macduyuru-" + imza,
+        }
+        done = read_json(NOTIFIED, {})
+        if duyuru_tekrar_mi(done, olay["id"]):
+            print(f"TEKRAR: ayni metin son {DUYURU_TEKRAR_DK} dakikada gonderildi.")
+            print("Mac duyurusu: 0 gonderim.")
+            return 0
+        sent, delivered = send_all([olay], args.dry_run)
+        if not args.dry_run and olay["id"] in delivered:
+            done[olay["id"]] = dt.datetime.now(TZ).isoformat(timespec="seconds")
+            write_json(NOTIFIED, done)
+        print(f"Mac duyurusu: {sent} gonderim.")
         return 0
 
     if args.duyuru:
