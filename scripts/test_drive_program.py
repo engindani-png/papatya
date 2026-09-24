@@ -189,6 +189,54 @@ def _xlsx(satirlar: list[list[str]]) -> bytes:
 BASLIK = ["TARİH", "SALON", "SAAT", "A TAKIMI", "B TAKIMI", "KATEGORİ", "GRUP"]
 
 
+class BizimMacimizTest(unittest.TestCase):
+    """"Bu satir bizim macimiz mi?" sorusu (A)/(B) ekinden etkilenmemeli.
+
+    TBF lig geneli akisi 23 Eylul 2026'da bizi "EVOLOG DACKA SERIFALI (A)"
+    yazmaya basladi; takimin kendi fikstur listesi eksiz tutuyor. Ek dahil
+    karsilastirildigi icin butun satirlarimiz SESSIZCE "bizim degil" sayildi:
+    ne eslesme kuruldu ne de uyari dustu. Federasyonun resmi programi
+    hicbir maca uygulanmadi.
+    """
+
+    BIZ = ["EVOLOG DAÇKA ŞERİFALİ", "DAÇKA ŞERİFALİ", "EVOLOG"]
+    FIX = [{"matchId": 500, "date": "2026-10-04",
+            "home": "EVOLOG DAÇKA ŞERİFALİ (A)", "away": "EMLAK KONUT SPOR (B)"}]
+    SATIR = [{"tarih": "2026-10-04", "saat": "11:30", "salon": "BGM SALON C3",
+              "ev": "EVOLOG DAÇKA ŞERİFALİ (A)", "deplasman": "EMLAK KONUT (B)",
+              "grup": "SERİ A"}]
+
+    def test_tbf_ekli_yazsa_da_bizim_macimiz(self):
+        sonuc, esle = dp.maclari_eslestir(self.SATIR, self.FIX, self.BIZ)
+        self.assertEqual(esle, [])
+        self.assertIn("500", sonuc)
+        self.assertEqual(sonuc["500"]["venue"], "BGM SALON C3")
+        self.assertEqual(sonuc["500"]["time"], "11:30")
+
+    def test_excel_eksiz_tbf_ekliyken_de_bulunur(self):
+        satir = [dict(self.SATIR[0], ev="EVOLOG DAÇKA ŞERİFALİ")]
+        sonuc, esle = dp.maclari_eslestir(satir, self.FIX, self.BIZ)
+        self.assertIn("500", sonuc, f"eslesmedi: {esle}")
+
+    def test_baskasinin_maci_bizim_sayilmaz(self):
+        satir = [{"tarih": "2026-10-04", "saat": "11:30", "salon": "X",
+                  "ev": "GALATASARAY (A)", "deplasman": "BEŞİKTAŞ", "grup": "A"}]
+        fix = [{"matchId": 501, "date": "2026-10-04",
+                "home": "GALATASARAY (A)", "away": "BEŞİKTAŞ"}]
+        sonuc, esle = dp.maclari_eslestir(satir, fix, self.BIZ)
+        self.assertEqual(sonuc, {}, "baskasinin maci kaydedilmemeli")
+        self.assertEqual(esle, [], "baskasinin maci uyari da uretmemeli")
+
+    def test_tbf_tarihi_aylarca_uzaksa_da_drive_kazanir(self):
+        """TBF dolgu tarih donuyor; +-10 gun penceresi resmi programi
+        reddediyordu (4 Ekim maci TBF'de 8 Aralik goruluyordu)."""
+        fix = [{"matchId": 502, "date": "2026-12-08",
+                "home": "EVOLOG DAÇKA ŞERİFALİ (A)", "away": "EMLAK KONUT SPOR (B)"}]
+        sonuc, esle = dp.maclari_eslestir(self.SATIR, fix, self.BIZ)
+        self.assertIn("502", sonuc, f"eslesmedi: {esle}")
+        self.assertEqual(sonuc["502"]["date"], "2026-10-04", "Drive tarihi kazanmali")
+
+
 class XlsxOkuma(unittest.TestCase):
     def test_kategori_suzulur(self):
         veri = _xlsx([BASLIK,

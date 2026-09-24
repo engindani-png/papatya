@@ -389,6 +389,20 @@ def _anahtar(ad: str) -> str:
     return f"{normalize(govde)}|{ek or ''}"
 
 
+def _govde_anahtari(ad: str) -> str:
+    """Yalnizca govde - (A)/(B) eki ATILIR.
+
+    "Bu satir BIZIM macimiz mi?" sorusu icin kullanilir. Ek burada ayirt
+    edici degil: TBF lig geneli akisi 23 Eylul 2026'da bizi
+    "EVOLOG DACKA SERIFALI (A)" yazmaya basladi, takimin kendi fikstur
+    listesi ise eksiz tutuyor. Ek dahil karsilastirinca butun satirlarimiz
+    sessizce "bizim macimiz degil" sayildi ve federasyonun resmi programi
+    hicbir maca uygulanmadi. Kulubun ayni ligde iki takimi olursa ikisi de
+    bizimdir; yani ek atmak burada dogru.
+    """
+    return normalize(ek_ayir(ad)[0])
+
+
 def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]) -> tuple[dict, list]:
     """Drive satirlarini TBF matchId'lerine baglar.
 
@@ -400,7 +414,7 @@ def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]
     excel_adlari = sorted({m["ev"] for m in program} | {m["deplasman"] for m in program})
     harita = takim_haritasi(excel_adlari, tbf_adlari)
 
-    bizim_norm = {_anahtar(b) for b in bizim}
+    bizim_norm = {_govde_anahtari(b) for b in bizim}
     sonuc, eslesmeyen = {}, []
 
     for m in program:
@@ -408,7 +422,8 @@ def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]
         if not ev_t or not dep_t:
             eslesmeyen.append({**m, "neden": "takim adi eslesmedi"})
             continue
-        if _anahtar(ev_t) not in bizim_norm and _anahtar(dep_t) not in bizim_norm:
+        if (_govde_anahtari(ev_t) not in bizim_norm
+                and _govde_anahtari(dep_t) not in bizim_norm):
             continue                        # bizim macimiz degil
         # SIRALI cift: ev sahibi ve deplasman birlikte. Cift devreli ligde
         # ayni rakiple iki kez oynanir ama biri evde biri deplasmanda, yani
