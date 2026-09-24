@@ -1167,3 +1167,8 @@ button.event[aria-expanded] .ev-detay { color: var(--muted-deep); }
 .dsatir .dgovde .dsil:hover, .dsatir .dgovde .dsil:active {
   color: var(--amber); border-color: var(--amber);
 }
+
+/* Lig geneli: TBF'nin ilan etmedigi mac tarih yerine uyari tasir. */
+.lm-d.bekliyor { color: var(--chalk-faint); }
+.lm-d .ilan { display: block; font-size: 10px; letter-spacing: .04em;
+              text-transform: none; color: var(--chalk-faint); }

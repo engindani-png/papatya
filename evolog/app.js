@@ -639,12 +639,19 @@
         '<div class="wk-b"' + (open ? "" : " hidden") + ">" +
           w.items.map(function (f) {
             var ours = isOurTeam(f.home) || isOurTeam(f.away);
-            var d = matchDate(f);
+            // Tarih yalnizca TBF ilan ettiyse yazilir. Eskiden lig geneli
+            // ekrani dolgu tarihleri de kesinmis gibi basiyordu: ayni takim
+            // ayni gun iki maca cikiyor, 8. hafta maci 1. haftadan once
+            // oynanmis goruluyordu.
+            var belliMi = f.dateConfirmed !== false;
+            var d = belliMi ? matchDate(f) : null;
             var hw = f.played && f.homeScore > f.awayScore;
             var aw = f.played && f.awayScore > f.homeScore;
             return '<div class="lm' + (ours ? " ours" : "") + '">' +
-              '<div class="lm-d">' + (d ? esc(d.getDate() + " " + AYLAR[d.getMonth()]) : "–") +
-                (f.time ? '<span>' + esc(f.time) + "</span>" : "") + "</div>" +
+              '<div class="lm-d' + (belliMi ? "" : " bekliyor") + '">' +
+                (d ? esc(d.getDate() + " " + AYLAR[d.getMonth()]) : "—") +
+                (d && f.time ? '<span>' + esc(f.time) + "</span>" : "") +
+                (belliMi ? "" : '<span class="ilan">ilan edilmedi</span>') + "</div>" +
               "<div>" +
                 '<div class="lm-t ' + (hw ? "won" : aw ? "lost" : "") + '">' +
                   teamCell(f.home, f.homeLogo) +

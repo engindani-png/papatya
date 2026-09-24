@@ -74,6 +74,36 @@ def detect_generated(fixtures: list[dict]) -> set:
     return generated
 
 
+def detect_generated_lig(fixtures: list[dict]) -> set:
+    """Lig GENELI listesinde uretilmis tarihleri bulur - takim takim.
+
+    detect_generated tek bir takimin fikstur listesi icin yazildi: maclari
+    haftaya gore siralar ve aralarinda sabit gun farki arar. Lig geneli
+    listesinde her haftada 12 mac var, dolayisiyla ardisik iki kayit ayni
+    takima ait degil; dizi hicbir zaman tutmuyor ve TEK BIR mac bile
+    "uretilmis" sayilmiyordu.
+
+    Sonuc: lig geneli ekraninda TBF'nin uydurdugu butun dolgu tarihler
+    KESIN tarih gibi basiliyordu. 24 Eylul 2026'da gorulen hali: Emlak
+    Konut Spor (B) 4 Ekim'de iki maca birden cikiyor (3. hafta 11:30,
+    4. hafta 18:30), 8. hafta maci 10 Eylul'de yani 1. haftadan once
+    oynanmis gorunuyor.
+
+    Duzeltme: dizi sezgisi her takimin KENDI mac listesi uzerinde ayri
+    calistirilir, sonuclar birlestirilir. Bir mac iki takimdan birinin
+    dizisinde uretilmis gorunuyorsa uretilmistir.
+    """
+    takimlar: dict[str, list] = {}
+    for f in fixtures:
+        for ad in (f.get("home"), f.get("away")):
+            if ad:
+                takimlar.setdefault(ad, []).append(f)
+    uretilmis: set = set()
+    for maclar in takimlar.values():
+        uretilmis |= detect_generated(maclar)
+    return uretilmis
+
+
 def _eskimis_tarihleri_isaretle(league: dict, drive: dict) -> None:
     """Drive'in kesinlestirdigi bir gune dusen, Drive'da OLMAYAN macimizi
     "TBF'nin eskimis verisi" diye isaretler.
@@ -126,7 +156,10 @@ def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = No
 
     for bucket in ("fixtures", "leagueFixtures"):
         fixtures = league.get(bucket) or []
-        generated = detect_generated(fixtures)
+        # Lig geneli listesi cok takimli: dizi sezgisi takim takim calismali,
+        # yoksa hicbir dolgu tarih yakalanmiyor (bkz. detect_generated_lig).
+        generated = (detect_generated_lig(fixtures) if bucket == "leagueFixtures"
+                     else detect_generated(fixtures))
 
         for fx in fixtures:
             mid = _mid(fx)

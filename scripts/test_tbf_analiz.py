@@ -449,3 +449,61 @@ class EksikDefterTest(unittest.TestCase):
         (self.dizin / "1.json").write_text("{bozuk", encoding="utf-8")
         d = self.ts.eksik_analiz_defteri(self.dizin, self.FIX, self.simdi)
         self.assertIn(1, [e["matchId"] for e in d])
+
+
+class LigDiziSezgisiTest(unittest.TestCase):
+    """Lig GENELI listesinde uretilmis tarihler takim takim aranmali.
+
+    NEDEN: detect_generated tek takimin fikstur listesi icin yazildi;
+    maclari haftaya gore siralayip aralarinda sabit gun farki arar. Lig
+    geneli listesinde her haftada 12 mac var, ardisik iki kayit ayni takima
+    ait degil, dizi hicbir zaman tutmuyordu ve 132 macin HICBIRI uretilmis
+    sayilmiyordu. Sonuc: TBF'nin uydurdugu dolgu tarihler kesin tarih gibi
+    basiliyordu - Emlak Konut Spor (B) 4 Ekim'de iki maca birden cikiyordu.
+    """
+
+    def setUp(self):
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import local_edits
+        self.le = local_edits
+
+    def _lig(self):
+        """12 takim yerine 4 takim, 9 gunluk dolgu dizisi + 1 gercek mac."""
+        takimlar = ["A", "B", "C", "D"]
+        maclar, mid = [], 1000
+        gun = dt.date(2026, 10, 4)
+        for hafta in range(1, 8):
+            tarih = (gun + dt.timedelta(days=9 * (hafta - 1))).isoformat()
+            for ev, dep in (("A", "B"), ("C", "D")):
+                maclar.append({"matchId": mid, "week": hafta, "date": tarih,
+                               "time": "18:30", "home": ev, "away": dep})
+                mid += 1
+        del takimlar
+        return maclar
+
+    def test_tek_takim_sezgisi_lig_listesinde_calismaz(self):
+        """Var olan davranisi belgeler: duzeltmenin sebebi budur."""
+        self.assertEqual(self.le.detect_generated(self._lig()), set())
+
+    def test_takim_bazli_sezgi_dolgu_tarihleri_bulur(self):
+        bulunan = self.le.detect_generated_lig(self._lig())
+        self.assertTrue(bulunan, "dolgu dizisi yakalanmali")
+        self.assertGreaterEqual(len(bulunan), 10)
+
+    def test_gercek_tarihli_mac_dizi_disinda_kalir(self):
+        """Ilan edilmis mac dolgu diziyi bozar ve uretilmis sayilmaz."""
+        maclar = self._lig()
+        for m in maclar:
+            if m["week"] == 4 and m["home"] == "A":
+                m["date"] = "2026-10-26"      # diziye uymayan gercek tarih
+                m["time"] = "11:30"
+                hedef = m["matchId"]
+        bulunan = self.le.detect_generated_lig(maclar)
+        self.assertNotIn(hedef, {str(x) for x in bulunan} | set(bulunan))
+
+    def test_bos_liste_cokmez(self):
+        self.assertEqual(self.le.detect_generated_lig([]), set())
+
+    def test_takimsiz_kayit_cokmez(self):
+        self.assertEqual(self.le.detect_generated_lig(
+            [{"matchId": 1, "week": 1, "date": "2026-10-04"}]), set())
