@@ -20,6 +20,7 @@
   var AGE_STORE = "evolog.age";
   var PUSH_STORE = "evolog.pushAges";
   var IOS_STORE = "evolog.iosHint";
+  var DUYURU_STORE = "evolog.duyuruOkundu";   // okundu isaretlenen duyuru id'leri
 
   // localStorage gizli sekmede ya da kapali depolamada patlayabilir.
   function store(key, value) {
@@ -1551,27 +1552,80 @@
      Burasi TAM metni herkese gosterir; bildirimdeki ?duyuru=1 katmani acar. */
   var duyurular = [];
 
-  function duyuruKart(d, katmanda) {
+  function duyuruId(d) {
+    return String(d && (d.id != null ? d.id : d.zaman) || "");
+  }
+
+  function okunanlar() {
+    try { return JSON.parse(store(DUYURU_STORE) || "[]") || []; }
+    catch (e) { return []; }
+  }
+
+  function okunduMu(d) { return okunanlar().indexOf(duyuruId(d)) !== -1; }
+
+  /** Gorulen tum duyurulari okundu isaretler; liste son 50 ile sinirli tutulur. */
+  function okunduIsaretle() {
+    var liste = okunanlar();
+    duyurular.forEach(function (d) {
+      var k = duyuruId(d);
+      if (k && liste.indexOf(k) === -1) liste.push(k);
+    });
+    store(DUYURU_STORE, JSON.stringify(liste.slice(-50)));
+    renderDuyuru();
+  }
+
+  function okunmamisSayisi() {
+    return duyurular.filter(function (d) { return !okunduMu(d); }).length;
+  }
+
+  /** Katmandaki tam kart. */
+  function duyuruKart(d) {
     var z = String(d.zaman || "").replace("T", " ").slice(0, 16);
-    var bag = (!katmanda && duyurular.length > 1)
-      ? '<button type="button" class="tumu" data-duyuru-tumu>Tüm duyurular (' +
-        duyurular.length + ') →</button>'
-      : "";
-    return '<div class="duyuru">' +
+    return '<div class="duyuru' + (okunduMu(d) ? " okundu" : "") + '">' +
       '<div class="ust"><span class="et">Antrenörden</span>' +
       '<span class="z">' + esc(z) + "</span></div>" +
       (d.baslik ? '<div class="b">' + esc(d.baslik) + "</div>" : "") +
-      '<div class="m">' + esc(d.metin || "") + "</div>" + bag + "</div>";
+      '<div class="m">' + esc(d.metin || "") + "</div></div>";
   }
 
+  /* Ana ekranda duyurunun TAM metni duruyordu; uzun duyuru butun ekrani
+     asagi itiyordu. Artik yalnizca okunmamis duyuru icin tek satirlik bir
+     seritvar; tam metin Duyurular katmaninda. Okundu denince serit kayboluyor,
+     duyuru katmanda kalmaya devam ediyor. */
   function renderDuyuru() {
     var slot = el("duyuruSlot");
-    if (slot) slot.innerHTML = duyurular.length ? duyuruKart(duyurular[0], false) : "";
+    if (slot) {
+      var yeni = duyurular.filter(function (d) { return !okunduMu(d); });
+      if (!yeni.length) {
+        slot.innerHTML = "";
+      } else {
+        var d = yeni[0];
+        var ozet = d.baslik || String(d.metin || "").replace(/\s+/g, " ").trim();
+        if (ozet.length > 70) ozet = ozet.slice(0, 70) + "…";
+        slot.innerHTML =
+          '<div class="duyuru-serit">' +
+            '<button type="button" class="ds-ac" data-duyuru-ac>' +
+              '<span class="ds-et">Antrenörden' +
+              (yeni.length > 1 ? " · " + yeni.length + " yeni" : "") + "</span>" +
+              '<span class="ds-oz">' + esc(ozet) + "</span>" +
+            "</button>" +
+            '<button type="button" class="ds-ok" data-duyuru-okundu ' +
+              'aria-label="Okundu olarak işaretle">Okundu</button>' +
+          "</div>";
+      }
+    }
     var liste = el("duyuruListe");
     if (liste) {
       liste.innerHTML = duyurular.length
-        ? duyurular.map(function (d) { return duyuruKart(d, true); }).join("")
+        ? duyurular.map(duyuruKart).join("") +
+          '<button type="button" class="dokundu" data-duyuru-okundu>Hepsini okundu işaretle</button>'
         : '<p class="bos">Henüz duyuru yok.</p>';
+    }
+    var rozet = el("duyuruRozet");
+    if (rozet) {
+      var n = okunmamisSayisi();
+      rozet.textContent = n ? String(n) : "";
+      rozet.hidden = !n;
     }
   }
 
@@ -1596,6 +1650,8 @@
     if (!panel || panel.hidden) return;
     panel.hidden = true;
     document.body.classList.remove("locked");
+    // Katmani acip kapatan veli tam metni gormustur; serit bir daha cikmasin.
+    okunduIsaretle();
   }
 
   function render() {
@@ -1628,7 +1684,12 @@
 
   document.addEventListener("click", function (ev) {
     if (!ev.target.closest) return;
-    if (ev.target.closest("[data-duyuru-tumu]")) { openDuyuru(); return; }
+    if (ev.target.closest("[data-duyuru-ac]")) { openDuyuru(); return; }
+    if (ev.target.closest("[data-duyuru-okundu]")) {
+      okunduIsaretle();
+      toast("Duyurular okundu işaretlendi");
+      return;
+    }
     if (ev.target.closest("#duyuruClose")) { closeDuyuru(); return; }
   });
   document.addEventListener("keydown", function (ev) {

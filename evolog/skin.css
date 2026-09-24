@@ -417,3 +417,19 @@ input:focus, select:focus, textarea:focus {
 /* Sayfanın arkası da biraz koyulaşsın; aksi halde %97 opak panelin kenarında
    arkadaki liste hâlâ göz yoruyor. */
 .overlay { background: rgba(2, 3, 10, .82); }
+
+/* Duyuru şeridi — AuthKit giydirmesi */
+.duyuru-serit {
+  border: 0; border-radius: var(--r-card);
+  background: rgba(102, 58, 243, .12);
+  box-shadow: var(--edge-inset), inset 3px 0 0 var(--color-void-violet);
+}
+.duyuru-serit .ds-et { color: var(--color-void-violet); }
+.duyuru-serit .ds-oz { color: var(--color-frost-glow); }
+.duyuru-serit .ds-ok { border-left: 1px solid var(--hairline); color: var(--color-fog-veil); }
+.duyuru.okundu { opacity: .7; }
+.dlist .dokundu {
+  border: 0; border-radius: var(--r-button);
+  background: rgba(186, 214, 247, .06); box-shadow: var(--edge-inset);
+  color: var(--color-pure-white);
+}

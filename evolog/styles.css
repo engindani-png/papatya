@@ -1039,3 +1039,40 @@ button.event[aria-expanded] .ev-detay { color: var(--muted-deep); }
 .cpanel .dlist { flex: 1; overflow: auto; padding: 14px var(--gutter) 40px; }
 .cpanel .dlist .duyuru { margin-bottom: 14px; }
 .cpanel .dlist .bos { color: var(--chalk-faint); font-size: 14px; }
+
+/* ---------- Duyuru: ana ekranda şerit, tam metin katmanda --------------- */
+/* Tam metin ana ekranda duruyordu ve uzun duyuru bütün ekranı aşağı itiyordu.
+   Ana ekranda yalnızca okunmamış duyuru için tek satırlık şerit var. */
+.duyuru-serit {
+  display: flex; align-items: stretch; gap: 1px;
+  border: 1px solid var(--line); border-left: 3px solid var(--amber);
+  background: var(--amber-wash); margin-bottom: 10px;
+}
+.duyuru-serit .ds-ac {
+  flex: 1; min-width: 0; text-align: left; background: none; border: 0;
+  color: inherit; font: inherit; padding: 9px 10px; cursor: pointer;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.duyuru-serit .ds-et {
+  font-family: var(--display); font-size: 10.5px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--amber);
+}
+.duyuru-serit .ds-oz {
+  font-size: 13px; color: var(--paper);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.duyuru-serit .ds-ok {
+  flex: 0 0 auto; background: none; border: 0; border-left: 1px solid var(--line);
+  color: var(--muted); font-family: var(--display); font-size: 11px;
+  letter-spacing: .06em; text-transform: uppercase; padding: 0 12px; cursor: pointer;
+}
+.duyuru-serit .ds-ok:active { color: var(--paper); }
+
+/* Katmandaki okunmuş duyurular geri çekilir ama kaybolmaz. */
+.duyuru.okundu { border-left-color: var(--line-dash); opacity: .72; }
+.dlist .dokundu {
+  display: block; width: 100%; margin-top: 12px; padding: 11px;
+  background: none; border: 1px solid var(--line); color: var(--paper);
+  font-family: var(--display); font-size: 12px; letter-spacing: .08em;
+  text-transform: uppercase; cursor: pointer;
+}

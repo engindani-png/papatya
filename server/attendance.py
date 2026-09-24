@@ -184,7 +184,7 @@ def duyurular(state_dir, yas: str, limit: int = 20) -> list:
     con = baglan(state_dir)
     try:
         return [dict(r) for r in con.execute(
-            "SELECT baslik, metin, gonderim, zaman FROM duyuru WHERE yas=? "
+            "SELECT id, baslik, metin, gonderim, zaman FROM duyuru WHERE yas=? "
             "ORDER BY id DESC LIMIT ?", (yas, limit))]
     finally:
         con.close()
