@@ -403,6 +403,40 @@ def _govde_anahtari(ad: str) -> str:
     return normalize(ek_ayir(ad)[0])
 
 
+# Kulubun kendi adindan gelen, en az bu uzunluktaki kelime AYIRT EDICIDIR.
+# "SPOR", "KULUBU", "BELEDIYESI" gibi ortak kelimeler normalize() icinde
+# zaten atiliyor; geriye SERIFALI / EVOLOG / DACKA gibi tek bir kulube ait
+# kelimeler kaliyor.
+AYIRT_EDICI_UZUNLUK = 5
+
+
+def _bizim_mi(ad: str, bizim_govdeler: set, esik: float = 0.45) -> bool:
+    """Bu takim adi BIZIM kulubumuz mu?
+
+    Ad her yerde ayni yazilmiyor ve zaman icinde degisiyor: TBF'nin takim
+    fikstur listesi "EVOLOG DACKA SERIFALI", lig geneli akisi ayni takimi
+    "EVOLOG DACKA SERIFALI (A)", federasyonun Drive tablosu haftadan haftaya
+    "SERIFALI SPOR" ya da "EVOLOG SERIFALI" yazabiliyor. Bu yuzden uc asamali
+    bakilir: birebir govde, benzerlik esigi, ayirt edici kelime.
+
+    Genis davranmak burada guvenli: U14A kiz liginde bu kelimeleri tasiyan
+    baska takim yok. Yanlis pozitifin bedeli de sinirli - eslesme yine
+    takim_haritasi ve sirali cift kontrolunden gecmek zorunda.
+    """
+    g = _govde_anahtari(ad)
+    if not g:
+        return False
+    if g in bizim_govdeler:
+        return True
+    parcalar = set(g.split())
+    for b in bizim_govdeler:
+        if benzerlik(g, b) >= esik:
+            return True
+        if any(k in parcalar for k in b.split() if len(k) >= AYIRT_EDICI_UZUNLUK):
+            return True
+    return False
+
+
 def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]) -> tuple[dict, list]:
     """Drive satirlarini TBF matchId'lerine baglar.
 
@@ -422,8 +456,7 @@ def maclari_eslestir(program: list[dict], fixtures: list[dict], bizim: list[str]
         if not ev_t or not dep_t:
             eslesmeyen.append({**m, "neden": "takim adi eslesmedi"})
             continue
-        if (_govde_anahtari(ev_t) not in bizim_norm
-                and _govde_anahtari(dep_t) not in bizim_norm):
+        if not _bizim_mi(ev_t, bizim_norm) and not _bizim_mi(dep_t, bizim_norm):
             continue                        # bizim macimiz degil
         # SIRALI cift: ev sahibi ve deplasman birlikte. Cift devreli ligde
         # ayni rakiple iki kez oynanir ama biri evde biri deplasmanda, yani
@@ -560,13 +593,13 @@ def guncelle(cfg: dict, fixtures: list[dict], onceki: dict | None,
     # Artik islenmeyen (gecmis) hafta dosyalarini durumdan dusur.
     gecerli = {h["id"] for h in secili}
     durum["files"] = {k: v for k, v in durum["files"].items() if k in gecerli}
-    bizim_govde = {normalize(ek_ayir(b)[0]) for b in (cfg.get("teamNames") or [])}
+    bizim_govde = {_govde_anahtari(b) for b in (cfg.get("teamNames") or [])}
     for e in yeni_eslesmeyen:
         # Eslesmeyen satir BIZIM macimizsa ayri seslen: kaybolan sey resmi
         # salon ve saat bilgisi, yani velinin yanlis salona gitmesi demek.
         satir = f"{e['neden']} -> {e['ev']} - {e['deplasman']} ({e['tarih']})"
-        bizimki = any(g and g in normalize(f"{e['ev']} {e['deplasman']}")
-                      for g in bizim_govde)
+        bizimki = (_bizim_mi(e["ev"], bizim_govde)
+                   or _bizim_mi(e["deplasman"], bizim_govde))
         gunluk(f"  drive {'DIKKAT BIZIM MACIMIZ' if bizimki else 'UYARI'}: {satir}")
     return durum
 

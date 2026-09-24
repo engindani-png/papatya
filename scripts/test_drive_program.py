@@ -218,6 +218,36 @@ class BizimMacimizTest(unittest.TestCase):
         sonuc, esle = dp.maclari_eslestir(satir, self.FIX, self.BIZ)
         self.assertIn("500", sonuc, f"eslesmedi: {esle}")
 
+    ADIMIZIN_HALLERI = [
+        "EVOLOG DAÇKA ŞERİFALİ", "EVOLOG DAÇKA ŞERİFALİ (A)",
+        "ŞERİFALİ SPOR KULÜBÜ", "ŞERİFALİ SPOR", "ŞERİFALİ",
+        "EVOLOG ŞERİFALİ", "EVOLOG", "DAÇKA ŞERİFALİ",
+    ]
+
+    def test_adimizin_butun_halleri_bizim_sayilir(self):
+        """Ad her yerde ayni yazilmiyor ve zaman icinde degisiyor.
+
+        TBF takim fiksturu "EVOLOG DAÇKA ŞERİFALİ", lig geneli akisi
+        "... (A)", Drive tablosu haftadan haftaya baska bir hali yazabiliyor.
+        U14A kiz liginde bu kelimeleri tasiyan baska takim yok; genis
+        davranmak guvenli.
+        """
+        bizim = {dp._govde_anahtari(b) for b in self.BIZ}
+        for ad in self.ADIMIZIN_HALLERI:
+            self.assertTrue(dp._bizim_mi(ad, bizim), f"bizim sayilmali: {ad}")
+
+    def test_ligdeki_diger_takimlar_bizim_sayilmaz(self):
+        bizim = {dp._govde_anahtari(b) for b in self.BIZ}
+        for ad in ["GALATASARAY (A)", "FENERBAHÇE (B)", "BEŞİKTAŞ",
+                   "EMLAK KONUT SPOR (A)", "EYÜPSULTAN BELEDİYESİ",
+                   "ÜMRANİYE BELEDİYESİ SK", "ALLSTARS", "AÇI OKULLARI"]:
+            self.assertFalse(dp._bizim_mi(ad, bizim), f"bizim sayilmamali: {ad}")
+
+    def test_bos_ad_bizim_sayilmaz(self):
+        bizim = {dp._govde_anahtari(b) for b in self.BIZ}
+        for ad in ["", "   ", "(A)"]:
+            self.assertFalse(dp._bizim_mi(ad, bizim), repr(ad))
+
     def test_baskasinin_maci_bizim_sayilmaz(self):
         satir = [{"tarih": "2026-10-04", "saat": "11:30", "salon": "X",
                   "ev": "GALATASARAY (A)", "deplasman": "BEŞİKTAŞ", "grup": "A"}]
