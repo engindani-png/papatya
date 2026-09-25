@@ -714,12 +714,57 @@ table.mlog td.mo span.l { background: var(--loss); }
   #viewOurs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
               gap: 0 30px; align-items: start; }
   #viewOurs > #boardSlot { grid-column: 1 / -1; }
+  /* Ust sira: son mac solda, onceki maclar sagda - ikisi de kisa.
+     Alt sira: yaklasan maclar TAM GENISLIKTE, iki sutunlu liste.
+     Once yaklasan liste tek sutunda sagda uzuyor, sol sutun ise tek kartla
+     kalip altinda kocaman bir bosluk birakiyordu. */
   #viewOurs > #lastTitle, #viewOurs > #lastMatch { grid-column: 1; }
-  #viewOurs > #upcomingTitle, #viewOurs > #upcomingList { grid-column: 2; }
-  #viewOurs > #prevTitle, #viewOurs > #playedList { grid-column: 1 / -1; }
+  #viewOurs > #prevTitle, #viewOurs > #playedList { grid-column: 2; }
+  #viewOurs > #upcomingTitle, #viewOurs > #upcomingList { grid-column: 1 / -1; }
+  #upcomingList { display: grid; gap: 0 30px; align-items: start;
+                  grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Sezon basinda "onceki maclar" henuz yok; son mac tek basina kalinca
+     yanindaki sutun bos duruyordu. Destekleyen tarayicida tam genislige
+     yayilir, desteklemeyende eski hali gecerli kalir. */
+  #viewOurs:has(> #prevTitle[hidden]) > #lastTitle,
+  #viewOurs:has(> #prevTitle[hidden]) > #lastMatch { grid-column: 1 / -1; }
   #panel-kadro { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
                  gap: 0 30px; align-items: start; }
   #panel-kadro > h2:first-child, #panel-kadro > #rosterSlot { grid-column: 1; }
+  /* Teknik kadro basligi ile listesi ayri satirlara dusuyordu: baslik sagda,
+     liste kadronun altinda kaliyor, saginda kocaman bos alan oluyordu. */
+  #panel-kadro > .sec { grid-column: 2; grid-row: 1; align-self: start; }
+  #panel-kadro > #staffSlot { grid-column: 2; grid-row: 1; margin-top: 44px; }
+
+  /* Antrenman: program solda, salonlar sagda. Tek sutunda salonlar
+     ekranin cok altinda kaliyor ve sag taraf bombos duruyordu. */
+  #panel-antrenman { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+                     gap: 0 30px; align-items: start; }
+  #panel-antrenman > .weekdays, #panel-antrenman > #weekTitle,
+  #panel-antrenman > #sessionsSlot { grid-column: 1; }
+  #panel-antrenman > #nextTrainingSlot { grid-column: 2; }
+  #panel-antrenman > .sec:last-of-type, #panel-antrenman > #venuesSlot { grid-column: 2; }
+
+  /* Geri sayim kutulari genis ekranda asiri yayiliyordu. */
+  .clock { max-width: 46rem; }
+  /* Puan durumu: takim adi solda, sayilar en sagda kalinca aradaki bosluk
+     goz kaybediyordu. Tabloyu okunabilir bir genislikte tut. */
+  #standingsSlot { max-width: 60rem; }
+  #standingsTitle { max-width: 60rem; }
+  /* Lig geneli: hafta kartlari da ayni genislikte, satirlar dagilmasin. */
+  #leagueWeeks { max-width: 60rem; }
+}
+
+/* Cok genis ekranda icerik daha fazla yer kullansin; 1060px'de kalinca
+   iki yanda genis bos seritler olusuyordu. */
+@media (min-width: 1280px) { .wrap { max-width: 1180px; } }
+@media (min-width: 1600px) { .wrap { max-width: 1320px; } }
+
+/* Alt cubuk: sekmeler ortada bir yuva gibi dursun, cubugun iki yanindaki
+   bosluk kasitli gorunsun. */
+@media (min-width: 768px) {
+  .tabbar { grid-template-columns: repeat(5, minmax(0, 8.5rem)) 6rem; }
+  .tabbar button { font-size: 11px; letter-spacing: .08em; }
 }
 
 /* ---------- Kesinleşmemiş tarih / değişiklik ---------- */
