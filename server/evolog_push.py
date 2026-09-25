@@ -174,6 +174,35 @@ LIG_SONUC_GUN = int(os.environ.get("EVOLOG_LIG_SONUC_GUN", "3"))
 # Tek bildirimde en fazla bu kadar mac yazilir; gerisi "+N mac daha".
 LIG_SONUC_SATIR = 6
 
+# Bildirim turleri. Veli her birini ayri ayri kapatabiliyor (Ayarlar >
+# Bildirimler). Kapatmak yerine "hepsini kapat" secenegine zorlamak, velinin
+# kendi cocugunun mac bildirimini de kaybetmesi demekti.
+#   koc  - antrenorun duyurulari + antrenman programi degisikligi
+#   mac  - KENDI macimiz: sonuc, saat/salon degisikligi, mac hatirlatmasi
+#   lig  - ligdeki DIGER takimlarin sonuclari
+TURLER = ("koc", "mac", "lig")
+
+
+def olay_turu(olay_id: str) -> str:
+    """Olay kimliginden bildirim turu. Bilinmeyen tur "mac" sayilir:
+    yeni bir olay turu eklenince sessizce kaybolmasin, gorunsun."""
+    for onek, tur in (("duyuru-", "koc"), ("training-", "koc"),
+                      ("ligsonuc-", "lig"),
+                      ("result-", "mac"), ("change-", "mac"),
+                      ("reminder-", "mac"), ("macduyuru-", "mac")):
+        if olay_id.startswith(onek):
+            return tur
+    return "mac"
+
+
+def tur_istiyor_mu(sub: dict, tur: str) -> bool:
+    """Abone bu turu almak istiyor mu? Alan yoksa HEPSI acik sayilir -
+    bu guncellemeden onceki abonelikler bildirim kaybetmesin."""
+    istenen = sub.get("turler")
+    if not isinstance(istenen, list) or not istenen:
+        return True
+    return tur in istenen
+
 
 def _gecmis(f: dict, simdi) -> bool:
     """Macin baslama ani gecti mi? (Tarih okunamazsa gecmis SAYILMAZ.)"""
@@ -524,11 +553,16 @@ def send_all(events: list[dict], dry: bool) -> tuple[int, set]:
 
     for sub in subs:
         drop = False
+        # Tur suzgeci asagida, olay dongusunde: ayni abone bir turu isteyip
+        # otekini istemeyebilir.
         # Abone yalnizca actigi yas gruplarinin macini alir; eski kayitlarda
         # alan yoksa varsayilan yas kabul edilir.
         wanted = sub.get("ages") or [DEFAULT_AGE]
         for e in events:
             if e.get("age", DEFAULT_AGE) not in wanted:
+                continue
+            # Veli bu bildirim turunu kapatmis olabilir (Ayarlar > Bildirimler).
+            if not tur_istiyor_mu(sub, olay_turu(e["id"])):
                 continue
             payload = json.dumps({
                 "title": e["title"], "body": e["body"],
@@ -554,6 +588,15 @@ def send_all(events: list[dict], dry: bool) -> tuple[int, set]:
                 print(f"  uyari: {type(exc).__name__}: {exc}")
         if not drop:
             alive.append(sub)
+
+    # Hicbir abonenin istemedigi tur: olay "gonderildi" sayilir. Yoksa her
+    # saat yeniden denenir ve gunluge sonsuza kadar "1 olay bekliyor" duser.
+    for e in events:
+        if e["id"] in delivered:
+            continue
+        tur = olay_turu(e["id"])
+        if not any(tur_istiyor_mu(s2, tur) for s2 in (alive or subs)):
+            delivered.add(e["id"])
 
     if len(alive) != len(subs):
         write_json(SUBS, alive)

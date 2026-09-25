@@ -384,3 +384,68 @@ class LigSonucuTest(unittest.TestCase):
 
     def test_baslik_mac_duyurusundan_farkli(self):
         self.assertNotEqual(evolog_push.LIG_BASLIK, evolog_push.MAC_BASLIK)
+
+
+class BildirimTuruTest(unittest.TestCase):
+    """Veli hangi bildirimlerin gelecegini ayri ayri secebilmeli.
+
+    Kullanici (25 Eylul 2026): "Bildirimler ayarlar kismina bildirim
+    ayarlari ekleyelim. Koc duyurulari, Mac duyurulari, Tum mac duyurulari
+    olarak acip kapatabilelim."
+
+    Eskiden tek anahtar vardi: rakip maclarinin sonucunu istemeyen veli
+    KENDI cocugunun mac bildirimini de kapatmak zorunda kaliyordu.
+    """
+
+    def test_olay_turleri_dogru_eslesir(self):
+        beklenen = {
+            "duyuru-abc123": "koc",
+            "training-u14-ff00": "koc",
+            "ligsonuc-toplu-aa11": "lig",
+            "result-346856": "mac",
+            "change-346867-2026-10-04-11:30-abc": "mac",
+            "reminder-346867": "mac",
+            "macduyuru-9f8e7d": "mac",
+        }
+        for olay_id, tur in beklenen.items():
+            self.assertEqual(evolog_push.olay_turu(olay_id), tur, olay_id)
+
+    def test_bilinmeyen_olay_mac_sayilir(self):
+        """Yeni bir olay turu eklenince sessizce kaybolmasin, gorunsun."""
+        self.assertEqual(evolog_push.olay_turu("yepyeni-1"), "mac")
+
+    def test_alan_yoksa_hepsi_acik(self):
+        """Bu guncellemeden onceki abonelikler bildirim kaybetmemeli."""
+        for tur in evolog_push.TURLER:
+            self.assertTrue(evolog_push.tur_istiyor_mu({}, tur), tur)
+
+    def test_bos_liste_de_hepsi_acik_sayilir(self):
+        """Bos liste 'hicbirini istemiyorum' degil, 'bilgi yok' demektir;
+        kapatma islemi abonelikle birlikte yapilir."""
+        self.assertTrue(evolog_push.tur_istiyor_mu({"turler": []}, "mac"))
+
+    def test_secili_tur_gelir_digeri_gelmez(self):
+        sub = {"turler": ["mac"]}
+        self.assertTrue(evolog_push.tur_istiyor_mu(sub, "mac"))
+        self.assertFalse(evolog_push.tur_istiyor_mu(sub, "lig"))
+        self.assertFalse(evolog_push.tur_istiyor_mu(sub, "koc"))
+
+    def test_lig_kapaliyken_kendi_macimiz_gelir(self):
+        """Istegin asil sebebi: rakip sonuclarini istemeyen veli kendi
+        macinin bildirimini kaybetmemeli."""
+        sub = {"turler": ["koc", "mac"]}
+        self.assertTrue(evolog_push.tur_istiyor_mu(sub, "mac"))
+        self.assertFalse(evolog_push.tur_istiyor_mu(sub, "lig"))
+
+    def test_api_turleri_temizler(self):
+        import evolog_api
+        self.assertEqual(evolog_api.clean_turler(["mac", "lig"]), ["mac", "lig"])
+        self.assertEqual(evolog_api.clean_turler(["mac", "uydurma"]), ["mac"])
+        self.assertEqual(evolog_api.clean_turler([]), [])
+        self.assertIsNone(evolog_api.clean_turler(None), "alan gelmedi = hepsi acik")
+        self.assertIsNone(evolog_api.clean_turler("mac"), "bicim bozuk = hepsi acik")
+
+    def test_api_turleri_sirayi_kendi_belirler(self):
+        import evolog_api
+        self.assertEqual(evolog_api.clean_turler(["lig", "koc", "mac"]),
+                         ["koc", "mac", "lig"])

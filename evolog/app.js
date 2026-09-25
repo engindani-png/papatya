@@ -19,6 +19,7 @@
   ];
   var AGE_STORE = "evolog.age";
   var PUSH_STORE = "evolog.pushAges";
+  var PUSH_TUR_STORE = "evolog.pushTurleri";   // hangi bildirim turleri acik
   var IOS_STORE = "evolog.iosHint";
   var DUYURU_STORE = "evolog.duyuruOkundu";   // okundu isaretlenen duyuru id'leri
   var DUYURU_SIL_STORE = "evolog.duyuruSilindi";   // velinin kendi silmesi (mezar tasi)
@@ -1364,11 +1365,62 @@
     });
   }
 
+  /* Bildirim turleri. Veli her birini ayri kapatabiliyor; eskiden tek
+     secenek vardi ve rakip maclarinin sonucunu istemeyen veli KENDI
+     cocugunun mac bildirimini de kapatmak zorunda kaliyordu. */
+  var PUSH_TURLERI = [
+    { key: "koc", ad: "Koç duyuruları",
+      alt: "Antrenörün yazdığı duyurular ve antrenman programı değişikliği" },
+    { key: "mac", ad: "Maç duyuruları",
+      alt: "Kendi maçımız: gün/saat/salon değişikliği, maç hatırlatması, skor" },
+    { key: "lig", ad: "Tüm maç duyuruları",
+      alt: "Ligdeki diğer takımların maç sonuçları" }
+  ];
+
+  function pushTurleri() {
+    var ham = store(PUSH_TUR_STORE);
+    if (ham === null || ham === undefined) {
+      // Hic secim yapilmamis: hepsi acik.
+      return PUSH_TURLERI.map(function (t) { return t.key; });
+    }
+    try {
+      var l = JSON.parse(ham);
+      if (!Array.isArray(l)) throw new Error("bicim");
+      return PUSH_TURLERI.map(function (t) { return t.key; })
+        .filter(function (k) { return l.indexOf(k) !== -1; });
+    } catch (e) {
+      return PUSH_TURLERI.map(function (t) { return t.key; });
+    }
+  }
+
+  function setPushTurleri(list) { store(PUSH_TUR_STORE, JSON.stringify(list)); }
+
+  /** Bir bildirim turunu ac/kapat. Abonelik silinmez: yalnizca sunucudaki
+   *  suzgec degisir, boylece veli tek bir turu kapatip otekileri korur. */
+  function togglePushTur(key, want) {
+    if (push.busy) return;
+    var list = pushTurleri().slice();
+    var at = list.indexOf(key);
+    if (want && at === -1) list.push(key);
+    if (!want && at !== -1) list.splice(at, 1);
+
+    setPushTurleri(list);
+    if (!push.sub) { renderSheet(); return; }   // abonelik yoksa yerel kalir
+
+    push.busy = true;
+    renderSheet();
+    var done = function () { push.busy = false; renderSheet(); };
+    sendAges(pushAges())
+      .catch(function () { toast("Bildirim ayarı kaydedilemedi"); })
+      .then(done, done);
+  }
+
   function sendAges(list) {
     var j = push.sub.toJSON ? push.sub.toJSON() : push.sub;
     return fetch("/api/push/subscribe", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys, ages: list })
+      body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys, ages: list,
+                             turler: pushTurleri() })
     });
   }
 
@@ -1436,9 +1488,32 @@
         '<span class="sdesc">' + (push.busy ? "Değiştiriliyor…" : (isOn ? "Açık" : "Kapalı")) +
         "</span></span>" +
         '<span class="sw" aria-hidden="true"></span></button>';
-    }).join("") +
-      '<p class="shint">Maç günü/saati değişince, maçtan 4 saat önce, maç bitince skor ' +
-      "ve antrenman programı değişince haber veririz.</p>";
+    }).join("") + turSatirlari();
+  }
+
+  /* Tur anahtarlari yalnizca bildirim ACIKKEN anlamli; kapaliyken
+     gosterirsek veli acmadan ayar yapmaya calisir. */
+  function turSatirlari() {
+    if (!pushAges().length) {
+      return '<p class="shint">Maç günü/saati değişince, maçtan 4 saat önce, ' +
+        "maç bitince skor ve antrenman programı değişince haber veririz.</p>";
+    }
+    var acik = pushTurleri();
+    return '<h3 class="eyebrow">Hangi bildirimler gelsin</h3>' +
+      '<div class="slist">' +
+      PUSH_TURLERI.map(function (t) {
+        var isOn = acik.indexOf(t.key) !== -1;
+        return '<button type="button" class="srow tgl' + (isOn ? " on" : "") + '"' +
+          (push.busy ? " disabled" : "") +
+          ' data-push-tur="' + t.key + '" data-want="' + (isOn ? "0" : "1") + '"' +
+          ' role="switch" aria-checked="' + (isOn ? "true" : "false") + '">' +
+          "<span>" + esc(t.ad) +
+          '<span class="sdesc">' + esc(t.alt) + "</span></span>" +
+          '<span class="sw" aria-hidden="true"></span></button>';
+      }).join("") +
+      "</div>" +
+      (acik.length ? "" :
+        '<p class="shint">Hiçbir bildirim türü açık değil; telefona haber gitmez.</p>');
   }
 
   function renderSheet() {
@@ -1926,6 +2001,12 @@
 
     var coach = t.closest("[data-coach]");
     if (coach) { openCoach(coach.dataset.coach); return; }
+
+    var turTgl = t.closest("[data-push-tur]");
+    if (turTgl && !turTgl.disabled) {
+      togglePushTur(turTgl.dataset.pushTur, turTgl.dataset.want === "1");
+      return;
+    }
 
     var tgl = t.closest("[data-push]");
     if (tgl && !tgl.disabled) { togglePushAge(tgl.dataset.push, tgl.dataset.want === "1"); }

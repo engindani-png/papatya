@@ -84,6 +84,19 @@ def query_of(handler, name: str) -> str:
     return (urllib.parse.parse_qs(query).get(name) or [""])[0].strip()
 
 
+PUSH_TURLERI = ("koc", "mac", "lig")
+
+
+def clean_turler(deger):
+    """Istenen bildirim turleri. None = alan gelmedi (hepsi acik sayilir),
+    [] = veli hepsini kapatmis."""
+    if deger is None:
+        return None
+    if not isinstance(deger, list):
+        return None
+    return [t for t in PUSH_TURLERI if t in deger]
+
+
 def clean_ages(value) -> list:
     """Bildirim icin secilen yas listesi; bilinmeyenler atilir."""
     if not isinstance(value, list):
@@ -408,14 +421,21 @@ class Handler(BaseHTTPRequestHandler):
                 if not endpoint or not str(endpoint).startswith("https://"):
                     return self.send_json(400, {"error": "Gecersiz abonelik"})
                 ages = clean_ages(sub.get("ages")) or [DEFAULT_AGE]
+                # Bildirim turleri: veli her birini ayri kapatabiliyor.
+                # Alan hic gelmezse HEPSI acik - eski surumdeki uygulama
+                # bunu gondermiyor ve bildirim kaybetmemeli.
+                turler = clean_turler(sub.get("turler"))
                 with _lock:
                     subs = read_json(SUBS, [])
                     subs = [s for s in subs if s.get("endpoint") != endpoint]
-                    subs.append({"endpoint": endpoint, "keys": sub.get("keys") or {},
-                                 "ages": ages,
-                                 "addedAt": time.strftime("%Y-%m-%dT%H:%M:%S")})
+                    kayit = {"endpoint": endpoint, "keys": sub.get("keys") or {},
+                             "ages": ages,
+                             "addedAt": time.strftime("%Y-%m-%dT%H:%M:%S")}
+                    if turler is not None:
+                        kayit["turler"] = turler
+                    subs.append(kayit)
                     write_json(SUBS, subs[-500:])
-                return self.send_json(200, {"ok": True, "ages": ages})
+                return self.send_json(200, {"ok": True, "ages": ages, "turler": turler})
 
             if path == "/api/push/unsubscribe":
                 endpoint = (self.body_json() or {}).get("endpoint")
