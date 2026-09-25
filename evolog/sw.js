@@ -2,7 +2,7 @@
 // v37: daha once v36 kullanilmisti, sonra bir surum v31e DUSURULDU.
 // Geriye gitmek karisiklik yaratiyor; bir daha ileri gidiyoruz ve
 // buradan sonra HEP artar.
-var CACHE = "evolog-v43";
+var CACHE = "evolog-v44";
 
 // Gelen bildirimleri telefonda saklayan katman. sw.js ile app.js AYNI
 // dosyayi kullanir; yazan ile okuyanin semasi ayrismasin diye.

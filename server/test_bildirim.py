@@ -449,3 +449,45 @@ class BildirimTuruTest(unittest.TestCase):
         import evolog_api
         self.assertEqual(evolog_api.clean_turler(["lig", "koc", "mac"]),
                          ["koc", "mac", "lig"])
+
+
+class EmojiTest(unittest.TestCase):
+    """Bildirim basliklarindaki emojiler.
+
+    Kullanici (25 Eylul 2026): "Mac duyurusunun basina basket topu emojisi,
+    koc duyurusuna alev, diger takim mac duyurularina anons emojisi."
+
+    Telefonda bildirimler alt alta yigiliyor; emoji veli okumadan once
+    neyle karsilasacagini soyluyor.
+    """
+
+    def test_baslik_emojileri(self):
+        self.assertTrue(evolog_push.MAC_BASLIK.startswith("\U0001F3C0"))
+        self.assertTrue(evolog_push.LIG_BASLIK.startswith("\U0001F4E3"))
+        self.assertEqual(evolog_push.EMOJI_KOC, "\U0001F525")
+
+    def test_emojiler_birbirinden_farkli(self):
+        e = {evolog_push.EMOJI_MAC, evolog_push.EMOJI_KOC, evolog_push.EMOJI_LIG}
+        self.assertEqual(len(e), 3)
+
+    def test_baslik_metni_korunur(self):
+        """Uygulama duyuru turunu basliktan cikariyor; metin bozulmamali."""
+        self.assertIn("MAÇ DUYURUSU", evolog_push.MAC_BASLIK)
+        self.assertIn("LİG SONUCU", evolog_push.LIG_BASLIK)
+
+    def test_mac_olaylari_emojili_baslikla_gider(self):
+        f = _mac(matchId=901, played=True, homeScore=67, awayScore=38)
+        for e in evolog_push.build_events(_lig([f]), "u14"):
+            self.assertTrue(e["title"].startswith("\U0001F3C0"), e["id"])
+
+    def test_lig_sonucu_anons_emojili(self):
+        lig = {"label": "U14", "fixtures": [], "leagueFixtures": [
+            {"matchId": 10, "date": "2026-09-25", "home": "A", "away": "B",
+             "homeScore": 45, "awayScore": 38, "played": True}]}
+        olaylar, _ = evolog_push.build_league_result_events(
+            lig, "u14", {}, dt.datetime(2026, 9, 25, 12, 0, tzinfo=evolog_push.TZ))
+        self.assertTrue(olaylar[0]["title"].startswith("\U0001F4E3"))
+
+    def test_antrenman_bildirimi_alev_emojili(self):
+        """Antrenman programi da 'Koc duyurulari' turunde; ayni emoji."""
+        self.assertEqual(evolog_push.olay_turu("training-u14-ab12"), "koc")

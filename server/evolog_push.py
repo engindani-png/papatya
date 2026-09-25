@@ -164,10 +164,16 @@ SESSIZ_BIT = int(os.environ.get("EVOLOG_SESSIZ_BIT", "7"))    # haric
 # Mac bildirimleri tek bir baslik altinda toplanir; telefonda bildirimin ilk
 # satiri baslik, ikincisi govdedir - "MAC DUYURUSU" gorununce veli neyle
 # karsilasacagini biliyor. Antrenorun yazdigi duyuru AYRI baslikla gider.
-MAC_BASLIK = "MAÇ DUYURUSU"
+# Bildirim basliklarindaki emojiler. Telefonda bildirimler alt alta
+# yigiliyor; emoji, veli okumadan once neyle karsilasacagini soyluyor.
+EMOJI_MAC = "🏀"   # basket topu
+EMOJI_KOC = "🔥"   # alev
+EMOJI_LIG = "📣"   # anons
+
+MAC_BASLIK = EMOJI_MAC + " MAÇ DUYURUSU"
 # Ligdeki DIGER takimlarin sonuclari ayri baslikla gider: "MAÇ DUYURUSU"
 # gorunce veli kendi cocugunun maci sanir.
-LIG_BASLIK = "LİG SONUCU"
+LIG_BASLIK = EMOJI_LIG + " LİG SONUCU"
 # Bu kadar gun once oynanmis mac artik haber degil: ilk calistirmada
 # sezonun butun gecmis sonuclari topluca gitmesin diye sessizce isaretlenir.
 LIG_SONUC_GUN = int(os.environ.get("EVOLOG_LIG_SONUC_GUN", "3"))
@@ -353,7 +359,7 @@ def build_training_events(age: str) -> tuple[list[dict], dict | None]:
     return ([{
         "id": f"training-{age}-{imza}",
         "age": age,
-        "title": f"{label} · Antrenman programı güncellendi",
+        "title": f"{EMOJI_KOC} {label} · Antrenman programı güncellendi",
         "body": govde,
         "tag": f"antrenman-{age}",
     }], program)
@@ -726,7 +732,9 @@ def main() -> int:
         olay = {
             "id": etiket,
             "age": DEFAULT_AGE,
-            "title": (args.baslik or "Antrenörden duyuru").strip()[:80],
+            # Kocun kendi yazdigi baslik da olsa alev onekiyle gider:
+            # veli bildirimin kimden geldigini basliga bakmadan anlasin.
+            "title": EMOJI_KOC + " " + (args.baslik or "Antrenörden duyuru").strip()[:80],
             # Bildirimde OZET; tam metin uygulamada. url, veliyi dogrudan
             # Duyurular ekranina goturur (app.js ?duyuru=1'i yakalar).
             "body": bildirim_govdesi(metin),

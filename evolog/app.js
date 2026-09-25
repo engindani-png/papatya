@@ -1776,6 +1776,17 @@
      mac bildirimi mi, kocun yazdigi duyuru mu, antrenman programi mi.
      Sunucudan gelen kayit her zaman kocun duyurusudur (POST /api/duyuru);
      yerel kayitlarda baslik ve etikete bakariz. */
+  // Bildirim basliklarindaki emojiler sunucudakiyle ayni (evolog_push.py).
+  var TUR_EMOJI = { "Maç duyurusu": "🏀", "Koç duyurusu": "🔥",
+                    "Lig sonucu": "📣", "Antrenman": "🔥" };
+
+  /** Karsilastirma icin: emoji, noktalama ve buyuk/kucuk farki atilir. */
+  function sadeMetin(v) {
+    return String(v == null ? "" : v)
+      .replace(/[^\p{L}\p{N} ]/gu, " ")
+      .replace(/\s+/g, " ").trim().toLocaleUpperCase("tr");
+  }
+
   function duyuruTuru(d) {
     if (d.kaynak !== "yerel") return "Koç duyurusu";
     var b = String(d.baslik || "");
@@ -1813,7 +1824,9 @@
       '<button type="button" class="dbas" data-duyuru-ac-satir="' + esc(id) + '" ' +
         'aria-expanded="' + (acik ? "true" : "false") + '">' +
         '<span class="dnokta" aria-hidden="true"></span>' +
-        '<span class="dtur">' + esc(duyuruTuru(d)) + "</span>" +
+        '<span class="dtur">' +
+          (TUR_EMOJI[duyuruTuru(d)] ? TUR_EMOJI[duyuruTuru(d)] + " " : "") +
+          esc(duyuruTuru(d)) + "</span>" +
         '<span class="dzaman">' + esc(duyuruZamani(d.zaman)) + "</span>" +
         '<span class="dok" aria-hidden="true">' + (acik ? "▾" : "›") + "</span>" +
       "</button>" +
@@ -1821,8 +1834,7 @@
         ? '<div class="dgovde">' +
             // Baslik satirdaki turle ayniysa tekrar yazma ("MAÇ DUYURUSU"
             // hem satirda hem govdede goruluyordu).
-            (d.baslik && d.baslik.toLocaleUpperCase("tr") !==
-                         duyuruTuru(d).toLocaleUpperCase("tr")
+            (d.baslik && sadeMetin(d.baslik) !== sadeMetin(duyuruTuru(d))
               ? '<div class="b">' + esc(d.baslik) + "</div>" : "") +
             '<div class="m">' + esc(d.metin || "") + "</div>" +
             '<button type="button" class="dsil" data-duyuru-sil="' + esc(id) + '">' +
