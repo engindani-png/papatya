@@ -4,6 +4,23 @@ Mobil uyumlu (telefona kurulabilen) takım uygulaması: kadro, yaklaşan maçlar
 lig puan durumu ve antrenman programı. Maç sonuçları ve puan durumu **TBF
 sayfalarından otomatik çekilir**.
 
+## Ekranlar
+
+Maçlar · Puan durumu · Kadro · Antrenman · **Duyuru** · Takım.
+Geniş ekranda (>=1024px) iki sütunlu düzen: yaklaşan maçlar tam genişlikte iki
+sütun, kadronun yanında teknik kadro, antrenman programının yanında salonlar.
+
+**Duyuru ekranı** telefona gelen her bildirimi saklar (`duyuru-arsiv.js`,
+IndexedDB). Satırlar tür + tarih/saat gösterir, dokununca metin açılır, tek tek
+silinebilir; okunmamış olanda işaret ve alt barda rozet vardır. Sunucudaki duyuru
+(tam metin) ile telefondaki push kopyası (kısa özet) `etiket` üzerinden eşleşir ve
+tek kart olarak görünür.
+
+Bildirim türleri Ayarlar > Bildirimler'de ayrı ayrı açılıp kapanır — koç
+duyuruları, kendi maçımız, ligdeki diğer maçlar. Tek anahtar varken rakip
+sonuçlarını istemeyen veli kendi çocuğunun maç bildirimini de kapatmak zorunda
+kalıyordu.
+
 ## Yaş grupları
 
 Uygulama şu an yalnızca **U14 Kız Siyah** takımını taşır (U16/U18 kaldırıldı;

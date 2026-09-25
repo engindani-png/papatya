@@ -172,6 +172,18 @@ Ortam değişkenleri (`evolog-api.service` içinde):
 tar czf evolog-durum-$(date +%F).tgz -C /var/lib evolog
 ```
 
+### Senkronun ÜRETTİĞİ dosyalar (`/var/www/evolog/data/<yaş>/`)
+
+`league.json`, `team.json`, `drive_program.json`, `analiz/`, `analiz_eksik.json`
+**git'te izlenmez.** Yedeklenmeleri şart değil: ilk senkron hepsini yeniden üretir.
+
+> **Neden izlenmiyorlar:** deploy `git fetch + git reset --hard` yapıyor. İzlendikleri
+> sürece her dağıtım canlı veriyi commit'teki eski hâline döndürüyordu. 24 Eylül
+> 2026'da gerçekten zarar verdi: 4 Ekim maçının saati ve salonu Drive'dan düzeldi,
+> velilere bildirim gitti, sonraki deploy maçı yeniden 8 Aralık yaptı — bildirimde
+> bir tarih, uygulamada başkası. Bu dosyalar **çıktıdır, kaynak değil.**
+> Elle tutulan `overrides.json` ve `venues.json` izlenmeye devam eder.
+
 ---
 
 ## 6. API uçları
@@ -256,6 +268,50 @@ yoksa telefonlardaki kopya eski kalır.
 - **`.overlay` kuralına `display:flex` verme.** `hidden` özniteliğini ezer,
   katman hep açık kalır. `styles.css`'teki `[hidden]{display:none!important}`
   silinmemeli.
+- **`data/<yaş>/league.json` ve arkadaşlarını git'e geri ekleme.** Deploy
+  `reset --hard` yaptığı için canlı veri commit'teki hâline döner (yukarı bak).
+- **`notified.json`'u silme.** Hangi bildirimin gönderildiğini tutar; kaybolursa
+  geçmiş maç sonuçları ve duyurular velilere **yeniden** gider.
+- **Bildirim türü eklerken `evolog_push.olay_turu()`'ne önek ekle.** Bilinmeyen
+  olay "mac" sayılır; eklemezsen yeni bildirim türünü kapatan veli onu
+  kapatamaz ya da yanlış grupta bulur.
+- **Drive eşleştirmesinde "emniyet" kuralı eklerken dikkat.** 25 Eylül 2026'da
+  üç ayrı kural federasyonun resmî programını fiilen bloke ediyordu: `(A)/(B)`
+  ekini birebir tutma şartı, sahiplik kontrolünün eki karşılaştırması ve TBF
+  tarihine ±10 gün penceresi. Kural: Drive **her zaman** TBF'yi ezmeli; eşleşmeyi
+  zorlaştıran hiçbir şey bunu engellememeli.
+
+---
+
+## 9b. Bildirimler — kısa özet
+
+| Tür | Ne kapsar | Başlık |
+|---|---|---|
+| `koc` | Antrenörün duyuruları, antrenman programı değişikliği | 🔥 |
+| `mac` | Kendi maçımız: sonuç, gün/saat/salon değişikliği, 4 saat kala hatırlatma | 🏀 MAÇ DUYURUSU |
+| `lig` | Ligdeki diğer takımların sonuçları (tek bildirimde toplanır) | 📣 LİG SONUCU |
+
+- Abone tercihi `subs.json` → `turler`. **Alan yoksa hepsi açık** (eski abonelikler
+  bildirim kaybetmesin).
+- **Sessiz saat 22:00–07:00**: otomatik bildirim gönderilmez ve *işaretlenmez*,
+  pencere bitince ilk turda gider. İnsan kararıyla aşmak için `--sessizi-atla`.
+- Elle maç duyurusu: `evolog_push.py --mac-duyurusu "METİN" [--mac-id <id>]`.
+- Telefona gelen **her** bildirim cihazda arşivlenir (`evolog/duyuru-arsiv.js`,
+  IndexedDB). `sw.js` ve `app.js` aynı dosyayı yükler — şemaları ayrışmasın diye.
+
+---
+
+## 9c. Kendi kendini denetleme
+
+Senkron her turda şunları yazar (`journalctl -u evolog-sync`):
+
+- `Analiz BOS: ...` — TBF istatistiği henüz yayınlamamış; 3 saatte bir yeniden
+  denenir, maç 45 günden eskiyse bırakılır. Liste: `data/<yaş>/analiz_eksik.json`.
+- `DIKKAT: N takimda puan durumu ile fikstur ortusmuyor` — federasyon iki ayrı
+  kaynaktan veri veriyor; biri güncellenip öteki unutulmuş olabilir.
+- `drive DIKKAT BIZIM MACIMIZ: ...` — Drive satırı bizim maçımız ama eşleşmedi;
+  resmî salon/saat uygulamaya gelmiyor demektir.
+- `N ertelenmis mac isaretlendi` — haftası oynanmış ama kendisi 7+ gün ileride.
 
 ---
 
