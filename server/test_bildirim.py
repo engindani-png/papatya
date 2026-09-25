@@ -285,3 +285,102 @@ class DegisiklikIzleriTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LigSonucuTest(unittest.TestCase):
+    """Ligdeki DIGER takimlarin sonuclari - tek bildirimde, ayri baslikla.
+
+    Kullanici (24-25 Eylul 2026): "Bizim ligimizde oynanan rakip takim
+    maclarinin da sonuclari push edilsin. Eski maclara gerek yok, yeni
+    oynanan maclar bitince bizim sisteme sonucu dustugunde push edilebilir."
+
+    Neden toplu: ligde haftada 11 rakip maci var; tek tek gitse veli bir
+    aksamda alti bildirim alir, hepsini kapatir ve kendi macininkini kacirir.
+    Neden ayri baslik: "MAÇ DUYURUSU" gorunce veli kendi cocugunun macini
+    sanar.
+    """
+
+    def setUp(self):
+        self.simdi = dt.datetime(2026, 9, 25, 12, 0, tzinfo=evolog_push.TZ)
+
+    def _lig(self, lig_maclari, bizim=None):
+        return {"label": "U14", "fixtures": bizim or [],
+                "leagueFixtures": (bizim or []) + lig_maclari}
+
+    def _mac(self, mid, tarih, ev, dep, es, ds, oynandi=True):
+        return {"matchId": mid, "date": tarih, "time": "18:30",
+                "home": ev, "away": dep, "homeScore": es, "awayScore": ds,
+                "played": oynandi}
+
+    def test_yeni_rakip_sonucu_bildirilir(self):
+        lig = self._lig([self._mac(10, "2026-09-25", "GALATASARAY (A)",
+                                   "BEŞİKTAŞ", 45, 38)])
+        olaylar, sessiz = evolog_push.build_league_result_events(
+            lig, "u14", {}, self.simdi)
+        self.assertEqual(len(olaylar), 1)
+        self.assertEqual(olaylar[0]["title"], evolog_push.LIG_BASLIK)
+        self.assertIn("GALATASARAY (A) 45-38 BEŞİKTAŞ", olaylar[0]["body"])
+        self.assertEqual(sessiz, [])
+
+    def test_birden_fazla_sonuc_TEK_bildirimde(self):
+        lig = self._lig([
+            self._mac(10, "2026-09-25", "A", "B", 45, 38),
+            self._mac(11, "2026-09-25", "C", "D", 50, 49),
+            self._mac(12, "2026-09-25", "E", "F", 30, 60),
+        ])
+        olaylar, _ = evolog_push.build_league_result_events(lig, "u14", {}, self.simdi)
+        self.assertEqual(len(olaylar), 1, "tek bildirim olmali")
+        for parca in ("A 45-38 B", "C 50-49 D", "E 30-60 F"):
+            self.assertIn(parca, olaylar[0]["body"])
+
+    def test_kapsam_her_maci_ayri_tasir(self):
+        """Toplu bildirim teslim edilince maclar TEK TEK isaretlenmeli;
+        yoksa sonraki turda farkli gruplamayla tekrar giderler."""
+        lig = self._lig([self._mac(10, "2026-09-25", "A", "B", 45, 38),
+                         self._mac(11, "2026-09-25", "C", "D", 50, 49)])
+        olaylar, _ = evolog_push.build_league_result_events(lig, "u14", {}, self.simdi)
+        self.assertEqual(sorted(olaylar[0]["kapsam"]),
+                         ["ligsonuc-10", "ligsonuc-11"])
+
+    def test_eski_mac_SESSIZCE_isaretlenir(self):
+        """Ilk calistirmada sezonun gecmis sonuclari topluca gitmesin."""
+        lig = self._lig([self._mac(10, "2026-09-08", "A", "B", 45, 38)])
+        olaylar, sessiz = evolog_push.build_league_result_events(
+            lig, "u14", {}, self.simdi)
+        self.assertEqual(olaylar, [])
+        self.assertEqual(sessiz, ["ligsonuc-10"])
+
+    def test_bizim_macimiz_burada_bildirilmez(self):
+        """Kendi macimizin sonucu zaten MAÇ DUYURUSU olarak gidiyor."""
+        bizim = [self._mac(20, "2026-09-25", "ŞERİFALİ", "X", 60, 40)]
+        lig = self._lig([], bizim)
+        olaylar, sessiz = evolog_push.build_league_result_events(
+            lig, "u14", {}, self.simdi)
+        self.assertEqual((olaylar, sessiz), ([], []))
+
+    def test_oynanmamis_mac_bildirilmez(self):
+        lig = self._lig([self._mac(10, "2026-09-25", "A", "B", None, None, False)])
+        self.assertEqual(evolog_push.build_league_result_events(
+            lig, "u14", {}, self.simdi), ([], []))
+
+    def test_skoru_girilmemis_mac_bildirilmez(self):
+        """TBF 'oynandi' deyip skoru bos birakabiliyor."""
+        lig = self._lig([self._mac(10, "2026-09-25", "A", "B", None, None, True)])
+        self.assertEqual(evolog_push.build_league_result_events(
+            lig, "u14", {}, self.simdi), ([], []))
+
+    def test_daha_once_bildirilen_tekrar_gitmez(self):
+        lig = self._lig([self._mac(10, "2026-09-25", "A", "B", 45, 38)])
+        done = {"ligsonuc-10": "2026-09-25T09:00:00+03:00"}
+        self.assertEqual(evolog_push.build_league_result_events(
+            lig, "u14", done, self.simdi), ([], []))
+
+    def test_cok_sonuc_varsa_govde_kisaltilir(self):
+        lig = self._lig([self._mac(10 + i, "2026-09-25", f"A{i}", f"B{i}", 40, 30)
+                         for i in range(10)])
+        olaylar, _ = evolog_push.build_league_result_events(lig, "u14", {}, self.simdi)
+        self.assertIn("maç daha", olaylar[0]["body"])
+        self.assertEqual(len(olaylar[0]["kapsam"]), 10, "hepsi isaretlenmeli")
+
+    def test_baslik_mac_duyurusundan_farkli(self):
+        self.assertNotEqual(evolog_push.LIG_BASLIK, evolog_push.MAC_BASLIK)

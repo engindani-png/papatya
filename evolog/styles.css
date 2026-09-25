@@ -1172,3 +1172,8 @@ button.event[aria-expanded] .ev-detay { color: var(--muted-deep); }
 .lm-d.bekliyor { color: var(--chalk-faint); }
 .lm-d .ilan { display: block; font-size: 10px; letter-spacing: .04em;
               text-transform: none; color: var(--chalk-faint); }
+
+/* Ertelenmis mac: haftasi coktan oynanmis ama bu mac ileri tarihte.
+   Isaret olmayinca fikstur bozukmus gibi goruluyordu. */
+.lm.ertelendi { border-left: 2px solid var(--amber-line); }
+.lm-d .ilan.ert { color: var(--amber); }

@@ -70,6 +70,39 @@ def team_path(key: str) -> pathlib.Path:
     return DATA_DIR / key / "team.json"
 
 
+def puan_fikstur_tutarliligi(standings: list, league_fixtures: list) -> list:
+    """Puan durumundaki "oynanan mac" sayisi ile fiksturdeki oynanmis mac
+    sayisi ortusuyor mu - takim takim.
+
+    NEDEN: federasyon iki ayri yerden veri veriyor ve biri guncellenip
+    otekinin unutuldugu oluyor. Ortusmuyorsa ya bir macin sonucu hic
+    girilmemistir ya da fikstur eksiktir; iki durumda da veli yanlis bilgi
+    gorur. Sessizce gecmesin diye her senkronda bakilir.
+    """
+    oynanan: dict = {}
+    for f in league_fixtures or []:
+        if not f.get("played"):
+            continue
+        for ad in (f.get("home"), f.get("away")):
+            if ad:
+                oynanan[ad] = oynanan.get(ad, 0) + 1
+    tutarsiz = []
+    for r in standings or []:
+        ad = r.get("team") or r.get("takim")
+        if not ad:
+            continue
+        tablo = r.get("played")
+        if tablo is None:
+            tablo = r.get("oynanan")
+        if tablo is None:
+            continue
+        fikstur = oynanan.get(ad, 0)
+        if int(tablo) != int(fikstur):
+            tutarsiz.append({"team": ad, "puanTablosu": int(tablo),
+                             "fikstur": int(fikstur)})
+    return tutarsiz
+
+
 def eksik_analiz_defteri(hedef: pathlib.Path, fixtures: list,
                          simdi=None) -> list:
     """Hangi oynanmis macin analizi hala bos - takip edilebilir liste.
@@ -809,6 +842,24 @@ def sync_team(cfg: dict, args) -> None:
     # ise her zaman kazanir.
     league = local_edits.apply(league, overrides_path(cfg["key"]), previous,
                                drive=drive_state.get("matches") or {})
+
+    # Puan durumu ile fikstur ortusuyor mu? Ortusmuyorsa federasyonun iki
+    # kaynagindan biri guncellenmemis demektir; veli yanlis bilgi gorur.
+    tutarsiz = puan_fikstur_tutarliligi(league.get("standings") or standings,
+                                        league.get("leagueFixtures") or [])
+    league["inconsistent"] = tutarsiz
+    if tutarsiz:
+        log(f"  DIKKAT: {len(tutarsiz)} takimda puan durumu ile fikstur "
+            f"ortusmuyor (sonucu girilmemis mac olabilir):")
+        for t in tutarsiz:
+            log(f"     {t['team']}: puan tablosu {t['puanTablosu']} mac, "
+                f"fiksturde {t['fikstur']} mac")
+    ertelenen = [f for f in (league.get("leagueFixtures") or []) if f.get("postponed")]
+    if ertelenen:
+        log(f"  {len(ertelenen)} ertelenmis mac isaretlendi:")
+        for f in ertelenen:
+            log(f"     {f.get('week')}. hafta {f.get('date')} "
+                f"{f.get('home')} - {f.get('away')}")
     if league.get("unconfirmedCount"):
         log(f"  {league['unconfirmedCount']} macin tarihi TBF'de kesinlesmemis "
             f"(uretilmis dizi) - uygulamada 'tarih belli degil' gosterilecek")

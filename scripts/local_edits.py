@@ -104,6 +104,47 @@ def detect_generated_lig(fixtures: list[dict]) -> set:
     return uretilmis
 
 
+# Bir mac, ayni haftanin oynanmis maclarindan bu kadar gun sonraya
+# kalmissa ERTELENMIS sayilir. Ayni hafta normalde bir-iki gune yayiliyor
+# (2. hafta 24-26 Eylul); 7 gun o dagilimin acikca disidir.
+ERTELEME_ESIGI_GUN = 7
+# Haftanin gercekten oynanmis oldugunu anlamak icin en az bu kadar mac
+# tamamlanmis olmali; sezon basinda tek bir mac yaniltir.
+ERTELEME_MIN_OYNANAN = 2
+
+
+def ertelenenleri_isaretle(fixtures: list[dict]) -> int:
+    """Haftasi bitmis ama kendisi oynanmamis, tarihi cok ileride olan
+    maclari `postponed` diye isaretler.
+
+    NEDEN: 1. hafta 14-18 Eylul'de oynandi ama ALLSTARS - UMRANIYE BELEDIYESI
+    maci 11 Ekim'de duruyor. Veri DOGRU (puan durumu da Umraniye icin 0 mac
+    diyor, yani mac ertelenmis) ama ekranda "1. hafta, 11 Ekim" yazinca
+    fikstur bozukmus gibi goruluyor. Isaret koyunca sebebi anlasiliyor.
+    """
+    haftalar: dict = {}
+    for f in fixtures:
+        w = f.get("week")
+        if w is None:
+            continue
+        haftalar.setdefault(w, []).append(f)
+
+    sayi = 0
+    for w, maclar in haftalar.items():
+        oynanmis = [_date(f) for f in maclar if f.get("played") and _date(f)]
+        if len(oynanmis) < ERTELEME_MIN_OYNANAN:
+            continue
+        son = max(oynanmis)
+        for f in maclar:
+            if f.get("played") or f.get("dateConfirmed") is False:
+                continue
+            g = _date(f)
+            if g and (g - son).days >= ERTELEME_ESIGI_GUN:
+                f["postponed"] = True
+                sayi += 1
+    return sayi
+
+
 def _eskimis_tarihleri_isaretle(league: dict, drive: dict) -> None:
     """Drive'in kesinlestirdigi bir gune dusen, Drive'da OLMAYAN macimizi
     "TBF'nin eskimis verisi" diye isaretler.
@@ -211,6 +252,8 @@ def apply(league: dict, overrides_path: pathlib.Path, previous: dict | None = No
                         fx[field] = old[field]
 
     _eskimis_tarihleri_isaretle(league, drive)
+    for bucket in ("fixtures", "leagueFixtures"):
+        ertelenenleri_isaretle(league.get(bucket) or [])
 
     unconfirmed = sum(1 for f in (league.get("fixtures") or [])
                       if f.get("dateConfirmed") is False)

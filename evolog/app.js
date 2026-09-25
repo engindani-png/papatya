@@ -514,6 +514,11 @@
     var alt;
     if (!belli) {
       alt = "Tarih TBF tarafından ilan edilmedi";
+    } else if (f.postponed) {
+      // Haftasi coktan oynanmis ama bu mac ileri bir tarihte: ertelenmis.
+      // Isaret olmayinca fikstur bozukmus gibi goruluyordu.
+      alt = "Ertelendi · " + (f.week ? f.week + ". hafta maçı" : "hafta bilinmiyor") +
+        (f.venue ? " · " + f.venue : "");
     } else if (played) {
       alt = (f.quarters || []).map(function (q) { return q.home + "-" + q.away; }).join(" · ") ||
         [f.venue, f.week ? f.week + ". hafta" : null].filter(Boolean).join(" · ");
@@ -647,11 +652,13 @@
             var d = belliMi ? matchDate(f) : null;
             var hw = f.played && f.homeScore > f.awayScore;
             var aw = f.played && f.awayScore > f.homeScore;
-            return '<div class="lm' + (ours ? " ours" : "") + '">' +
+            return '<div class="lm' + (ours ? " ours" : "") +
+              (f.postponed ? " ertelendi" : "") + '">' +
               '<div class="lm-d' + (belliMi ? "" : " bekliyor") + '">' +
                 (d ? esc(d.getDate() + " " + AYLAR[d.getMonth()]) : "—") +
                 (d && f.time ? '<span>' + esc(f.time) + "</span>" : "") +
-                (belliMi ? "" : '<span class="ilan">ilan edilmedi</span>') + "</div>" +
+                (belliMi ? "" : '<span class="ilan">ilan edilmedi</span>') +
+                (f.postponed ? '<span class="ilan ert">ertelendi</span>' : "") + "</div>" +
               "<div>" +
                 '<div class="lm-t ' + (hw ? "won" : aw ? "lost" : "") + '">' +
                   teamCell(f.home, f.homeLogo) +
@@ -1698,9 +1705,11 @@
     if (d.kaynak !== "yerel") return "Koç duyurusu";
     var b = String(d.baslik || "");
     var e = String(d.etiket || "");
+    if (b.indexOf("LİG SONUCU") !== -1) return "Lig sonucu";
     if (b.indexOf("MAÇ DUYURUSU") !== -1) return "Maç duyurusu";
     if (e.indexOf("antrenman-") === 0) return "Antrenman";
     if (e.indexOf("duyuru-") === 0) return "Koç duyurusu";
+    if (e.indexOf("ligsonuc") === 0) return "Lig sonucu";
     if (e.indexOf("mac-") === 0) return "Maç duyurusu";
     return "Bildirim";
   }

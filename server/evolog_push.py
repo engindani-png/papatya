@@ -165,6 +165,14 @@ SESSIZ_BIT = int(os.environ.get("EVOLOG_SESSIZ_BIT", "7"))    # haric
 # satiri baslik, ikincisi govdedir - "MAC DUYURUSU" gorununce veli neyle
 # karsilasacagini biliyor. Antrenorun yazdigi duyuru AYRI baslikla gider.
 MAC_BASLIK = "MAÇ DUYURUSU"
+# Ligdeki DIGER takimlarin sonuclari ayri baslikla gider: "MAÇ DUYURUSU"
+# gorunce veli kendi cocugunun maci sanir.
+LIG_BASLIK = "LİG SONUCU"
+# Bu kadar gun once oynanmis mac artik haber degil: ilk calistirmada
+# sezonun butun gecmis sonuclari topluca gitmesin diye sessizce isaretlenir.
+LIG_SONUC_GUN = int(os.environ.get("EVOLOG_LIG_SONUC_GUN", "3"))
+# Tek bildirimde en fazla bu kadar mac yazilir; gerisi "+N mac daha".
+LIG_SONUC_SATIR = 6
 
 
 def _gecmis(f: dict, simdi) -> bool:
@@ -426,6 +434,69 @@ def build_events(league: dict, age: str = DEFAULT_AGE) -> list[dict]:
 
 
 # ---------------------------------------------------------------- gonderim
+def build_league_result_events(league: dict, age: str = DEFAULT_AGE,
+                               done: dict | None = None, simdi=None) -> tuple[list, list]:
+    """Ligdeki DIGER takimlarin yeni sonuclari - TEK bildirimde toplanir.
+
+    Doner: (olaylar, sessizce_isaretlenecek_idler)
+
+    Neden toplu: ligde haftada 11 rakip maci oynaniyor. Her biri ayri
+    bildirim olsa veli bir aksamda alti bildirim alir ve hepsini kapatir;
+    sonra kendi macinin bildirimini de kacirir.
+
+    Neden ayri baslik: "MAÇ DUYURUSU" gorunce veli kendi cocugunun macini
+    sanar.
+
+    Eski maclar SESSIZCE isaretlenir - ilk calistirmada sezonun butun gecmis
+    sonuclari topluca gitmesin ve "3 hafta once oynanmis mac" haber diye
+    dusmesin diye.
+    """
+    done = done or {}
+    simdi = simdi or dt.datetime.now(TZ)
+    bizim = {f.get("matchId") for f in (league.get("fixtures") or [])}
+
+    yeni, sessiz = [], []
+    for f in league.get("leagueFixtures") or []:
+        mid = f.get("matchId")
+        if not mid or mid in bizim or not f.get("played"):
+            continue
+        if f.get("homeScore") is None or f.get("awayScore") is None:
+            continue
+        olay_id = f"ligsonuc-{mid}"
+        if olay_id in done:
+            continue
+        gun = None
+        try:
+            gun = dt.datetime.fromisoformat(f["date"]).replace(tzinfo=TZ)
+        except (KeyError, TypeError, ValueError):
+            pass
+        if gun and (simdi - gun).days > LIG_SONUC_GUN:
+            sessiz.append(olay_id)          # eski sonuc: haber degil
+            continue
+        yeni.append((olay_id, f))
+
+    if not yeni:
+        return [], sessiz
+
+    yeni.sort(key=lambda x: (x[1].get("date") or "", x[1].get("time") or ""))
+    satirlar = [f"{f['home']} {f['homeScore']}-{f['awayScore']} {f['away']}"
+                for _, f in yeni]
+    govde = " · ".join(satirlar[:LIG_SONUC_SATIR])
+    if len(satirlar) > LIG_SONUC_SATIR:
+        govde += f" · +{len(satirlar) - LIG_SONUC_SATIR} maç daha"
+
+    kapsam = [oid for oid, _ in yeni]
+    imza = hashlib.sha1("|".join(sorted(kapsam)).encode("utf-8")).hexdigest()[:10]
+    return [{
+        "id": "ligsonuc-toplu-" + imza,
+        "age": age,
+        "title": LIG_BASLIK,
+        "body": _govde(league.get("label") or age.upper(), govde),
+        "tag": "ligsonuc",
+        "kapsam": kapsam,
+    }], sessiz
+
+
 def send_all(events: list[dict], dry: bool) -> tuple[int, set]:
     """Bildirimleri gonderir. Doner: (gonderim sayisi, en az bir aboneye ulasan olay id'leri)"""
     subs = read_json(SUBS, [])
@@ -650,6 +721,14 @@ def main() -> int:
     for age, league in leagues:
         events += [e for e in build_events(league, age) if e["id"] not in done]
 
+    # Ligdeki DIGER takimlarin yeni sonuclari - tek bildirimde toplanir.
+    # Eski sonuclar haber degil: sessizce isaretlenir, gonderilmez.
+    lig_sessiz = []
+    for age, league in leagues:
+        olaylar, sessiz = build_league_result_events(league, age, done)
+        events += olaylar
+        lig_sessiz += sessiz
+
     # Antrenman programi degisikligi: gonderim basarili olunca program
     # "bildirildi" diye kaydedilir, boylece ayni degisiklik ikinci kez gitmez.
     programs = {}
@@ -658,6 +737,14 @@ def main() -> int:
         if program is not None:
             programs[age] = (program, [e["id"] for e in tr_events])
         events += [e for e in tr_events if e["id"] not in done]
+
+    if lig_sessiz and not args.dry_run:
+        # Bu maclarin sonucu gonderilmeyecek ama bir daha da bakilmayacak.
+        damga = dt.datetime.now(TZ).isoformat(timespec="seconds")
+        for oid in lig_sessiz:
+            done[oid] = damga
+        write_json(NOTIFIED, done)
+        print(f"  {len(lig_sessiz)} eski lig sonucu sessizce isaretlendi.")
 
     if not events:
         for age, (program, ids) in programs.items():
@@ -681,6 +768,10 @@ def main() -> int:
             # Gonderilemeyen olay isaretlenmez; sonraki calismada tekrar denenir.
             if e["id"] in delivered:
                 done[e["id"]] = stamp
+                # Toplu bildirimde tasinan maclar TEK TEK isaretlenir; yoksa
+                # bir sonraki turda farkli bir gruplamayla tekrar giderler.
+                for kapsanan in (e.get("kapsam") or []):
+                    done[kapsanan] = stamp
         write_json(NOTIFIED, done)
         for age, (program, ids) in programs.items():
             if all(i in delivered or i in done for i in ids):

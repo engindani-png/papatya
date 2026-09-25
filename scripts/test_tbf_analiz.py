@@ -507,3 +507,96 @@ class LigDiziSezgisiTest(unittest.TestCase):
     def test_takimsiz_kayit_cokmez(self):
         self.assertEqual(self.le.detect_generated_lig(
             [{"matchId": 1, "week": 1, "date": "2026-10-04"}]), set())
+
+
+class ErtelemeTest(unittest.TestCase):
+    """Haftasi bitmis ama kendisi ileri tarihte olan mac ERTELENMISTIR.
+
+    NEDEN: 1. hafta 14-18 Eylul'de oynandi, ama ALLSTARS - UMRANIYE
+    BELEDIYESI maci 11 Ekim'de duruyor. Veri DOGRU (puan durumu Umraniye
+    icin 0 mac diyor) ama ekranda "1. hafta, 11 Ekim" yazinca fikstur
+    bozukmus gibi goruluyor.
+    """
+
+    def setUp(self):
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import local_edits
+        self.le = local_edits
+
+    def _hafta(self, ertelenen_tarih):
+        return [
+            {"matchId": 1, "week": 1, "date": "2026-09-14", "played": True},
+            {"matchId": 2, "week": 1, "date": "2026-09-15", "played": True},
+            {"matchId": 3, "week": 1, "date": "2026-09-18", "played": True},
+            {"matchId": 4, "week": 1, "date": ertelenen_tarih, "played": False,
+             "home": "ALLSTARS", "away": "ÜMRANİYE BELEDİYESİ SK"},
+        ]
+
+    def test_cok_ileri_tarihli_oynanmamis_mac_ertelenmis(self):
+        m = self._hafta("2026-10-11")
+        self.assertEqual(self.le.ertelenenleri_isaretle(m), 1)
+        self.assertTrue(m[3].get("postponed"))
+
+    def test_ayni_hafta_icindeki_yayilma_erteleme_degil(self):
+        """2. hafta 24-26 Eylul'e yayildi; bu normaldir."""
+        m = self._hafta("2026-09-20")
+        self.assertEqual(self.le.ertelenenleri_isaretle(m), 0)
+        self.assertIsNone(m[3].get("postponed"))
+
+    def test_oynanmis_mac_ertelenmis_sayilmaz(self):
+        m = self._hafta("2026-10-11")
+        m[3]["played"] = True
+        self.assertEqual(self.le.ertelenenleri_isaretle(m), 0)
+
+    def test_ilan_edilmemis_tarih_ertelenmis_sayilmaz(self):
+        """Dolgu tarih zaten 'ilan edilmedi' gosteriliyor; erteleme demeyiz."""
+        m = self._hafta("2026-10-11")
+        m[3]["dateConfirmed"] = False
+        self.assertEqual(self.le.ertelenenleri_isaretle(m), 0)
+
+    def test_haftasi_hic_oynanmamissa_erteleme_denmez(self):
+        """Sezon basinda butun hafta ileride; hicbiri ertelenmis degil."""
+        m = [{"matchId": i, "week": 3, "date": "2026-10-04", "played": False}
+             for i in range(1, 5)]
+        self.assertEqual(self.le.ertelenenleri_isaretle(m), 0)
+
+    def test_tek_oynanmis_mac_yaniltmasin(self):
+        m = [{"matchId": 1, "week": 1, "date": "2026-09-14", "played": True},
+             {"matchId": 2, "week": 1, "date": "2026-10-11", "played": False}]
+        self.assertEqual(self.le.ertelenenleri_isaretle(m), 0)
+
+
+class TutarlilikTest(unittest.TestCase):
+    """Puan durumu ile fikstur ortusmuyorsa federasyonun iki kaynagindan
+    biri guncellenmemistir - sonucu girilmemis mac olabilir."""
+
+    def setUp(self):
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+        import tbf_sync
+        self.ts = tbf_sync
+
+    FIX = [
+        {"matchId": 1, "home": "A", "away": "B", "played": True},
+        {"matchId": 2, "home": "A", "away": "C", "played": True},
+        {"matchId": 3, "home": "B", "away": "C", "played": False},
+    ]
+
+    def test_ortusuyorsa_bos_doner(self):
+        st = [{"team": "A", "played": 2}, {"team": "B", "played": 1},
+              {"team": "C", "played": 1}]
+        self.assertEqual(self.ts.puan_fikstur_tutarliligi(st, self.FIX), [])
+
+    def test_eksik_sonuc_yakalanir(self):
+        st = [{"team": "A", "played": 3}, {"team": "B", "played": 1},
+              {"team": "C", "played": 1}]
+        t = self.ts.puan_fikstur_tutarliligi(st, self.FIX)
+        self.assertEqual(t, [{"team": "A", "puanTablosu": 3, "fikstur": 2}])
+
+    def test_hic_oynamamis_takim_sifir(self):
+        st = [{"team": "A", "played": 2}, {"team": "B", "played": 1},
+              {"team": "C", "played": 1}, {"team": "D", "played": 0}]
+        self.assertEqual(self.ts.puan_fikstur_tutarliligi(st, self.FIX), [])
+
+    def test_alan_yoksa_cokmez(self):
+        self.assertEqual(self.ts.puan_fikstur_tutarliligi([{"team": "A"}], self.FIX), [])
+        self.assertEqual(self.ts.puan_fikstur_tutarliligi(None, None), [])
